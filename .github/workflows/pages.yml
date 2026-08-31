@@ -1,0 +1,55 @@
+name: Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - name: Install
+        run: bun install
+      - name: Typecheck
+        run: bun run typecheck
+      - name: Tests
+        run: bun test
+      - name: Build demo site
+        run: |
+          mkdir -p docs
+          bun build src/index.ts --target browser --format esm --minify --outfile docs/engine.mjs
+          cp web/index.html docs/index.html
+          cp web/app.js docs/app.js
+          echo ".nojekyll" > docs/.nojekyll || touch docs/.nojekyll
+      - name: Engine bundle size gate (20KB)
+        run: |
+          SIZE=$(stat -c%s docs/engine.mjs)
+          echo "engine.mjs size: ${SIZE} bytes"
+          if [ "$SIZE" -gt 20480 ]; then echo "::error::engine bundle too large"; exit 1; fi
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
