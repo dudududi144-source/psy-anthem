@@ -19,7 +19,7 @@
     "validate": "bun run scripts/validate.ts",
     "bench": "bun run scripts/benchmark.ts",
     "pianoroll": "bun run scripts/render-piano-roll.ts",
-    "bundle": "bun build src/index.ts --outdir dist --target es2022 --format esm --minify",
+    "bundle": "bun build src/index.ts --target browser --format esm --minify --outfile dist/psy-anthem.mjs",
     "lint": "bun run scripts/validate.ts"
   },
   "keywords": ["psytrance","composition","melody","anthem","generative","deterministic","constraint-satisfaction"],
