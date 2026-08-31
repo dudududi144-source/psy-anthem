@@ -31,6 +31,7 @@ jobs:
           mkdir -p docs
           bun build src/index.ts --target browser --format esm --minify --outfile docs/engine.mjs
           cp web/index.html docs/index.html
+          cp web/styles.css docs/styles.css
           cp web/app.js docs/app.js
           echo ".nojekyll" > docs/.nojekyll || touch docs/.nojekyll
       - name: Engine bundle size gate (20KB)
