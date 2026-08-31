@@ -26,3 +26,28 @@ export function rhythmicCharacterFor(intent: AnthemIntent, rng: RNG): RhythmicCh
       return rng.pick(['driving', 'flowing'] as const);
   }
 }
+
+function contourDirection(contour: Contour, i: number, length: number, rng: RNG): number {
+  const mid = length / 2;
+  switch (contour) {
+    case 'ASCENT':
+      return 1;
+    case 'DESCENT':
+      return -1;
+    case 'ARCH':
+      return i < mid ? 1 : -1;
+    case 'WAVE':
+      return i % 2 === 0 ? 1 : -1;
+    case 'PLATEAU': {
+      if (!rng.nextBool(0.25)) return 0;
+      return rng.nextBool() ? 1 : -1;
+    }
+  }
+}
+
+function hasStep(notes: number[]): boolean {
+  for (let i = 1; i < notes.length; i++) {
+    if (Math.abs(notes[i]! - notes[i - 1]!) <= 2) return true;
+  }
+  return false;
+}
