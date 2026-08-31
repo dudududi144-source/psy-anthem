@@ -14,6 +14,16 @@ jobs:
         run: bun run typecheck
       - name: Unit + Integration tests
         run: bun test
+      - name: Examples smoke (real runs)
+        run: |
+          bun run examples/01-basic-generation.ts > /dev/null
+          bun run examples/02-all-intents.ts > /dev/null
+          bun run examples/06-export-midi.ts > /dev/null
+          test -s examples/out/psy-anthem-demo.mid
+          bun scripts/cli.ts --seed 42 --bars 16 --output /tmp/ci-anthem.mid > /dev/null
+          test -s /tmp/ci-anthem.mid
+          bun scripts/cli.ts --help > /dev/null
+          echo "examples + CLI OK"
       - name: Bundle
         run: bun run bundle
       - name: Bundle size gate (20KB)
