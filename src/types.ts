@@ -118,3 +118,59 @@ export interface AnthemOutput {
   motifDNA: MotifDNA;
   metadata: GenerationMetadata;
 }
+
+// ================= INTERNAL =================
+
+export type SectionRole = 'INTRO' | 'BUILD' | 'DROP' | 'BREAKDOWN' | 'OUTRO' | 'VERSE' | 'BRIDGE';
+
+export interface SectionPlan {
+  role: SectionRole;
+  startBar: number;
+  bars: number;
+  energyRange: NoteRange;
+  harmonicRhythm: number;
+  densityTarget: number;
+  motifTransforms: Transformation[];
+}
+
+export interface TensionWeights {
+  harmonic: number; rhythmic: number; register: number; dynamic: number; density: number;
+}
+
+export interface BarTension {
+  bar: number;
+  harmonic: number; rhythmic: number; register: number; dynamic: number; density: number;
+  composite: number;
+}
+
+export interface InternalNoteEvent {
+  voice: number;
+  pitch: number;
+  startBeat: number;
+  duration: number;
+  velocity: number;
+  articulation?: Articulation;
+}
+
+export interface VoiceOutput {
+  voiceIndex: number;
+  events: InternalNoteEvent[];
+}
+
+export interface SolverResult {
+  voices: VoiceOutput[];
+  complete: boolean;
+  constraintsViolated: number;
+  qualityScore: number;
+  solverTimeMs: number;
+  solverIterations: number;
+}
+
+export interface LintIssue { type: string; bar?: number; message?: string; }
+
+export interface TheoryLintResult {
+  valid: boolean;
+  errors: LintIssue[];
+  warnings: LintIssue[];
+  score: number;
+}
