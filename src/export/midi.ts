@@ -156,3 +156,21 @@ export function toMidi(output: AnthemOutput, options?: Partial<MidiEncodeOptions
   }
   return Uint8Array.from(all);
 }
+
+// Write the encoded MIDI file to disk (Node/bun side).
+export function writeMidiFile(
+  output: AnthemOutput,
+  filePath: string,
+  options?: Partial<MidiEncodeOptions>,
+): number {
+  const bytes = toMidi(output, options);
+  // Lazy imports so pure encoding never touches fs.
+  const fs = require('node:fs') as typeof import('node:fs');
+  const path = require('node:path') as typeof import('node:path');
+  const dir = path.dirname(filePath);
+  if (dir && dir !== '.' && !fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+  fs.writeFileSync(filePath, bytes);
+  return bytes.length;
+}
