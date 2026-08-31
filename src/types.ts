@@ -1,0 +1,120 @@
+// PSY ANTHEM — types.ts
+import type { Articulation, MusicalEvent, NoteData, ControlData, ProgramData } from './foundation-shim/protocol';
+
+// Re-export canonical protocol types so consumers import from one place.
+export type { Articulation, MusicalEvent, NoteData, ControlData, ProgramData };
+
+// ================= INPUT =================
+
+export enum AnthemIntent {
+  EUPHORIC_TRANCE = 'euphoric-trance',
+  DARK_PSY = 'dark-psy',
+  PROGRESSIVE = 'progressive',
+  FULL_ON = 'full-on',
+  EMOTIONAL_BREAKDOWN = 'emotional-breakdown',
+  FOREST = 'forest',
+}
+
+export type ScaleMode =
+  | 'minor' | 'major' | 'dorian' | 'phrygian' | 'lydian' | 'mixolydian'
+  | 'harmonicMinor' | 'melodicMinor' | 'hungarianMinor' | 'doubleHarmonicMajor';
+
+export interface ScaleDefinition {
+  root: number; // 0-11
+  mode: ScaleMode;
+}
+
+export enum EnergyCurve {
+  FLAT = 'flat',
+  ARC = 'arc',
+  BUILD_DROP = 'build-drop',
+  WAVE = 'wave',
+  CUSTOM = 'custom',
+}
+
+export interface NoteRange { min: number; max: number; }
+
+export interface CustomCurvePoint { position: number; energy: number; }
+
+export interface AnthemConfig {
+  seed: number;
+  intent: AnthemIntent;
+  scale: ScaleDefinition;
+  energyCurve: EnergyCurve;
+  targetRange: NoteRange;
+  voices: number; // 1-4
+  bars: number;   // 8-128
+  bpm?: number;   // default 140
+  customCurve?: CustomCurvePoint[];
+}
+
+// ================= OUTPUT =================
+
+export type ChordQuality =
+  | 'major' | 'minor' | 'diminished' | 'augmented'
+  | 'dominant7' | 'major7' | 'minor7' | 'sus2' | 'sus4';
+
+export interface ChordSymbol {
+  root: number;
+  quality: ChordQuality;
+  extensions: number[];
+  startBar: number;
+  durationBars: number;
+}
+
+export interface CadencePoint {
+  bar: number;
+  type: 'authentic' | 'plagal' | 'half' | 'deceptive';
+  strength: number;
+}
+
+export interface HarmonicAnalysis {
+  chords: ChordSymbol[];
+  key: ScaleDefinition;
+  cadences: CadencePoint[];
+  tensionCurve: number[];
+}
+
+export type TransformType =
+  | 'TRANSPOSE' | 'SEQUENCE' | 'INVERT' | 'RETROGRADE' | 'AUGMENT'
+  | 'DIMINISH' | 'TRUNCATE' | 'EXTEND' | 'RHYTHMIC_SHIFT' | 'ORNAMENT';
+
+export interface Transformation {
+  type: TransformType;
+  params: Record<string, number>;
+}
+
+export interface MotifOccurrence {
+  bar: number;
+  beat: number;
+  transformChain: Transformation[];
+  confidence: number;
+}
+
+export interface MotifDNA {
+  coreNotes: number[];
+  coreRhythm: number[];
+  transformations: Transformation[];
+  occurrences: MotifOccurrence[];
+}
+
+export type GenerationQuality = 'excellent' | 'good' | 'acceptable' | 'degraded';
+
+export interface GenerationMetadata {
+  seed: number;
+  intent: AnthemIntent;
+  generationTimeMs: number;
+  memorabilityScore: number;
+  constraintsViolated: number;
+  solverIterations: number;
+  quality: GenerationQuality;
+  bars: number;
+  voices: number;
+}
+
+export interface AnthemOutput {
+  events: MusicalEvent[];
+  harmonicAnalysis: HarmonicAnalysis;
+  motifDNA: MotifDNA;
+  metadata: GenerationMetadata;
+}
