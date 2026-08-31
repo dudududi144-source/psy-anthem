@@ -186,3 +186,17 @@ export function createAnthemEngine(config: AnthemConfig): AnthemEngine {
     },
   };
 }
+
+function calcMemorability(coverage: number, lintScore: number): number {
+  const covScore = coverage * 50;
+  const lintContribution = (lintScore / 100) * 30;
+  const base = 20;
+  return Math.round(Math.min(100, covScore + lintContribution + base));
+}
+
+function assessQuality(memorability: number, lintScore: number): GenerationQuality {
+  if (memorability >= 90 && lintScore >= 95) return 'excellent';
+  if (memorability >= 75 && lintScore >= 85) return 'good';
+  if (memorability >= VALIDATION_THRESHOLDS.MIN_MEMORABILITY && lintScore >= 70) return 'acceptable';
+  return 'degraded';
+}
