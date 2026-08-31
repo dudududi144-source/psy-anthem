@@ -174,8 +174,10 @@ describe('toMidi - note events and timing', () => {
             if ((b & 0x80) === 0) break;
           }
           i += len;
+        } else if ((status & 0xf0) === 0xc0) {
+          i += 2; // program change: status + 1 data byte
         } else {
-          i += 2; // channel messages are 2 data bytes here (no running status)
+          i += 3; // note on/off: status + pitch + velocity
         }
         expect(tick).toBeLessThanOrEqual(maxTick);
       }
