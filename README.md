@@ -50,6 +50,60 @@ bun run bench      # performance benchmark
 bun run pianoroll  # ASCII piano-roll preview
 ```
 
+
+## Quick Start (CLI)
+
+```bash
+# Generate a 32-bar anthem and write a Standard MIDI File
+bun scripts/cli.ts --seed 42 --intent euphoric-trance --bars 32 --output anthem.mid
+
+# Or get the full AnthemOutput as JSON
+bun scripts/cli.ts --seed 1337 --json
+
+# All options
+bun scripts/cli.ts --help
+```
+
+## MIDI Export (for any DAW)
+
+Every AnthemOutput can become a Standard MIDI File (format 1, one track per voice,
+tempo + 4/4 meta events, 480 ticks/quarter):
+
+```ts
+import { writeMidiFile } from './src/export';
+
+writeMidiFile(out, 'anthem.mid', { bpm: 140 });
+```
+
+Import into Ableton / FL Studio / Logic / Reaper, or feed a hardware synth.
+See docs/MIDI-INTEGRATION.md for channel mapping and DAW steps.
+
+## Examples
+
+Eight runnable programs in examples/ covering the whole API:
+
+| File | Shows |
+|------|-------|
+| 01-basic-generation.ts | Minimal config -> full AnthemOutput |
+| 02-all-intents.ts | All 6 genre intents, same seed |
+| 03-all-energy-curves.ts | FLAT / ARC / BUILD_DROP / WAVE |
+| 04-scale-exploration.ts | 7 modes x 2 roots |
+| 05-custom-energy-curve.ts | User-defined double-drop envelope |
+| 06-export-midi.ts | SMF format-1 export to disk |
+| 07-how-layer-integration.ts | WHAT -> HOW contract (mock psysynth) |
+| 08-determinism-demo.ts | Same seed -> byte-identical output |
+
+```bash
+bun run examples/01-basic-generation.ts
+```
+
+## Documentation
+
+- docs/HOWTO.md - practical recipes
+- docs/EXAMPLES.md - example-by-example guide
+- docs/MIDI-INTEGRATION.md - SMF details + DAW import
+- Live demo: https://dudududi144-source.github.io/psy-anthem/
+
 ## Quality Bar
 - All tests green, theory linter passes, memorability ≥ threshold.
 - Determinism: same seed → identical output across 100 runs.
