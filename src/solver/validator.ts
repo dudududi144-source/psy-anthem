@@ -15,7 +15,6 @@ export function theoryLint(events: MusicalEvent[], config: AnthemConfig): Theory
 
   for (const ev of events) {
     if (ev.type !== 'note') continue;
-    if (ev.data.kind === undefined) continue;
     const data = ev.data as { pitch?: number; velocity?: number };
     const pitch = data.pitch;
     const velocity = data.velocity;
