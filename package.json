@@ -1,0 +1,34 @@
+{
+  "name": "psy-anthem",
+  "version": "0.1.0",
+  "description": "PSY ANTHEM - Melodic composition engine for the PSY family. Pure WHAT layer. Constraint-based. Deterministic. Anthem-grade.",
+  "type": "module",
+  "main": "dist/psy-anthem.mjs",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/psy-anthem.mjs",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "test": "bun test",
+    "test:coverage": "bun test --coverage",
+    "test:integration": "bun test tests/integration/",
+    "typecheck": "tsc --noEmit",
+    "validate": "bun run scripts/validate.ts",
+    "bench": "bun run scripts/benchmark.ts",
+    "pianoroll": "bun run scripts/render-piano-roll.ts",
+    "bundle": "bun build src/index.ts --outdir dist --target es2022 --format esm --minify",
+    "lint": "bun run scripts/validate.ts"
+  },
+  "keywords": ["psytrance","composition","melody","anthem","generative","deterministic","constraint-satisfaction"],
+  "author": "dudududi144-source",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/bun": "^1.1.0",
+    "bun-types": "^1.1.0",
+    "typescript": "^5.5.0"
+  },
+  "engines": { "bun": ">=1.1.0" }
+}
