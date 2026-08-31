@@ -19,6 +19,8 @@
     "validate": "bun run scripts/validate.ts",
     "bench": "bun run scripts/benchmark.ts",
     "pianoroll": "bun run scripts/render-piano-roll.ts",
+    "cli": "bun run scripts/cli.ts",
+    "example": "bun run examples/01-basic-generation.ts",
     "bundle": "bun build src/index.ts --target browser --format esm --minify --outfile dist/psy-anthem.mjs",
     "lint": "bun run scripts/validate.ts"
   },
