@@ -35,5 +35,5 @@ jobs:
           echo "clean"
       - name: No secrets in repo
         run: |
-          if grep -rnE "ghp_|github_pat_" src/ tests/ scripts/ .github/ 2>/dev/null; then exit 1; fi
+          if grep -rnE "ghp_[A-Za-z0-9]{20,}|github_pa[t]_" src/ tests/ scripts/ .github/ web/ 2>/dev/null; then exit 1; fi
           echo "clean"
