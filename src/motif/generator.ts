@@ -51,3 +51,41 @@ function hasStep(notes: number[]): boolean {
   }
   return false;
 }
+
+export function generateMotif(config: AnthemConfig, rng: RNG): MotifDNA {
+  const pcs = scalePitchClasses(config.scale);
+  const leadRange = VOICE_RANGES[0]!;
+  const rangeLo = Math.max(config.targetRange.min, leadRange.min - 12, 0);
+  const rangeHi = Math.min(config.targetRange.max, leadRange.max, 127);
+  const pool = INTENT_INTERVAL_POOLS[config.intent];
+  const contour = rng.pick(CONTOURS);
+  const length = rng.nextInt(3, 5);
+  const character = rhythmicCharacterFor(config.intent, rng);
+  const cell = RHYTHMIC_CELLS[character];
+
+  // Start on a stable scale degree (root, 3rd, 5th).
+  const stableOffsets = [0, 2, 4].map((i) => pcs[i % pcs.length]!);
+  let pitch = snapToScale(rangeLo + 12 + rng.pick(stableOffsets), pcs, rangeLo, rangeHi);
+
+  const coreNotes: number[] = [pitch];
+  for (let i = 1; i < length; i++) {
+    const interval = rng.pick(pool);
+    const dir = contourDirection(contour, i, length, rng);
+    pitch = snapToScale(pitch + dir * interval, pcs, rangeLo, rangeHi);
+    coreNotes.push(pitch);
+  }
+
+  // Ensure at least one stepwise motion for singability.
+  if (!hasStep(coreNotes) && coreNotes.length > 1) {
+    const step = coreNotes[0]! + (rng.nextBool() ? 1 : -1);
+    coreNotes[1] = snapToScale(step, pcs, rangeLo, rangeHi);
+  }
+
+  const coreRhythm: number[] = [];
+  for (let i = 0; i < length; i++) {
+    const d = cell[i % cell.length] ?? 0.5;
+    coreRhythm.push(d === 0 ? 0.5 : d); // rests become short notes in the core
+  }
+
+  return { coreNotes, coreRhythm, transformations: [], occurrences: [] };
+}
