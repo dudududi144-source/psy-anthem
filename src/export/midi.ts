@@ -4,6 +4,8 @@
 // It is intentionally NOT re-exported from src/index.ts, so the browser
 // bundle stays under the 20KB gate.
 
+import { writeFileSync, mkdirSync, existsSync } from 'node:fs';
+import { dirname } from 'node:path';
 import type { AnthemOutput, MusicalEvent } from '../types';
 
 export interface MidiEncodeOptions {
@@ -164,13 +166,10 @@ export function writeMidiFile(
   options?: Partial<MidiEncodeOptions>,
 ): number {
   const bytes = toMidi(output, options);
-  // Lazy imports so pure encoding never touches fs.
-  const fs = require('node:fs') as typeof import('node:fs');
-  const path = require('node:path') as typeof import('node:path');
-  const dir = path.dirname(filePath);
-  if (dir && dir !== '.' && !fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
+  const dir = dirname(filePath);
+  if (dir && dir !== '.' && !existsSync(dir)) {
+    mkdirSync(dir, { recursive: true });
   }
-  fs.writeFileSync(filePath, bytes);
+  writeFileSync(filePath, bytes);
   return bytes.length;
 }
