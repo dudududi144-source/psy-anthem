@@ -118,3 +118,95 @@ describe('toMidi - SMF structure', () => {
     }
   });
 });
+
+describe('toMidi - note events and timing', () => {
+  it('note-on and note-off counts are balanced per track', () => {
+    const out = anthem();
+    const bytes = toMidi(out, { bpm: 140 });
+    const tracks = parseTracks(bytes);
+    // Count per-channel events from the source output
+    const perChannel = new Map<number, number>();
+    for (const e of out.events) {
+      if (e.type !== 'note') continue;
+      perChannel.set(e.channel, (perChannel.get(e.channel) ?? 0) + 1);
+    }
+    for (let v = 0; v < tracks.length; v++) {
+      const data = Array.from(tracks[v]!.data);
+      let ons = 0;
+      let offs = 0;
+      for (let i = 0; i + 2 < data.length; i++) {
+        if (data[i] === (0x90 | v) && data[i + 2]! > 0) ons++;
+        if (data[i] === (0x80 | v)) offs++;
+      }
+      const expected = perChannel.get(v) ?? 0;
+      expect(ons).toBe(expected);
+      expect(offs).toBe(expected);
+    }
+  });
+
+  it('all note timing stays within the configured bar span', () => {
+    const out = anthem();
+    const bytes = toMidi(out, { bpm: 140 });
+    const maxTick = config.bars * 4 * DEFAULT_DIVISION + 2 * DEFAULT_DIVISION; // small tail
+    const tracks = parseTracks(bytes);
+    for (const tr of tracks) {
+      const data = Array.from(tr.data);
+      let tick = 0;
+      let i = 0;
+      while (i < data.length) {
+        // decode VLQ delta
+        let delta = 0;
+        for (;;) {
+          const b = data[i]!;
+          i++;
+          delta = (delta << 7) | (b & 0x7f);
+          if ((b & 0x80) === 0) break;
+        }
+        tick += delta;
+        const status = data[i]!;
+        if (status === 0xff) {
+          i++; // meta type
+          let len = 0;
+          for (;;) {
+            const b = data[i]!;
+            i++;
+            len = (len << 7) | (b & 0x7f);
+            if ((b & 0x80) === 0) break;
+          }
+          i += len;
+        } else {
+          i += 2; // channel messages are 2 data bytes here (no running status)
+        }
+        expect(tick).toBeLessThanOrEqual(maxTick);
+      }
+    }
+  });
+
+  it('is deterministic: identical output -> identical bytes', () => {
+    const a = toMidi(createAnthemEngine(config).generate()!, { bpm: 140 });
+    const b = toMidi(createAnthemEngine(config).generate()!, { bpm: 140 });
+    expect(Array.from(a)).toEqual(Array.from(b));
+  });
+
+  it('throws on empty event list', () => {
+    const out = anthem();
+    const empty = { ...out, events: [] };
+    expect(() => toMidi(empty, { bpm: 140 })).toThrow();
+  });
+});
+
+describe('writeMidiFile', () => {
+  it('writes a readable .mid file with the exact bytes', async () => {
+    const { writeMidiFile } = await import('../../src/export');
+    const os = await import('node:os');
+    const fs = await import('node:fs');
+    const out = anthem();
+    const path = os.tmpdir() + '/psy-anthem-test-' + Date.now() + '.mid';
+    const size = writeMidiFile(out, path, { bpm: 140 });
+    const read = fs.readFileSync(path);
+    expect(read.length).toBe(size);
+    const expected = toMidi(out, { bpm: 140 });
+    expect(Array.from(read)).toEqual(Array.from(expected));
+    fs.unlinkSync(path);
+  });
+});
