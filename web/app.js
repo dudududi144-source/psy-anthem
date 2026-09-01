@@ -1,6 +1,7 @@
 // PSY ANTHEM - web/app.js (demo v2: generation + playback + downloads)
 import { createAnthemEngine, AnthemIntent, EnergyCurve } from './engine.mjs';
 import { PsySynthBrowser, midiToFreq } from './synth.js';
+import { PRESETS, PRESET_CATEGORIES, DEFAULT_PRESETS } from './presets.js';
 
 const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 const VOICE_COLORS = ['#ff2ec4', '#2ee6ff', '#a06bff', '#ffb02e'];
@@ -410,8 +411,53 @@ function ensureSynth() {
     const Ctx = window.AudioContext || window.webkitAudioContext;
     synth = new PsySynthBrowser(new Ctx());
     synth.onFinish = () => setPlaying(false);
+    applyMacros();
   }
   return synth;
+}
+
+// ---------- presets & global macros ----------
+const VOICE_TO_SELECT = { 0: 'preset-lead', 1: 'preset-harmony', 2: 'preset-counter', 3: 'preset-bass' };
+
+function initPresetDropdowns() {
+  const categoryByVoice = { 0: 'lead', 1: 'harmony', 2: 'counter', 3: 'bass' };
+  for (const voiceStr of Object.keys(VOICE_TO_SELECT)) {
+    const voice = parseInt(voiceStr, 10);
+    const select = document.getElementById(VOICE_TO_SELECT[voice]);
+    if (!select) continue;
+    select.innerHTML = '';
+    const category = PRESET_CATEGORIES[categoryByVoice[voice]];
+    for (const presetId of category) {
+      const opt = document.createElement('option');
+      opt.value = presetId;
+      opt.textContent = PRESETS[presetId].name;
+      if (presetId === DEFAULT_PRESETS[voice]) opt.selected = true;
+      select.appendChild(opt);
+    }
+  }
+}
+
+function getCurrentPresets() {
+  const out = {};
+  for (const voiceStr of Object.keys(VOICE_TO_SELECT)) {
+    const voice = parseInt(voiceStr, 10);
+    const select = document.getElementById(VOICE_TO_SELECT[voice]);
+    if (select) out[voice] = select.value;
+  }
+  return out;
+}
+
+function sliderValue(id, fallback) {
+  const el = document.getElementById(id);
+  return el ? parseFloat(el.value) : fallback;
+}
+
+function applyMacros() {
+  if (!synth) return;
+  synth.setMasterCutoff(sliderValue('masterCutoff', 8000));
+  synth.setReverbSend(sliderValue('reverbSend', 30) / 100);
+  synth.setDelaySend(sliderValue('delaySend', 20) / 100);
+  synth.setMasterDrive(sliderValue('masterDrive', 10) / 100);
 }
 
 function setPlaying(state) {
@@ -435,6 +481,8 @@ async function play() {
   try {
     setStatus('unlocking audio...');
     const s = ensureSynth();
+    s.setPresets(getCurrentPresets());
+    applyMacros();
     const fromBeat = parseInt(document.getElementById('playFrom').value, 10) || 0;
     const duration = await s.playEvents(entry.out.events, entry.config.bpm ?? 140, fromBeat);
     if (s.ctx.state !== 'running') {
@@ -542,6 +590,10 @@ function init() {
     document.getElementById('seed').value = String(Math.floor(Math.random() * 1000000));
     generate();
   });
+  initPresetDropdowns();
+  for (const id of ['masterCutoff', 'reverbSend', 'delaySend', 'masterDrive']) {
+    document.getElementById(id).addEventListener('input', applyMacros);
+  }
   document.getElementById('play').addEventListener('click', play);
   document.getElementById('stop').addEventListener('click', stopPlayback);
   document.getElementById('testSound').addEventListener('click', testSound);
