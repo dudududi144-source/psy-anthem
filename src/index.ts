@@ -37,4 +37,14 @@ export { velocityFromEnergy } from './expression/dynamics';
 export { solveCSP } from './solver/constraint-solver';
 export type { CSPVariable, CSPResult, Constraint } from './solver/constraint-solver';
 export { theoryLint } from './solver/validator';
+export {
+  validateArtisticQuality,
+  analyzeMelodicInterest,
+  analyzeHarmonicRichness,
+  analyzeRhythmicVariety,
+  analyzeTexturalDepth,
+  analyzeEmotionalArc,
+  calculateMaxSimultaneous,
+} from './quality/artistic-validator';
+export type { ArtisticReport } from './quality/artistic-validator';
 export { scoreStepwise, scoreContour, scoreRhythmicVariety, motifCoverage } from './solver/objective';
