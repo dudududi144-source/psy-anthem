@@ -18,10 +18,13 @@ describe('harmonyComplexity', () => {
   it('simple uses only tonic/subdominant/dominant functions', () => {
     const out = createAnthemEngine({ ...base, harmonyComplexity: 'simple' }).generate()!;
     const keyRoot = out.harmonicAnalysis.key.root;
-    const allowed = new Set([0, 5, 7]);
+    // Degree indices 0/5/7 map to semitone offsets 0/9/11 through the
+    // generator's degree table ([0,2,4,5,7,9,11,12]).
+    const degreeToSemitone = [0, 2, 4, 5, 7, 9, 11, 12];
+    const allowed = new Set([0, 5, 7].map((d) => degreeToSemitone[d]));
     for (const c of out.harmonicAnalysis.chords) {
-      const degree = ((c.root - keyRoot) % 12 + 12) % 12;
-      expect(allowed.has(degree)).toBe(true);
+      const offset = ((c.root - keyRoot) % 12 + 12) % 12;
+      expect(allowed.has(offset)).toBe(true);
     }
     const distinct = new Set(out.harmonicAnalysis.chords.map((c) => c.root + ':' + c.quality));
     expect(distinct.size).toBeLessThanOrEqual(4);
