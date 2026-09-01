@@ -67,3 +67,109 @@ export function makeImpulseResponse(ctx, seconds = 1.8, decay = 3.5) {
   }
   return buffer;
 }
+
+export class PsySynthBrowser {
+  constructor(audioContext) {
+    this.ctx = audioContext;
+    this.presets = Object.assign({}, DEFAULT_PRESETS);
+
+    // ---------- master chain: masterGain -> drive -> master filter -> compressor -> out
+    this.masterGain = this.ctx.createGain();
+    this.masterGain.gain.value = 0.5;
+    this.driveShaper = this.ctx.createWaveShaper();
+    this._drive = 0.1;
+    this.driveShaper.curve = makeDriveCurve(this._drive);
+    this.masterFilter = this.ctx.createBiquadFilter();
+    this.masterFilter.type = 'lowpass';
+    this.masterFilter.frequency.value = 8000;
+    this.masterFilter.Q.value = 0.5;
+    this.compressor = this.ctx.createDynamicsCompressor();
+    this.compressor.threshold.value = -24;
+    this.compressor.knee.value = 30;
+    this.compressor.ratio.value = 12;
+    this.compressor.attack.value = 0.003;
+    this.compressor.release.value = 0.25;
+    this.masterGain.connect(this.driveShaper);
+    this.driveShaper.connect(this.masterFilter);
+    this.masterFilter.connect(this.compressor);
+    this.compressor.connect(this.ctx.destination);
+
+    // ---------- global reverb send (convolution)
+    this.reverbLevel = 0.3;
+    this.reverbIn = this.ctx.createGain();
+    this.convolver = this.ctx.createConvolver();
+    this.convolver.buffer = makeImpulseResponse(this.ctx);
+    this.reverbReturn = this.ctx.createGain();
+    this.reverbReturn.gain.value = 0.9;
+    this.reverbIn.connect(this.convolver);
+    this.convolver.connect(this.reverbReturn);
+    this.reverbReturn.connect(this.masterGain);
+
+    // ---------- global tempo-synced delay send (dotted 8th, feedback 35%)
+    this.delayLevel = 0.2;
+    this.delayIn = this.ctx.createGain();
+    this.delayNode = this.ctx.createDelay(2.0);
+    this.delayNode.delayTime.value = 0.32;
+    this.delayFeedback = this.ctx.createGain();
+    this.delayFeedback.gain.value = 0.35;
+    this.delayReturn = this.ctx.createGain();
+    this.delayReturn.gain.value = 0.8;
+    this.delayIn.connect(this.delayNode);
+    this.delayNode.connect(this.delayFeedback);
+    this.delayFeedback.connect(this.delayNode);
+    this.delayNode.connect(this.delayReturn);
+    this.delayReturn.connect(this.masterGain);
+
+    // ---------- global chorus send (modulated delay)
+    this.chorusIn = this.ctx.createGain();
+    this.chorusDelay = this.ctx.createDelay(0.1);
+    this.chorusDelay.delayTime.value = 0.025;
+    this.chorusReturn = this.ctx.createGain();
+    this.chorusReturn.gain.value = 0.8;
+    this.chorusLfo = this.ctx.createOscillator();
+    this.chorusLfo.frequency.value = 0.5;
+    this.chorusLfoGain = this.ctx.createGain();
+    this.chorusLfoGain.gain.value = 0.006;
+    this.chorusLfo.connect(this.chorusLfoGain);
+    this.chorusLfoGain.connect(this.chorusDelay.delayTime);
+    this.chorusIn.connect(this.chorusDelay);
+    this.chorusDelay.connect(this.chorusReturn);
+    this.chorusReturn.connect(this.masterGain);
+    try { this.chorusLfo.start(0); } catch (e) { /* mock/edge contexts */ }
+
+    this.activeNodes = [];
+    this._timer = null;
+    this.onFinish = null;
+    this.lastNoteCount = 0;
+  }
+
+  // ---------- controls ----------
+  setPresets(presets) {
+    for (const key of Object.keys(presets)) {
+      const id = presets[key];
+      if (!PRESETS[id]) throw new Error('Unknown preset: ' + id);
+      this.presets[key] = id;
+    }
+  }
+
+  setMasterCutoff(hz) {
+    this.masterFilter.frequency.value = Math.max(40, Math.min(16000, hz));
+  }
+
+  setReverbSend(v) {
+    this.reverbLevel = Math.max(0, Math.min(1, v));
+  }
+
+  setDelaySend(v) {
+    this.delayLevel = Math.max(0, Math.min(1, v));
+  }
+
+  setMasterDrive(v) {
+    this._drive = Math.max(0, Math.min(1, v));
+    this.driveShaper.curve = makeDriveCurve(this._drive);
+  }
+
+  setTempo(bpm) {
+    // Dotted-eighth delay, classic psytrance echo
+    this.delayNode.delayTime.value = (60 / Math.max(1, bpm)) * 0.75;
+  }
