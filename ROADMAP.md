@@ -39,3 +39,12 @@ Every phase ends green. No phase starts until the previous phase is fully valida
 - Bundle stays lean: integration is a separate entry point (not re-exported from src/index.ts)
 - psyboss side: PsyBossAnthemAdapter (DeviceAdapter subclass) + AnthemClockSync (clock mirror/seek)
 - Example 16: full headless closed loop (composition -> bus -> mock synth)
+
+## Phase 12 — Scene Morphing & Live Automation (complete)
+- SceneMorpher: crossfade between two compositions (linear / exponential / bezier),
+  config interpolation, velocity-crossfaded event blending
+- Live automation over the bus: velocity / duration / pitch with curves +
+  auto-completion (emission-time scaling, never mutates the composition)
+- morph.start / morph.update / automation.start / automation.stop envelope kinds
+- psyboss: PsyBossAnthemAdapter.startMorph / updateMorph / startAutomation / stopAutomation
+- Examples 17-18 + 7 new morphing/automation tests
