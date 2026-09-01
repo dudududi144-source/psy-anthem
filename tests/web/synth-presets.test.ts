@@ -66,11 +66,11 @@ describe('PsySynthBrowser.setPresets (DI library)', () => {
     await synth.playEvents([
       { type: 'note' as const, timestamp: 0, duration: 1, channel: 0, data: { pitch: 48, velocity: 100 } },
     ], 140, 0);
-    // oscillators: 1 voice osc + 1 LFO
+    // oscillators: 1 voice osc + 1 filter LFO (+ global chorus LFO from the constructor)
     const oscs = ctx.oscillators();
-    expect(oscs.length).toBe(2);
     const lfo = oscs.find((o) => o.frequency.value === 6);
     expect(lfo).toBeDefined();
+    expect(oscs.length).toBeGreaterThanOrEqual(2);
     // LFO gain connects to the voice filter frequency param
     const lfoGains = ctx.nodes.filter((n) => n.kind === 'gain');
     const connectedToParam = lfoGains.some((g) => {
@@ -88,8 +88,13 @@ describe('PsySynthBrowser.setPresets (DI library)', () => {
       { type: 'note' as const, timestamp: 0, duration: 1, channel: 0, data: { pitch: 60, velocity: 100 } },
     ], 140, 0);
     const filters = ctx.nodes.filter((n) => n.kind === 'filter');
-    expect(filters.length).toBe(1);
-    const freq = (filters[0] as unknown as { frequency: { events: Array<[string, number, number]> } }).frequency;
+    // master filter (constructor) + voice filter; pick the one with scheduled events
+    const voiced = filters.filter((f) => {
+      const freq = (f as unknown as { frequency: { events: unknown[] } }).frequency;
+      return freq.events.length > 0;
+    });
+    expect(voiced.length).toBe(1);
+    const freq = (voiced[0] as unknown as { frequency: { events: Array<[string, number, number]> } }).frequency;
     expect(freq.events.some((e) => e[0] === 'set' && e[1] > 1200)).toBe(true);  // opened peak
     expect(freq.events.some((e) => e[0] === 'target' && e[1] === 1200)).toBe(true); // settles to base
   });
