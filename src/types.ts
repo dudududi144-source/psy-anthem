@@ -50,6 +50,8 @@ export interface AnthemConfig {
   bars: number;   // 8-128
   bpm?: number;   // default 140
   customCurve?: CustomCurvePoint[];
+  // --- phase 9 expression controls (all optional, deterministic, default off) ---
+  chromaticTension?: number;  // 0-1: probability weight for chromatic tension notes in the lead
   // --- advanced composition controls (all optional, all deterministic) ---
   density?: DensityLevel;                // note activity per bar (default medium)
   harmonyComplexity?: HarmonyComplexity; // progression language (default standard)
