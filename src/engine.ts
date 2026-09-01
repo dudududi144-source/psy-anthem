@@ -17,6 +17,7 @@ import { velocityFromEnergy } from './expression/dynamics';
 import { theoryLint } from './solver/validator';
 import { scalePitchClasses, snapToScale } from './harmony/intervals';
 import { motifCoverage } from './solver/objective';
+import { validateArtisticQuality } from './quality/artistic-validator';
 
 export interface AnthemEngine {
   generate(): AnthemOutput | null;
@@ -227,7 +228,22 @@ export function createAnthemEngine(config: AnthemConfig): AnthemEngine {
         tensionCurve,
       };
 
-      return { events, harmonicAnalysis, motifDNA, metadata };
+      const output: AnthemOutput = { events, harmonicAnalysis, motifDNA, metadata };
+
+      // Artistic quality pass (pure analysis, no RNG consumed).
+      const artistic = validateArtisticQuality(output);
+      metadata.artisticQuality = artistic.score;
+      metadata.artisticBreakdown = {
+        melodicInterest: artistic.melodicInterest,
+        harmonicRichness: artistic.harmonicRichness,
+        rhythmicVariety: artistic.rhythmicVariety,
+        texturalDepth: artistic.texturalDepth,
+        emotionalArc: artistic.emotionalArc,
+      };
+      metadata.artisticIssues = artistic.issues;
+      metadata.artisticSuggestions = artistic.suggestions;
+
+      return output;
     },
   };
 }
