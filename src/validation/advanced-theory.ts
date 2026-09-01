@@ -162,3 +162,92 @@ export function analyzeVoiceLeadingFromEvents(events: MusicalEvent[], voiceCount
     }
   }
   const contraryMotion = contraryCount > 0 ? Math.round((contrarySum / contraryCount) * 100) : 50;
+
+  return { smoothness, independence, balance, contraryMotion, issues };
+}
+
+function gradeFor(overall: number): QualityGrade {
+  if (overall >= 90) return 'masterpiece';
+  if (overall >= 80) return 'excellent';
+  if (overall >= 65) return 'good';
+  if (overall >= 50) return 'acceptable';
+  return 'needs-work';
+}
+
+export function calculateAdvancedQualityScore(output: AnthemOutput, config: AnthemConfig): AdvancedQualityReport {
+  // Target energy curve sampled per bar (for harmonic tension match + arc)
+  const bars = output.harmonicAnalysis.tensionCurve.length;
+  const targetCurve: number[] = [];
+  for (let b = 0; b < bars; b++) {
+    const t = bars <= 1 ? 0 : b / (bars - 1);
+    targetCurve.push(sampleEnergyCurve(config.energyCurve, t, config.customCurve));
+  }
+
+  const melodic = analyzeMelody(output.events, {
+    motifNotes: output.motifDNA.coreNotes,
+    targetRange: config.targetRange,
+  });
+  const harmonic = analyzeHarmony(
+    output.harmonicAnalysis.chords,
+    output.harmonicAnalysis.tensionCurve,
+    output.harmonicAnalysis.key,
+    targetCurve,
+  );
+  const voiceLeading = analyzeVoiceLeadingFromEvents(output.events, config.voices);
+  const singability = analyzeSingability(output);
+  const variety = analyzeVariety(output);
+  const emotionalArc = analyzeEmotionalArc(output, config);
+
+  const melodicScore = Math.round(100 * (
+    0.3 * melodic.contourClarity +
+    0.3 * melodic.stepwiseRatio +
+    0.2 * melodic.repetitionScore +
+    0.2 * melodic.rangeUtilization
+  ));
+  const voiceAvg = (voiceLeading.smoothness + voiceLeading.independence + voiceLeading.balance + voiceLeading.contraryMotion) / 4;
+  const harmonicAvg = (harmonic.functionalScore + harmonic.varietyScore) / 2;
+
+  const overall = Math.round(
+    0.20 * singability.score +
+    0.15 * variety.score +
+    0.20 * emotionalArc.score +
+    0.15 * voiceAvg +
+    0.15 * harmonicAvg +
+    0.15 * melodicScore
+  );
+
+  const componentScores: ComponentScores = {
+    melodic: melodicScore,
+    harmonic: Math.round(harmonicAvg),
+    voiceLeading: Math.round(voiceAvg),
+    singability: singability.score,
+    variety: variety.score,
+    emotionalArc: emotionalArc.score,
+  };
+
+  // Summary: strongest + weakest component, plus validator issues
+  const entries = Object.entries(componentScores).sort((a, b) => b[1] - a[1]);
+  const best = entries[0]!;
+  const worst = entries[entries.length - 1]!;
+  const summary: string[] = [
+    'overall ' + overall + '/100 -> ' + gradeFor(overall),
+    'strongest: ' + best[0] + ' (' + best[1] + ')',
+    'weakest: ' + worst[0] + ' (' + worst[1] + ')',
+  ];
+  for (const issue of melodic.issues) summary.push('melodic: ' + issue);
+  for (const issue of harmonic.issues) summary.push('harmonic: ' + issue);
+  for (const issue of voiceLeading.issues) summary.push('voice-leading: ' + issue);
+
+  return {
+    overall,
+    grade: gradeFor(overall),
+    componentScores,
+    melodic,
+    harmonic,
+    voiceLeading,
+    singability,
+    variety,
+    emotionalArc,
+    summary,
+  };
+}
