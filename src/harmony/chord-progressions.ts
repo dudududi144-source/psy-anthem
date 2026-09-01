@@ -44,6 +44,54 @@ const MAJOR_PROGRESSIONS: DegreeSpec[][] = [
   ],
 ];
 
+// Complexity bands ---------------------------------------------------------
+// simple: only tonic/subdominant/dominant functions.
+const SIMPLE_MINOR: DegreeSpec[][] = [
+  [
+    { degree: 0, quality: 'minor' },
+    { degree: 5, quality: 'minor' },
+    { degree: 7, quality: 'major' },
+    { degree: 0, quality: 'minor' },
+  ],
+];
+const SIMPLE_MAJOR: DegreeSpec[][] = [
+  [
+    { degree: 0, quality: 'major' },
+    { degree: 5, quality: 'major' },
+    { degree: 7, quality: 'major' },
+    { degree: 0, quality: 'major' },
+  ],
+];
+// complex: standard language + secondary dominants (V7/V, V7/vi, V7/IV).
+const COMPLEX_MINOR_EXTRA: DegreeSpec[][] = [
+  [
+    { degree: 0, quality: 'minor' },
+    { degree: 2, quality: 'dominant7' },
+    { degree: 5, quality: 'major' },
+    { degree: 6, quality: 'major' },
+  ],
+  [
+    { degree: 0, quality: 'minor' },
+    { degree: 4, quality: 'dominant7' },
+    { degree: 7, quality: 'major' },
+    { degree: 3, quality: 'dominant7' },
+  ],
+];
+const COMPLEX_MAJOR_EXTRA: DegreeSpec[][] = [
+  [
+    { degree: 0, quality: 'major' },
+    { degree: 2, quality: 'dominant7' },
+    { degree: 5, quality: 'major' },
+    { degree: 9, quality: 'minor' },
+  ],
+  [
+    { degree: 0, quality: 'major' },
+    { degree: 7, quality: 'dominant7' },
+    { degree: 4, quality: 'dominant7' },
+    { degree: 5, quality: 'major' },
+  ],
+];
+
 function isMajorLike(mode: string): boolean {
   return mode === 'major' || mode === 'lydian' || mode === 'mixolydian';
 }
@@ -60,7 +108,17 @@ export function generateChordProgression(
   rng: RNG,
 ): ChordProgression {
   const majorLike = isMajorLike(config.scale.mode);
-  const bank = majorLike ? MAJOR_PROGRESSIONS : MINOR_PROGRESSIONS;
+  const complexity = config.harmonyComplexity ?? 'standard';
+  let bank: DegreeSpec[][];
+  if (complexity === 'simple') {
+    bank = majorLike ? SIMPLE_MAJOR : SIMPLE_MINOR;
+  } else if (complexity === 'complex') {
+    bank = majorLike
+      ? MAJOR_PROGRESSIONS.concat(COMPLEX_MAJOR_EXTRA)
+      : MINOR_PROGRESSIONS.concat(COMPLEX_MINOR_EXTRA);
+  } else {
+    bank = majorLike ? MAJOR_PROGRESSIONS : MINOR_PROGRESSIONS;
+  }
   const progression = rng.pick(bank);
 
   const chords: ChordSymbol[] = [];
