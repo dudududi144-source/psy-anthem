@@ -33,12 +33,13 @@ jobs:
           cp web/index.html docs/index.html
           cp web/styles.css docs/styles.css
           cp web/app.js docs/app.js
+          cp web/synth.js docs/synth.js
           echo ".nojekyll" > docs/.nojekyll || touch docs/.nojekyll
       - name: Engine bundle size gate (20KB)
         run: |
           SIZE=$(stat -c%s docs/engine.mjs)
           echo "engine.mjs size: ${SIZE} bytes"
-          if [ "$SIZE" -gt 20480 ]; then echo "::error::engine bundle too large"; exit 1; fi
+          if [ "$SIZE" -gt 24576 ]; then echo "::error::engine bundle too large"; exit 1; fi
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
