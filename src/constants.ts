@@ -65,6 +65,16 @@ export const CHORD_INTERVALS: Record<string, readonly number[]> = {
   major: [0, 4, 7], minor: [0, 3, 7], diminished: [0, 3, 6], augmented: [0, 4, 8],
   dominant7: [0, 4, 7, 10], major7: [0, 4, 7, 11], minor7: [0, 3, 7, 10],
   sus2: [0, 2, 7], sus4: [0, 5, 7],
+  // Extended chords (phase 10): pitch-class stacks including 7th + color tones
+  major9: [0, 4, 7, 11, 2],
+  minor9: [0, 3, 7, 10, 2],
+  dominant9: [0, 4, 7, 10, 2],
+  major11: [0, 4, 7, 11, 2, 5],
+  minor11: [0, 3, 7, 10, 2, 5],
+  dominant11: [0, 4, 7, 10, 2, 5],
+  major13: [0, 4, 7, 11, 2, 9],
+  minor13: [0, 3, 7, 10, 2, 9],
+  dominant13: [0, 4, 7, 10, 2, 9],
 };
 
 export const SOLVER_CONFIG = {
