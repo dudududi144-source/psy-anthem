@@ -103,3 +103,22 @@ export function generateMotif(config: AnthemConfig, rng: RNG): MotifDNA {
 
   return { coreNotes, coreRhythm, transformations: [], occurrences: [] };
 }
+
+/**
+ * Injects chromatic tension into a motif: before roughly every third note
+ * (with the given probability), a chromatic approach note is inserted.
+ * Pure + deterministic for a given RNG stream.
+ */
+export function generateMelodicTension(motif: number[], rng: RNG, probability = 0.7): number[] {
+  const tensionNotes: number[] = [];
+  for (let i = 0; i < motif.length; i++) {
+    const note = motif[i]!;
+    if (i % 3 === 2 && rng.nextBool(probability)) {
+      const offsets = [-1, 1, 6, 11];
+      const tensionNote = note + rng.pick(offsets);
+      tensionNotes.push(tensionNote);
+    }
+    tensionNotes.push(note);
+  }
+  return tensionNotes;
+}
