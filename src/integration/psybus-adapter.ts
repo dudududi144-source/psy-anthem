@@ -6,13 +6,24 @@
 
 import { createAnthemEngine } from '../engine';
 import type { AnthemConfig, AnthemOutput, MusicalEvent, NoteData } from '../types';
+import { SceneMorpher } from '../morphing/scene-morpher';
 import type {
+  AutomationParam,
   BusNotePayload,
   CompositionEventsPayload,
+  MorphCurve,
   PsyBusEnvelope,
   PsyBusPayload,
   SpecMessage,
 } from './psybus-types';
+
+interface ActiveAutomation {
+  startValue: number;
+  endValue: number;
+  startBeat: number;
+  durationBeats: number;
+  curve: MorphCurve;
+}
 
 export interface PsyAnthemAdapterConfig {
   deviceId: string;
@@ -39,6 +50,8 @@ export class PsyAnthemAdapter {
   private params = new Map<string, number>();
   private duck: { depth: number; releaseMs: number } | null = null;
   private activeNotes = new Set<number>();
+  private morpher: SceneMorpher | null = null;
+  private automations = new Map<AutomationParam, ActiveAutomation>();
 
   constructor(config: PsyAnthemAdapterConfig) {
     this.deviceId = config.deviceId;
@@ -175,6 +188,18 @@ export class PsyAnthemAdapter {
         break;
       case 'scene.load':
         this.loadScene(p.sceneId, p.config);
+        break;
+      case 'morph.start':
+        this.handleMorphStart(p.fromScene, p.toScene, p.durationBars, p.curve);
+        break;
+      case 'morph.update':
+        this.handleMorphUpdate(p.progress);
+        break;
+      case 'automation.start':
+        this.handleAutomationStart(p.param, p.startValue, p.endValue, p.durationBeats, p.curve);
+        break;
+      case 'automation.stop':
+        this.handleAutomationStop(p.param);
         break;
       default:
         break;
