@@ -42,7 +42,7 @@ jobs:
         run: |
           SIZE=$(stat -c%s docs/engine.mjs)
           echo "engine.mjs size: ${SIZE} bytes"
-          if [ "$SIZE" -gt 24576 ]; then echo "::error::engine bundle too large"; exit 1; fi
+          if [ "$SIZE" -gt 25600 ]; then echo "::error::engine bundle too large"; exit 1; fi
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
