@@ -8,3 +8,10 @@ Every phase ends green. No phase starts until the previous phase is fully valida
 - **Phase 4 — Expression** 🔲 (humanize, articulation, dynamics A/B tests)
 - **Phase 5 — Integration** 🔲 (golden files, memorability thresholds, benchmark baselines)
 - **Phase 6 — Productionization** 🔲 (bundle gate, family integration with PSY6-ULTIMATE / psystar)
+
+## Phase 7 — Playback & Advanced Controls (complete)
+- Browser playback (web/synth.js): per-voice Web Audio timbres, ADSR, articulation, click-to-audition
+- Demo features: PLAY/STOP, play-from-bar, PREV/NEXT history, COPY CONFIG, DOWNLOAD MIDI/JSON
+- Engine: EMOTIONAL_LEAD intent, density, harmonyComplexity, loopMode, callResponse
+- Engine: arpeggio smoothing (lead leaps > P4 become scale steps) + ARCH contour bias
+- Golden MIDI collection regenerated for the new engine output
