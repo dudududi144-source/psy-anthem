@@ -80,6 +80,42 @@ export type DeviceTelemetryPayload = {
 };
 export type ParamAckPayload = { kind: 'param.ack'; param: string; value: number };
 
+// ---- Phase 12: scene morphing + live automation ----
+
+export type MorphCurve = 'linear' | 'exponential' | 'bezier';
+export type AutomationParam = 'velocity' | 'duration' | 'pitch';
+
+export type MorphStartPayload = {
+  kind: 'morph.start';
+  fromScene: AnthemConfig;
+  toScene: AnthemConfig;
+  durationBars: number;
+  curve: MorphCurve;
+};
+export type MorphUpdatePayload = { kind: 'morph.update'; progress: number };
+export type MorphStartedPayload = { kind: 'morph.started'; durationBars: number; curve: MorphCurve };
+export type MorphProgressPayload = {
+  kind: 'morph.progress';
+  progress: number;
+  isTransitioning: boolean;
+  completed: boolean;
+};
+export type AutomationStartPayload = {
+  kind: 'automation.start';
+  param: AutomationParam;
+  startValue: number;
+  endValue: number;
+  durationBeats: number;
+  curve: MorphCurve;
+};
+export type AutomationStopPayload = { kind: 'automation.stop'; param: AutomationParam };
+export type AutomationStartedPayload = {
+  kind: 'automation.started';
+  param: AutomationParam;
+  durationBeats: number;
+};
+export type AutomationStoppedPayload = { kind: 'automation.stopped'; param: AutomationParam };
+
 export type PsyBusPayload =
   | BusTransportPayload
   | BusTransportStartPayload
@@ -99,7 +135,15 @@ export type PsyBusPayload =
   | CompositionChokePayload
   | DeviceStatusPayload
   | DeviceTelemetryPayload
-  | ParamAckPayload;
+  | ParamAckPayload
+  | MorphStartPayload
+  | MorphUpdatePayload
+  | MorphStartedPayload
+  | MorphProgressPayload
+  | AutomationStartPayload
+  | AutomationStopPayload
+  | AutomationStartedPayload
+  | AutomationStoppedPayload;
 
 // Spec-compat message shape (flat): normalized into envelopes by the adapter.
 export interface SpecMessage {
