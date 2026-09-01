@@ -16,7 +16,7 @@ export function scheduleEvents(events, bpm, startBeat = 0) {
       channel: event.channel,
       frequency,
       startBeat: Math.max(event.timestamp, startBeat),
-      startAt: (event.timestamp - startBeat) * secondsPerBeat,
+      startAt: Math.max(0, event.timestamp - startBeat) * secondsPerBeat,
       duration: Math.max(0.05, (event.duration - offset) * secondsPerBeat),
       velocity: event.data.velocity / 127,
       articulation: event.data.articulation || 'normal',
