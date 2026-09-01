@@ -9,6 +9,18 @@ export type Contour = 'ARCH' | 'ASCENT' | 'DESCENT' | 'WAVE' | 'PLATEAU';
 export type RhythmicCharacter = keyof typeof RHYTHMIC_CELLS;
 
 const CONTOURS: Contour[] = ['ARCH', 'ASCENT', 'DESCENT', 'WAVE', 'PLATEAU'];
+// Contour bias: clear arch shapes are weighted highest (melodic identity).
+const CONTOUR_WEIGHTS = [0.5, 0.15, 0.15, 0.1, 0.1];
+
+function pickContour(rng: RNG): Contour {
+  const r = rng.next();
+  let acc = 0;
+  for (let i = 0; i < CONTOURS.length; i++) {
+    acc += CONTOUR_WEIGHTS[i]!;
+    if (r < acc) return CONTOURS[i]!;
+  }
+  return 'ARCH';
+}
 
 export function rhythmicCharacterFor(intent: AnthemIntent, rng: RNG): RhythmicCharacter {
   switch (intent) {
@@ -24,6 +36,8 @@ export function rhythmicCharacterFor(intent: AnthemIntent, rng: RNG): RhythmicCh
       return rng.pick(['syncopated', 'flowing'] as const);
     case AnthemIntent.EUPHORIC_TRANCE:
       return rng.pick(['driving', 'flowing'] as const);
+    case AnthemIntent.EMOTIONAL_LEAD:
+      return 'flowing';
   }
 }
 
@@ -58,7 +72,7 @@ export function generateMotif(config: AnthemConfig, rng: RNG): MotifDNA {
   const rangeLo = Math.max(config.targetRange.min, leadRange.min - 12, 0);
   const rangeHi = Math.min(config.targetRange.max, leadRange.max, 127);
   const pool = INTENT_INTERVAL_POOLS[config.intent];
-  const contour = rng.pick(CONTOURS);
+  const contour = pickContour(rng);
   const length = rng.nextInt(3, 5);
   const character = rhythmicCharacterFor(config.intent, rng);
   const cell = RHYTHMIC_CELLS[character];
