@@ -45,12 +45,17 @@ const VOICE_STYLE = {
 export class PsySynthBrowser {
   constructor(audioContext) {
     this.ctx = audioContext;
+    // Audio chain: voices -> masterGain -> compressor -> destination
+    this.compressor = this.ctx.createDynamicsCompressor();
+    this.compressor.threshold.value = -24;
+    this.compressor.knee.value = 30;
+    this.compressor.ratio.value = 12;
+    this.compressor.attack.value = 0.003;
+    this.compressor.release.value = 0.25;
+    this.compressor.connect(this.ctx.destination);
     this.masterGain = this.ctx.createGain();
     this.masterGain.gain.value = 0.5;
-    // Glue compressor so quiet devices still hear the mix clearly.
-    this.compressor = this.ctx.createDynamicsCompressor();
     this.masterGain.connect(this.compressor);
-    this.compressor.connect(this.ctx.destination);
     this.activeNodes = [];
     this._timer = null;
     this.onFinish = null;
@@ -60,7 +65,7 @@ export class PsySynthBrowser {
   // Async: awaits the AudioContext unlock (autoplay policy) before scheduling.
   async playEvents(events, bpm = 140, fromBeat = 0) {
     this.stop();
-    if (this.ctx.state !== 'running') {
+    if (this.ctx.state === 'suspended') {
       try { await this.ctx.resume(); } catch (e) { /* context may still be locked */ }
     }
     const plan = scheduleEvents(events, bpm, fromBeat);
@@ -113,6 +118,32 @@ export class PsySynthBrowser {
     osc.start(startTime);
     osc.stop(startTime + dur + 0.02);
     this.activeNodes.push(osc);
+  }
+
+  // Audibility check: three staggered tones (C major triad). Returns total seconds.
+  async testSound() {
+    if (this.ctx.state === 'suspended') {
+      try { await this.ctx.resume(); } catch (e) { /* ignore */ }
+    }
+    const testNotes = [
+      { pitch: 60, duration: 0.3 }, // C4
+      { pitch: 64, duration: 0.3 }, // E4
+      { pitch: 67, duration: 0.3 }, // G4
+    ];
+    const base = this.ctx.currentTime + 0.02;
+    for (let i = 0; i < testNotes.length; i++) {
+      const n = testNotes[i];
+      this._scheduleNote({
+        channel: 0,
+        frequency: midiToFreq(n.pitch),
+        startAt: i * 0.4,
+        duration: n.duration,
+        velocity: 0.8,
+        articulation: 'normal',
+        pitch: n.pitch,
+      }, base + i * 0.4);
+    }
+    return 1.2; // total duration in seconds
   }
 
   // Audition a single note (piano-roll click / TEST SOUND).
