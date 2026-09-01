@@ -125,3 +125,23 @@ button:disabled { opacity: 0.45; cursor: wait; }
 }
 .preset-row select, .control-row input[type="range"] { width: 100%; }
 .control-row input[type="range"] { accent-color: var(--violet); }
+
+/* --- artistic quality panel --- */
+.aq-score {
+  font-size: 30px; font-weight: 700; color: var(--cyan); letter-spacing: 1px;
+}
+.aq-score span { font-size: 14px; color: var(--dim); font-weight: 400; }
+.aq-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 8px 16px; margin-top: 12px; font-size: 11px; color: var(--dim);
+  letter-spacing: 0.5px;
+}
+.aq-grid .bar {
+  height: 6px; background: var(--panel2); border-radius: 3px; margin-top: 4px; overflow: hidden;
+}
+.aq-grid .bar i {
+  display: block; height: 100%; border-radius: 3px;
+  background: linear-gradient(90deg, var(--violet), var(--cyan));
+}
+.aq-issues { margin-top: 12px; font-size: 11px; color: #ff6b8f; line-height: 1.6; }
+.aq-suggest { margin-top: 8px; font-size: 11px; color: #4ecdc4; line-height: 1.6; }
