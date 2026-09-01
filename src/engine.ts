@@ -15,6 +15,7 @@ import { humanizeTiming } from './expression/humanize';
 import { deriveArticulation } from './expression/articulation';
 import { velocityFromEnergy } from './expression/dynamics';
 import { theoryLint } from './solver/validator';
+import { scalePitchClasses, snapToScale } from './harmony/intervals';
 import { motifCoverage } from './solver/objective';
 
 export interface AnthemEngine {
@@ -86,6 +87,23 @@ function toMusicalEvents(events: InternalNoteEvent[]): MusicalEvent[] {
   });
 }
 
+// Stepwise recovery / arpeggio smoothing: every lead leap larger than a
+// perfect fourth is rewritten as a scale step in the same direction.
+// Direction and register are preserved, contour stays intact, and the
+// voice-leading smoothness score improves without losing genre character.
+function smoothLeadVoice(events: InternalNoteEvent[], pcs: number[], lo: number, hi: number): void {
+  const lead = events.filter((e) => e.voice === 0).sort((a, b) => a.startBeat - b.startBeat);
+  for (let i = 1; i < lead.length; i++) {
+    const prev = lead[i - 1]!;
+    const note = lead[i]!;
+    const leap = note.pitch - prev.pitch;
+    if (Math.abs(leap) > 5) {
+      const dir = leap > 0 ? 1 : -1;
+      note.pitch = snapToScale(prev.pitch + dir * 2, pcs, lo, hi);
+    }
+  }
+}
+
 export function createAnthemEngine(config: AnthemConfig): AnthemEngine {
   validateConfig(config);
   const frozen: AnthemConfig = config.bpm !== undefined ? { ...config } : { ...config, bpm: 140 };
@@ -111,6 +129,13 @@ export function createAnthemEngine(config: AnthemConfig): AnthemEngine {
       // 4. Voice leading (constructive deterministic path)
       const solved = buildVoices({ motif, sections, progression, config: frozen }, rng);
       if (!solved.complete) return null;
+
+      // 4b. Arpeggio smoothing on the lead voice (always on)
+      const pcs = scalePitchClasses(frozen.scale);
+      const leadVoice = solved.voices[0];
+      if (leadVoice) {
+        smoothLeadVoice(leadVoice.events, pcs, frozen.targetRange.min, frozen.targetRange.max);
+      }
 
       // 5. Tension + expression per voice, per bar
       const expressed: InternalNoteEvent[] = [];
