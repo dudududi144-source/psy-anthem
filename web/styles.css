@@ -114,3 +114,14 @@ button:disabled { opacity: 0.45; cursor: wait; }
 .status {
   font-size: 11px; color: var(--cyan); align-self: center; letter-spacing: 0.5px;
 }
+
+/* --- synth phase: presets & macros --- */
+.preset-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;
+}
+.preset-row label, .control-row label {
+  display: block; font-size: 10px; letter-spacing: 2px; color: var(--dim);
+  margin-bottom: 5px; text-transform: uppercase;
+}
+.preset-row select, .control-row input[type="range"] { width: 100%; }
+.control-row input[type="range"] { accent-color: var(--violet); }
