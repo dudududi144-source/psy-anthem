@@ -227,3 +227,179 @@ function renderPlayFrom(config) {
   }
   if (cur && parseInt(cur, 10) < config.bars) sel.value = cur;
 }
+
+// ---------- rendering ----------
+function svgEl(name, attrs) {
+  const el = document.createElementNS('http://www.w3.org/2000/svg', name);
+  for (const k of Object.keys(attrs)) el.setAttribute(k, attrs[k]);
+  return el;
+}
+
+function renderRoll(out, config) {
+  const host = document.getElementById('roll');
+  host.innerHTML = '';
+  const events = out.events.filter((e) => e.type === 'note');
+  if (events.length === 0) { host.textContent = 'No events.'; return; }
+  let lo = 127, hi = 0;
+  for (const e of events) { const p = e.data.pitch; if (p < lo) lo = p; if (p > hi) hi = p; }
+  lo = Math.max(0, lo - 2); hi = Math.min(127, hi + 2);
+
+  const totalBeats = config.bars * 4;
+  const pxPerBeat = 26, rowH = 12;
+  const rows = hi - lo + 1;
+  const W = totalBeats * pxPerBeat + 46, H = rows * rowH + 8;
+  const svg = svgEl('svg', { viewBox: '0 0 ' + W + ' ' + H, width: W, height: H });
+
+  for (let p = lo; p <= hi; p++) {
+    const y = H - 4 - (p - lo) * rowH;
+    const isBlack = [1, 3, 6, 8, 10].includes(((p % 12) + 12) % 12);
+    if (isBlack) svg.appendChild(svgEl('rect', { x: 44, y: y - rowH, width: W - 46, height: rowH, fill: '#0d0a1a' }));
+    if (((p % 12) + 12) % 12 === 0) {
+      const t = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      t.setAttribute('x', 6); t.setAttribute('y', y - 3);
+      t.setAttribute('fill', '#6f689c'); t.setAttribute('font-size', '9'); t.setAttribute('font-family', 'monospace');
+      t.textContent = pitchName(p);
+      svg.appendChild(t);
+      svg.appendChild(svgEl('line', { x1: 44, y1: y, x2: W, y2: y, stroke: '#241f3d', 'stroke-width': 1 }));
+    }
+  }
+  // Section markers: bar lines (strong every 4 bars)
+  for (let b = 0; b <= config.bars; b++) {
+    const x = 44 + b * 4 * pxPerBeat;
+    svg.appendChild(svgEl('line', { x1: x, y1: 0, x2: x, y2: H, stroke: b % 4 === 0 ? '#3a3163' : '#241f3d', 'stroke-width': b % 4 === 0 ? 1.4 : 1 }));
+  }
+  // Notes: color=voice, width=duration, opacity=velocity, click=audition
+  for (const e of events) {
+    const x = 44 + e.timestamp * pxPerBeat;
+    const w = Math.max(2, e.duration * pxPerBeat - 1.5);
+    const y = H - 4 - (e.data.pitch - lo) * rowH - rowH + 1.5;
+    const color = VOICE_COLORS[e.channel % 4] ?? '#ffffff';
+    const rect = svgEl('rect', { x: x, y: y, width: w, height: rowH - 3, rx: 2.5, fill: color });
+    rect.setAttribute('opacity', String(0.45 + (e.data.velocity / 127) * 0.55));
+    rect.style.cursor = 'pointer';
+    const title = document.createElementNS('http://www.w3.org/2000/svg', 'title');
+    title.textContent = pitchName(e.data.pitch) + ' | ' + VOICE_NAMES[e.channel % 4] + ' | vel ' + e.data.velocity;
+    rect.appendChild(title);
+    rect.addEventListener('click', () => auditionNote(e.data.pitch, e.data.velocity));
+    svg.appendChild(rect);
+  }
+  host.appendChild(svg);
+
+  const legend = document.getElementById('legend');
+  legend.innerHTML = '';
+  for (let v = 0; v < config.voices; v++) {
+    const s = document.createElement('span');
+    const d = document.createElement('i');
+    d.className = 'dot'; d.style.background = VOICE_COLORS[v];
+    s.appendChild(d);
+    s.appendChild(document.createTextNode(VOICE_NAMES[v] + ' (ch ' + v + ')'));
+    legend.appendChild(s);
+  }
+}
+
+function renderTension(out, config) {
+  const host = document.getElementById('tension');
+  host.innerHTML = '';
+  const curve = out.harmonicAnalysis.tensionCurve;
+  const W = 800, H = 90;
+  const svg = svgEl('svg', { viewBox: '0 0 ' + W + ' ' + H });
+  svg.appendChild(svgEl('rect', { x: 0, y: 0, width: W, height: H, fill: '#0a0815' }));
+  for (let g = 0; g <= 4; g++) {
+    const y = 6 + (H - 12) * (g / 4);
+    svg.appendChild(svgEl('line', { x1: 0, y1: y, x2: W, y2: y, stroke: '#1a1630', 'stroke-width': 1 }));
+  }
+  if (curve.length > 1) {
+    let pts = '';
+    for (let i = 0; i < curve.length; i++) {
+      const x = (i / (curve.length - 1)) * (W - 10) + 5;
+      const y = H - 8 - curve[i] * (H - 16);
+      pts += x.toFixed(1) + ',' + y.toFixed(1) + ' ';
+    }
+    svg.appendChild(svgEl('polygon', { points: '5,' + (H - 8) + ' ' + pts + (W - 5) + ',' + (H - 8), fill: 'rgba(160,107,255,0.18)' }));
+    svg.appendChild(svgEl('polyline', { points: pts, fill: 'none', stroke: '#a06bff', 'stroke-width': 2 }));
+  }
+  host.appendChild(svg);
+}
+
+function renderChords(out) {
+  const host = document.getElementById('chords');
+  host.innerHTML = '';
+  const chords = out.harmonicAnalysis.chords;
+  const totalBars = chords.reduce((s, c) => s + c.durationBars, 0) || 1;
+  const W = 800, H = 54;
+  const svg = svgEl('svg', { viewBox: '0 0 ' + W + ' ' + H });
+  let x = 4;
+  const colors = ['#ff2ec4', '#2ee6ff', '#a06bff', '#ffb02e', '#3dffa0'];
+  for (let i = 0; i < chords.length; i++) {
+    const c = chords[i];
+    const w = (c.durationBars / totalBars) * (W - 8) - 4;
+    const color = colors[i % colors.length];
+    svg.appendChild(svgEl('rect', { x: x, y: 8, width: Math.max(24, w), height: 30, rx: 6, fill: 'rgba(20,17,38,1)', stroke: color, 'stroke-width': 1.2 }));
+    const t = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    t.setAttribute('x', String(x + Math.max(24, w) / 2)); t.setAttribute('y', '27');
+    t.setAttribute('text-anchor', 'middle'); t.setAttribute('fill', color);
+    t.setAttribute('font-size', '12'); t.setAttribute('font-weight', 'bold'); t.setAttribute('font-family', 'monospace');
+    t.textContent = NOTE_NAMES[((c.root % 12) + 12) % 12] + (c.quality === 'minor' ? 'm' : c.quality === 'dominant7' ? '7' : '');
+    svg.appendChild(t);
+    x += Math.max(24, w) + 4;
+  }
+  host.appendChild(svg);
+}
+
+function renderMotif(out) {
+  const host = document.getElementById('motif');
+  host.innerHTML = '';
+  const dna = out.motifDNA;
+  for (let i = 0; i < dna.coreNotes.length; i++) {
+    const chip = document.createElement('div');
+    chip.className = 'note-chip';
+    const p = document.createElement('div'); p.className = 'p'; p.textContent = pitchName(dna.coreNotes[i]);
+    const d = document.createElement('div'); d.className = 'd'; d.textContent = (dna.coreRhythm[i] || 0) + ' beats';
+    chip.appendChild(p); chip.appendChild(d);
+    host.appendChild(chip);
+  }
+}
+
+function renderStats(out, config) {
+  const host = document.getElementById('stats');
+  host.innerHTML = '';
+  const items = [
+    ['seed', String(out.metadata.seed), true],
+    ['intent', out.metadata.intent, false],
+    ['bars', String(out.metadata.bars), false],
+    ['voices', String(out.metadata.voices), false],
+    ['events', String(out.events.length), false],
+    ['chords', String(out.harmonicAnalysis.chords.length), false],
+    ['memorability', out.metadata.memorabilityScore + '/100', true],
+    ['quality', out.metadata.quality, out.metadata.quality === 'excellent' || out.metadata.quality === 'good'],
+    ['time', out.metadata.generationTimeMs + 'ms', false],
+  ];
+  if (config.density) items.push(['density', config.density, false]);
+  if (config.harmonyComplexity) items.push(['harmony', config.harmonyComplexity, false]);
+  if (config.loopMode) items.push(['loop', 'on', true]);
+  if (config.callResponse) items.push(['call/resp', 'on', true]);
+  for (const it of items) {
+    const chip = document.createElement('span');
+    chip.className = 'chip' + (it[2] ? ' hot' : '');
+    const key = document.createElement('b'); key.textContent = it[0] + ': ';
+    chip.appendChild(key);
+    chip.appendChild(document.createTextNode(String(it[1])));
+    host.appendChild(chip);
+  }
+
+  // Extended info panel
+  const info = document.getElementById('infoPanel');
+  info.innerHTML = '';
+  const harmonicRhythm = (out.harmonicAnalysis.chords.length / Math.max(1, out.metadata.bars)).toFixed(2);
+  const occurrences = out.motifDNA.occurrences.map((o) => 'bar ' + (o.bar + 1)).join(', ') || '-';
+  const lines = [
+    'harmonic rhythm: ' + harmonicRhythm + ' chords/bar',
+    'motif occurrences: ' + occurrences,
+    'tension peak: bar ' + (out.harmonicAnalysis.tensionCurve.indexOf(Math.max(...out.harmonicAnalysis.tensionCurve)) + 1),
+  ];
+  for (const ln of lines) {
+    const div = document.createElement('div');
+    div.textContent = ln;
+    info.appendChild(div);
+  }
+}
