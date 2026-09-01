@@ -31,3 +31,11 @@ Every phase ends green. No phase starts until the previous phase is fully valida
 - 15-preset arsenal (9 new, layered techniques 'A+B' + modifiers)
 - Artistic quality validator: 5 dimensions, issues + suggestions, surfaced in metadata + demo UI
 - Examples 14-15 (extended chords, preset arsenal)
+
+## Phase 11 — PSYBUS Integration (complete)
+- PsyAnthemAdapter: scene.load / transport (play/stop/seek) / param.set / sidechain.duck / choke,
+  note-envelope emission, telemetry (quality / memorability / events)
+- InMemoryPSYBUS reference bus (psyboss wire-compatible envelopes: rev/seed/src/dst/ts)
+- Bundle stays lean: integration is a separate entry point (not re-exported from src/index.ts)
+- psyboss side: PsyBossAnthemAdapter (DeviceAdapter subclass) + AnthemClockSync (clock mirror/seek)
+- Example 16: full headless closed loop (composition -> bus -> mock synth)
