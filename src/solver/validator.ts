@@ -26,7 +26,8 @@ export function theoryLint(events: MusicalEvent[], config: AnthemConfig): Theory
     if (pitch < config.targetRange.min || pitch > config.targetRange.max) {
       errors.push({ type: 'OUT_OF_RANGE', bar: Math.floor(ev.timestamp / 4), message: 'pitch outside targetRange' });
     }
-    if (!isInScale(pitch, pcs)) {
+    const isTension = (ev.data as { tension?: boolean }).tension === true;
+    if (!isTension && !isInScale(pitch, pcs)) {
       errors.push({ type: 'OUT_OF_SCALE', bar: Math.floor(ev.timestamp / 4), message: 'pitch outside scale' });
     }
     if (typeof velocity !== 'number' || velocity < 0 || velocity > 127) {
