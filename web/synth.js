@@ -61,3 +61,41 @@ export function makeDriveCurve(amount) {
   }
   return curve;
 }
+
+// Stereo impulse response for the convolution reverb (exponential decay noise).
+export function makeImpulseResponse(ctx, seconds = 1.8, decay = 3.5) {
+  const rate = ctx.sampleRate || 44100;
+  const length = Math.max(1, Math.floor(rate * seconds));
+  const buffer = ctx.createBuffer(2, length, rate);
+  for (let ch = 0; ch < 2; ch++) {
+    const data = buffer.getChannelData(ch);
+    for (let i = 0; i < length; i++) {
+      data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / length, decay);
+    }
+  }
+  return buffer;
+}
+
+// Short decaying white-noise burst for physical-modeling excitation.
+export function makeNoiseBurst(ctx, seconds = 0.02) {
+  const rate = ctx.sampleRate || 44100;
+  const length = Math.max(1, Math.floor(rate * seconds));
+  const buffer = ctx.createBuffer(1, length, rate);
+  const data = buffer.getChannelData(0);
+  for (let i = 0; i < length; i++) {
+    data[i] = (Math.random() * 2 - 1) * (1 - i / length);
+  }
+  return buffer;
+}
+
+// Minimal fallback so the engine never crashes without an injected library.
+export const FALLBACK_PRESETS = {
+  'basic-lead': {
+    name: 'Basic Lead',
+    oscillators: [{ type: 'sawtooth', detune: 0, gain: 0.8 }],
+    filter: { type: 'lowpass', cutoff: 3000, resonance: 4, envelope: null },
+    envelope: { attack: 0.01, decay: 0.1, sustain: 0.6, release: 0.2 },
+    fx: { distortion: 0.1, delaySend: 0.2, reverbSend: 0.2 },
+  },
+};
+export const FALLBACK_DEFAULTS = { 0: 'basic-lead', 1: 'basic-lead', 2: 'basic-lead', 3: 'basic-lead' };
