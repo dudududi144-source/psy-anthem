@@ -10,83 +10,67 @@
 <div class="wrap">
   <header>
     <h1>PSY ANTHEM</h1>
-    <div class="tag">DETERMINISTIC COMPOSITION ENGINE - WHAT LAYER - SEED IN, ANTHEM OUT</div>
+    <div class="tag">DETERMINISTIC COMPOSITION ENGINE - WHAT LAYER - SEED IN, ANTHEM OUT - NOW WITH BROWSER PLAYBACK</div>
   </header>
 
   <div class="card">
     <div class="controls">
-      <div>
-        <label>Seed</label>
-        <input id="seed" type="number" value="42">
-      </div>
-      <div>
-        <label>Intent</label>
-        <select id="intent"></select>
-      </div>
-      <div>
-        <label>Energy Curve</label>
-        <select id="curve"></select>
-      </div>
-      <div>
-        <label>Scale Root</label>
-        <select id="root"></select>
-      </div>
-      <div>
-        <label>Mode</label>
-        <select id="mode"></select>
-      </div>
-      <div>
-        <label>Voices</label>
+      <div><label>Seed</label><input id="seed" type="number" value="42"></div>
+      <div><label>Intent</label><select id="intent"></select></div>
+      <div><label>Energy Curve</label><select id="curve"></select></div>
+      <div><label>Scale Root</label><select id="root"></select></div>
+      <div><label>Mode</label><select id="mode"></select></div>
+      <div><label>Voices</label>
         <select id="voices">
-          <option value="1">1</option>
-          <option value="2">2</option>
-          <option value="3" selected>3</option>
-          <option value="4">4</option>
-        </select>
-      </div>
-      <div>
-        <label>Bars</label>
+          <option value="1">1</option><option value="2">2</option>
+          <option value="3" selected>3</option><option value="4">4</option>
+        </select></div>
+      <div><label>Bars</label>
         <select id="bars">
-          <option value="8">8</option>
-          <option value="16" selected>16</option>
-          <option value="24">24</option>
-          <option value="32">32</option>
-          <option value="48">48</option>
-          <option value="64">64</option>
-        </select>
+          <option value="8">8</option><option value="16" selected>16</option>
+          <option value="24">24</option><option value="32">32</option>
+          <option value="48">48</option><option value="64">64</option>
+        </select></div>
+      <div><label>Density</label><select id="density"></select></div>
+      <div><label>Harmony</label><select id="harmony"></select></div>
+      <div class="checkwrap"><label>Options</label>
+        <label class="check"><input type="checkbox" id="loopMode"> Loop mode</label>
+        <label class="check"><input type="checkbox" id="callResponse"> Call &amp; response</label>
       </div>
     </div>
     <div class="btnrow">
       <button id="generate">GENERATE ANTHEM</button>
       <button id="random" class="ghost">RANDOM SEED</button>
+      <button id="play" class="accent">PLAY</button>
+      <button id="stop" class="ghost">STOP</button>
+      <label class="inline-label" for="playFrom">from</label>
+      <select id="playFrom" class="inline-select"></select>
+      <button id="prev" class="ghost" title="previous generation">PREV</button>
+      <button id="next" class="ghost" title="next generation">NEXT</button>
+      <span id="posLabel" class="pos"></span>
+    </div>
+    <div class="btnrow">
+      <button id="copyConfig" class="ghost">COPY CONFIG</button>
+      <button id="downloadMidi" class="ghost">DOWNLOAD MIDI</button>
+      <button id="downloadJson" class="ghost">DOWNLOAD JSON</button>
     </div>
     <div class="err" id="err"></div>
     <div class="stats" id="stats"></div>
+    <div class="info" id="infoPanel"></div>
   </div>
 
   <div class="card">
-    <h2>Piano Roll</h2>
+    <h2>Piano Roll (click a note to audition it)</h2>
     <div id="roll"></div>
     <div class="legend" id="legend"></div>
   </div>
 
-  <div class="card">
-    <h2>Tension Curve</h2>
-    <div id="tension"></div>
-  </div>
-
-  <div class="card">
-    <h2>Harmonic Progression</h2>
-    <div id="chords"></div>
-  </div>
-
-  <div class="card">
-    <h2>Motif DNA</h2>
-    <div class="motif-notes" id="motif"></div>
-  </div>
+  <div class="card"><h2>Tension Curve</h2><div id="tension"></div></div>
+  <div class="card"><h2>Harmonic Progression</h2><div id="chords"></div></div>
+  <div class="card"><h2>Motif DNA</h2><div class="motif-notes" id="motif"></div></div>
 
   <footer>
-    PSY ANTHEM v0.1.0 - pure WHAT-layer generator - no audio, no randomness without seed -
+    PSY ANTHEM v0.2.0 - pure WHAT-layer generator; playback is a presentation layer (like a DAW) -
     <a href="https://github.com/dudududi144-source/psy-anthem">github.com/dudududi144-source/psy-anthem</a>
   </footer>
 </div>
