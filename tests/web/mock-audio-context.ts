@@ -41,6 +41,7 @@ export class MockGain extends MockNode {
 export class MockFilter extends MockNode {
   type = 'lowpass';
   frequency = new MockParam(1000);
+  Q = new MockParam(0);
   constructor() { super('filter'); }
 }
 
