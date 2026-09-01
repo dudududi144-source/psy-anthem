@@ -423,3 +423,165 @@ export class PsySynthBrowser {
     }
     return nodes;
   }
+
+  // Phase-8 subtractive path: detuned unison -> resonant filter w/ envelope.
+  _subtractiveVoice(note, preset, startTime, endTime, mix) {
+    const ctx = this.ctx;
+    const nodes = [];
+    let totalOscGain = 0;
+    for (const spec of preset.oscillators || []) {
+      const osc = ctx.createOscillator();
+      osc.type = spec.type;
+      osc.frequency.value = note.frequency;
+      if (osc.detune) osc.detune.value = spec.detune || 0;
+      const og = ctx.createGain();
+      og.gain.value = spec.gain;
+      osc.connect(og);
+      og.connect(mix);
+      osc.start(startTime);
+      osc.stop(endTime);
+      nodes.push(osc);
+      totalOscGain += spec.gain;
+    }
+    mix.gain.value = totalOscGain > 1 ? 1 / totalOscGain : 1;
+    return nodes;
+  }
+
+  // ---------- voice dispatcher: technique -> graph -> ADSR -> sends ----------
+  _scheduleVoice(note, preset, startTime) {
+    const ctx = this.ctx;
+    const fx = preset.fx || {};
+
+    // Articulation shapes the note.
+    let dur = note.duration;
+    let velocity = note.velocity;
+    if (note.articulation === 'staccato') dur = Math.min(dur, 0.12);
+    if (note.articulation === 'accent') velocity = Math.min(1, velocity * 1.3);
+    if (note.articulation === 'ghost') velocity *= 0.45;
+    const endTime = startTime + Math.max(0.05, dur);
+
+    const env = preset.envelope || { attack: 0.01, decay: 0.1, sustain: 0.6, release: 0.15 };
+    const attack = Math.max(0.001, env.attack);
+    const decay = Math.max(0.01, env.decay);
+    const sustain = env.sustain !== undefined ? env.sustain : 0.6;
+    const release = Math.max(0.02, env.release);
+
+    // --- technique sound graph -> mix
+    const mix = ctx.createGain();
+    let techNodes;
+    switch (preset.technique) {
+      case 'FM':
+        techNodes = this._fmVoice(note, preset, startTime, endTime, mix);
+        break;
+      case 'Additive':
+        techNodes = this._additiveVoice(note, preset, startTime, endTime, mix);
+        break;
+      case 'Granular':
+        techNodes = this._granularVoice(note, preset, startTime, endTime, mix);
+        break;
+      case 'Wavetable':
+        techNodes = this._wavetableVoice(note, preset, startTime, endTime, mix);
+        break;
+      case 'Physical':
+        techNodes = this._physicalVoice(note, preset, startTime, endTime, mix);
+        break;
+      case 'Glitch':
+        techNodes = this._glitchVoice(note, preset, startTime, endTime, mix);
+        break;
+      default:
+        techNodes = this._subtractiveVoice(note, preset, startTime, endTime, mix);
+    }
+
+    // --- optional voice filter with per-note cutoff envelope
+    let outNode = mix;
+    if (preset.filter) {
+      const filter = ctx.createBiquadFilter();
+      const fSpec = preset.filter;
+      filter.type = fSpec.type || 'lowpass';
+      filter.Q.value = fSpec.resonance || 0;
+      const base = fSpec.cutoff || 2000;
+      const fEnv = fSpec.envelope;
+      if (fEnv && fEnv.amount) {
+        filter.frequency.setValueAtTime(Math.min(16000, base + fEnv.amount), startTime);
+        filter.frequency.setTargetAtTime(Math.max(40, base), startTime, Math.max(0.01, fEnv.decay || 0.1));
+      } else {
+        filter.frequency.setValueAtTime(Math.max(40, base), startTime);
+      }
+      mix.connect(filter);
+      outNode = filter;
+    }
+
+    // --- optional per-voice distortion
+    const driveAmount = fx.distortion !== undefined ? fx.distortion : (fx.bitcrush || 0);
+    if (driveAmount > 0) {
+      const shaper = ctx.createWaveShaper();
+      shaper.curve = makeDriveCurve(driveAmount);
+      outNode.connect(shaper);
+      outNode = shaper;
+    }
+
+    // --- ADSR voice gain
+    const voiceGain = ctx.createGain();
+    const g = voiceGain.gain;
+    g.setValueAtTime(0, startTime);
+    g.linearRampToValueAtTime(velocity, startTime + attack);
+    g.linearRampToValueAtTime(velocity * sustain, startTime + attack + decay);
+    const relStart = Math.max(startTime + attack + decay, endTime - release);
+    g.setValueAtTime(velocity * sustain, relStart);
+    g.linearRampToValueAtTime(0.0001, endTime);
+    outNode.connect(voiceGain);
+    voiceGain.connect(this.masterGain);
+
+    // --- global sends (preset amounts x global macros x velocity)
+    const reverbSend = fx.reverbSend !== undefined ? fx.reverbSend : (fx.reverb || 0);
+    const delaySend = fx.delaySend !== undefined ? fx.delaySend : (fx.delay || 0);
+    const shimmer = fx.shimmer || 0;
+    const totalReverb = Math.min(1, reverbSend + shimmer * 0.5);
+    if (totalReverb > 0 && this.reverbLevel > 0) {
+      const rg = ctx.createGain();
+      rg.gain.value = totalReverb * this.reverbLevel * velocity;
+      voiceGain.connect(rg);
+      rg.connect(this.reverbIn);
+    }
+    if (delaySend > 0 && this.delayLevel > 0) {
+      const dg = ctx.createGain();
+      dg.gain.value = delaySend * this.delayLevel * velocity;
+      voiceGain.connect(dg);
+      dg.connect(this.delayIn);
+    }
+    const chorusSend = fx.chorusSend !== undefined ? fx.chorusSend : (fx.chorus || 0);
+    if (chorusSend > 0) {
+      const cg = ctx.createGain();
+      cg.gain.value = chorusSend * 0.8 * velocity;
+      voiceGain.connect(cg);
+      cg.connect(this.chorusIn);
+    }
+
+    // --- optional LFO (phase-8 compat): wobble on cutoff or vibrato on pitch
+    if (preset.lfo) {
+      const lfo = ctx.createOscillator();
+      lfo.type = preset.lfo.waveform || 'sine';
+      lfo.frequency.value = preset.lfo.rate;
+      const lfoGain = ctx.createGain();
+      lfoGain.gain.value = preset.lfo.depth || 0;
+      lfo.connect(lfoGain);
+      if (preset.lfo.target === 'pitch') {
+        for (const n of techNodes) {
+          if (n.frequency) lfoGain.connect(n.frequency);
+        }
+      } else if (outNode !== mix && outNode.frequency) {
+        lfoGain.connect(outNode.frequency);
+      }
+      lfo.start(startTime);
+      lfo.stop(endTime + release + 0.05);
+      this.activeNodes.push(lfo);
+    }
+
+    for (const n of techNodes) this.activeNodes.push(n);
+  }
+
+  _scheduleNote(note, startTime) {
+    const presetId = this.presets[note.channel] || this.presets[0] || Object.keys(this.PRESETS)[0];
+    const preset = this.PRESETS[presetId] || FALLBACK_PRESETS['basic-lead'];
+    this._scheduleVoice(note, preset, startTime);
+  }
