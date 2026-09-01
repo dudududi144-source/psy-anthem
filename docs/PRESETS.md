@@ -1,48 +1,48 @@
-# Presets Reference
+# Presets Reference (Phase 9)
 
-The browser sound engine (web/synth.js) renders each voice with a preset from web/presets.js:
-detuned oscillators, optional sub-osc, resonant filter with envelope, ADSR, optional LFO, and FX sends
-(reverb / delay / chorus / distortion). Pick presets per voice in the demo's Voice Presets card.
+The phase-8 retro presets were removed. web/presets.js now ships six modern
+technique-based presets (also exported as PRESETS_V2).
 
-## Lead Voices
-- **Psy Lead (Classic)** - 3 detuned saws + sub, resonant filter sweep, classic psytrance lead
-- **Acid Lead (TB-303 style)** - square + saw into a heavily resonant lowpass, aggressive drive
-- **Emotional Lead (breakdown)** - triangle + sine, soft attack, drenched in reverb/chorus
+## The library
 
-## Harmony Voices
-- **Psy Pad (Atmospheric)** - 4 detuned saws, slow attack, wide chorus + reverb
-- **Supersaw (JP-8000 style)** - 5 detuned saws, wide and bright
+| Preset | Voice | Technique | Signature elements |
+|--------|-------|-----------|--------------------|
+| crystal-lead | Lead | FM | 3.5:1 modulator, depth 800 -> settling, shimmer send |
+| plasma-lead | Lead | Additive | 5 inharmonic partials + spectral morph (0.6s) |
+| nebula-pad | Harmony | Granular | density 12, grain 100ms, reverb 0.8 |
+| glitch-pluck | Counter | Glitch | rate 4 stutter, stochastic 0.4, delay 0.5 |
+| neuro-bass | Bass | Wavetable | sine->square morph, sub -1200 cents, drive 0.6 |
+| quantum-bass | Bass | Physical | pluck 0.9, damping 0.3, resonant body |
 
-## Counter Voices
-- **Pluck** - short percussive hit with fast filter envelope and delay
-- **Arp Sequence** - resonant square/saw pair built for delay-soaked arps
-
-## Bass Voices
-- **Psy Bass (Classic offbeat)** - saw + sine sub, tight envelope, drive
-- **Sub Rumble** - pure sub sine, no frills
-- **Wobble Bass** - 4Hz LFO on the resonant filter
-
-## Global Bus
-masterGain -> drive shaper -> master filter -> compressor -> out, with three shared sends:
-- Convolution reverb (generated impulse)
-- Tempo-synced dotted-8th delay with 35% feedback
-- Modulated chorus
-
-Macros: Master Cutoff, Reverb Send, Delay Send, Master Drive.
-
-## Adding Custom Presets
-Add new presets to web/presets.js:
+## Defaults per channel
 
 ```javascript
-'my-custom': {
-  name: 'My Custom Lead',
-  oscillators: [{ type: 'sawtooth', detune: 0, gain: 0.6 }],
-  sub: { type: 'sine', octaves: -1, gain: 0.5 },
-  filter: { type: 'lowpass', cutoff: 2000, resonance: 10, envelope: 0.5 },
-  envelope: { attack: 0.01, decay: 0.1, sustain: 0.6, release: 0.2 },
-  lfo: { rate: 4, depth: 0.5, target: 'filter' }, // optional
-  fx: { distortion: 0.2, delay: 0.3, reverb: 0.2, chorus: 0.2 },
-},
-```
+export const DEFAULT_VOICE_PRESETS = {
+  0: 'crystal-lead',   // Lead
+  1: 'nebula-pad',     // Harmony
+  2: 'glitch-pluck',   // Counter
+  3: 'neuro-bass',     // Bass
+};
+F
 
-Then list it under the right category in PRESET_CATEGORIES and it appears in the dropdown.
+## UI categories
+- lead: crystal-lead, plasma-lead
+- harmony: nebula-pad
+- counter: glitch-pluck
+- bass: neuro-bass, quantum-bass
+
+## Adding a custom preset
+
+```javascript
+'my-voice': {
+  name: 'My Voice',
+  technique: 'FM',            // FM | Additive | Granular | Wavetable | Physical | Glitch
+  fm: { modulator: { ratio: 2.5, depth: 500, decay: 0.2 } },
+  envelope: { attack: 0.01, decay: 0.1, sustain: 0.5, release: 0.2 },
+  fx: { distortion: 0.2, reverbSend: 0.3, delaySend: 0.2 },
+},
+F
+
+Then add its id to the right PRESET_CATEGORIES list and it appears in the demo dropdowns.
+
+Technique parameter schemas are documented in docs/SOUND-DESIGN-V2.md.
