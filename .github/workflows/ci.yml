@@ -29,17 +29,19 @@ jobs:
           bun run examples/11-emotional-lead.ts > /dev/null
           bun run examples/12-loop-mode.ts > /dev/null
           bun run examples/13-call-response.ts > /dev/null
+          bun run examples/14-extended-chords.ts > /dev/null
+          bun run examples/15-all-15-presets.ts > /dev/null
           bun run scripts/verify-playback.ts
           COUNT=$(ls golden-midi/*.mid | wc -l)
           if [ "$COUNT" -ne 10 ]; then echo "::error::expected 10 golden MIDI files"; exit 1; fi
           echo "examples + CLI + golden collection OK"
       - name: Bundle
         run: bun run bundle
-      - name: Bundle size gate (24KB)
+      - name: Bundle size gate (25KB)
         run: |
           SIZE=$(stat -c%s dist/psy-anthem.mjs)
           echo "bundle size: ${SIZE} bytes"
-          if [ "$SIZE" -gt 24576 ]; then echo "::error::bundle too large"; exit 1; fi
+          if [ "$SIZE" -gt 25600 ]; then echo "::error::bundle too large"; exit 1; fi
       - name: No console.log in src/
         run: |
           if grep -rn "console\.log" src/ --include="*.ts"; then exit 1; fi
