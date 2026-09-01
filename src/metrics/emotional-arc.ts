@@ -44,7 +44,8 @@ export function pearson(a: number[], b: number[]): number {
 
 function expectedPeakPosition(curve: EnergyCurve): number | null {
   if (curve === EnergyCurve.ARC) return 0.5;
-  if (curve === EnergyCurve.BUILD_DROP) return 0.875;
+  // BUILD_DROP: peak is detected at the first plateau point (t = 0.75)
+  if (curve === EnergyCurve.BUILD_DROP) return 0.75;
   return null; // FLAT / WAVE / CUSTOM: no single expected peak
 }
 
