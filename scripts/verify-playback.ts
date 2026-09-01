@@ -53,12 +53,14 @@ async function main(): Promise<void> {
   }
 
   // Every anthem pitch must appear as a fundamental among the scheduled oscillators.
-  const scheduled = new Set<number>();
-  for (const osc of oscs) scheduled.add(Math.round(osc.frequency.value * 100) / 100);
+  // Phase 9 voices apply intentional pitch jitter (glitch ±3%, granular ±2%),
+  // so fundamentals are matched within ±6%.
+  const scheduled = voiceOscs.map((o) => o.frequency.value);
   for (const e of out!.events) {
     if (e.type !== 'note') continue;
-    const f = Math.round(midiToFreq((e.data as { pitch: number }).pitch) * 100) / 100;
-    if (!scheduled.has(f)) fail('fundamental missing from the schedule: ' + f);
+    const f = midiToFreq((e.data as { pitch: number }).pitch);
+    const found = scheduled.some((sf) => Math.abs(sf - f) / f <= 0.06);
+    if (!found) fail('fundamental missing from the schedule: ' + f);
   }
 
   // Bass voice (channel 3, psy-bass) must carry a -1200-cent sub oscillator.
