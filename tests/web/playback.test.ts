@@ -100,11 +100,14 @@ describe('PsySynthBrowser scheduling (phase-8 engine)', () => {
     const synth = makeSynth(ctx);
     await synth.playEvents([note(60, 0, 1), note(64, 1, 1)], 120, 0);
 
-    for (const osc of ctx.oscillators()) {
+    // Exclude the global chorus LFO (0.5 Hz, created in the constructor).
+    const noteOscs = ctx.oscillators().filter((o) => o.frequency.value !== 0.5);
+    expect(noteOscs.length).toBeGreaterThan(0);
+    for (const osc of noteOscs) {
       expect(osc.stops.length).toBe(1); // natural end-of-note stop
     }
     synth.stop();
-    for (const osc of ctx.oscillators()) {
+    for (const osc of noteOscs) {
       expect(osc.stops.length).toBe(2); // explicit stop added
     }
   });
