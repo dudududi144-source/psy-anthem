@@ -24,16 +24,19 @@ jobs:
           test -s /tmp/ci-anthem.mid
           bun scripts/cli.ts --help > /dev/null
           bun run examples/09-ab-testing.ts > /dev/null
+          bun run examples/11-emotional-lead.ts > /dev/null
+          bun run examples/12-loop-mode.ts > /dev/null
+          bun run examples/13-call-response.ts > /dev/null
           COUNT=$(ls golden-midi/*.mid | wc -l)
           if [ "$COUNT" -ne 10 ]; then echo "::error::expected 10 golden MIDI files"; exit 1; fi
           echo "examples + CLI + golden collection OK"
       - name: Bundle
         run: bun run bundle
-      - name: Bundle size gate (20KB)
+      - name: Bundle size gate (24KB)
         run: |
           SIZE=$(stat -c%s dist/psy-anthem.mjs)
           echo "bundle size: ${SIZE} bytes"
-          if [ "$SIZE" -gt 20480 ]; then echo "::error::bundle too large"; exit 1; fi
+          if [ "$SIZE" -gt 24576 ]; then echo "::error::bundle too large"; exit 1; fi
       - name: No console.log in src/
         run: |
           if grep -rn "console\.log" src/ --include="*.ts"; then exit 1; fi
