@@ -74,9 +74,9 @@ function round4(n: number): number {
 function toMusicalEvents(events: InternalNoteEvent[]): MusicalEvent[] {
   const sorted = events.slice().sort((a, b) => a.startBeat - b.startBeat || a.voice - b.voice);
   return sorted.map((e) => {
-    const data: NoteData = e.articulation !== undefined
-      ? { pitch: e.pitch, velocity: e.velocity, articulation: e.articulation }
-      : { pitch: e.pitch, velocity: e.velocity };
+    const data: NoteData = { pitch: e.pitch, velocity: e.velocity };
+    if (e.articulation !== undefined) data.articulation = e.articulation;
+    if (e.tension === true) data.tension = true;
     return {
       type: 'note' as const,
       timestamp: round4(e.startBeat),
