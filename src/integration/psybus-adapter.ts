@@ -261,6 +261,103 @@ export class PsyAnthemAdapter {
     }
   }
 
+  // ---- phase 12: morphing + automation ----
+
+  isMorphing(): boolean {
+    return this.morpher !== null && this.morpher.getState().isTransitioning;
+  }
+
+  getMorphProgress(): number {
+    return this.morpher ? this.morpher.getState().progress : 0;
+  }
+
+  isAutomationActive(param: AutomationParam): boolean {
+    return this.automations.has(param);
+  }
+
+  private handleMorphStart(
+    fromScene: AnthemConfig,
+    toScene: AnthemConfig,
+    durationBars: number,
+    curve: MorphCurve,
+  ): void {
+    const morpher = new SceneMorpher();
+    try {
+      morpher.loadScenes({ fromScene, toScene, durationBars, curve });
+    } catch (err) {
+      this.emit({ kind: 'error', device: this.deviceId, code: 'morph-load-failed', message: String(err) });
+      return;
+    }
+    this.morpher = morpher;
+    this.emit({ kind: 'morph.started', durationBars, curve });
+  }
+
+  private handleMorphUpdate(progress: number): void {
+    if (!this.morpher) return;
+    this.morpher.updateProgress(progress);
+    const state = this.morpher.getState();
+    this.emit({
+      kind: 'morph.progress',
+      progress: state.progress,
+      isTransitioning: state.isTransitioning,
+      completed: state.completed,
+    });
+  }
+
+  private handleAutomationStart(
+    param: AutomationParam,
+    startValue: number,
+    endValue: number,
+    durationBeats: number,
+    curve: MorphCurve,
+  ): void {
+    this.automations.set(param, {
+      startValue,
+      endValue,
+      startBeat: this.transportPosition,
+      durationBeats: Math.max(0.001, durationBeats),
+      curve,
+    });
+    this.emit({ kind: 'automation.started', param, durationBeats });
+  }
+
+  private handleAutomationStop(param: AutomationParam): void {
+    if (!this.automations.has(param)) return;
+    this.automations.delete(param);
+    this.emit({ kind: 'automation.stopped', param });
+  }
+
+  private automationCurve(progress: number, curve: MorphCurve): number {
+    switch (curve) {
+      case 'linear':
+        return progress;
+      case 'exponential':
+        return progress * progress;
+      case 'bezier':
+        return progress * progress * (3 - 2 * progress);
+    }
+  }
+
+  private automationValue(param: AutomationParam): number | null {
+    const a = this.automations.get(param);
+    if (!a) return null;
+    const elapsed = this.transportPosition - a.startBeat;
+    if (elapsed <= 0) return a.startValue;
+    const progress = Math.min(1, elapsed / a.durationBeats);
+    const curved = this.automationCurve(progress, a.curve);
+    return a.startValue + (a.endValue - a.startValue) * curved;
+  }
+
+  private tickAutomations(): void {
+    for (const [param, a] of Array.from(this.automations.entries())) {
+      const elapsed = this.transportPosition - a.startBeat;
+      if (elapsed >= a.durationBeats) {
+        this.automations.delete(param);
+        this.emit({ kind: 'automation.stopped', param });
+      }
+    }
+  }
+
   // ---- internals ----
 
   private handleSidechainDuck(depth: number, releaseMs: number): void {
