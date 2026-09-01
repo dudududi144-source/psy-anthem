@@ -113,3 +113,54 @@ export function compareAlgorithms(
 
   return { nameA, nameB, reportA, reportB, deltas, winner, narrative };
 }
+
+export type SensitivityParam = 'voices' | 'bars' | 'bpm';
+
+// Sweep one parameter and measure how quality metrics respond.
+export function analyzeParameterSensitivity(
+  config: AnthemConfig,
+  param: SensitivityParam,
+  values: number[],
+): SensitivityReport {
+  const rows: SensitivityRow[] = [];
+
+  for (const value of values) {
+    const variant: AnthemConfig = { ...config };
+    if (param === 'voices') variant.voices = value;
+    if (param === 'bars') variant.bars = value;
+    if (param === 'bpm') variant.bpm = value;
+
+    const out = standardAlgorithm(variant);
+    if (!out) continue;
+    const report = calculateAdvancedQualityScore(out, variant);
+    rows.push({
+      value,
+      overall: report.overall,
+      singability: report.componentScores.singability,
+      variety: report.componentScores.variety,
+      emotionalArc: report.componentScores.emotionalArc,
+    });
+  }
+
+  const metrics = ['overall', 'singability', 'variety', 'emotionalArc'];
+  const ranges: Record<string, number> = {};
+  let mostSensitiveMetric = 'overall';
+  let bestRange = -1;
+  for (const m of metrics) {
+    let lo = Infinity;
+    let hi = -Infinity;
+    for (const r of rows) {
+      const v = r[m as keyof SensitivityRow] as number;
+      if (v < lo) lo = v;
+      if (v > hi) hi = v;
+    }
+    const range = rows.length > 0 ? hi - lo : 0;
+    ranges[m] = range;
+    if (range > bestRange) {
+      bestRange = range;
+      mostSensitiveMetric = m;
+    }
+  }
+
+  return { param, rows, mostSensitiveMetric, ranges };
+}
