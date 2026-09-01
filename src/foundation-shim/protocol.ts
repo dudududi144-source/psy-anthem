@@ -7,6 +7,7 @@ export interface NoteData {
   pitch: number;      // MIDI 0-127
   velocity: number;   // 0-127
   articulation?: Articulation;
+  tension?: boolean;  // intentional chromatic tension note (exempt from scale lint)
 }
 
 export interface ControlData {
