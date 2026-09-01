@@ -122,6 +122,36 @@ const EXTENDED_MAJOR: DegreeSpec[][] = [
   ],
 ];
 
+// Extended-chord banks (9ths/13ths) - phase 10, added to the complex bank.
+const EXTENDED_NINTHS_MINOR: DegreeSpec[][] = [
+  [
+    { degree: 0, quality: 'minor9' },
+    { degree: 5, quality: 'major7' },
+    { degree: 3, quality: 'major7' },
+    { degree: 4, quality: 'dominant9' },
+  ],
+  [
+    { degree: 0, quality: 'minor9' },
+    { degree: 2, quality: 'dominant9' },
+    { degree: 5, quality: 'minor7' },
+    { degree: 6, quality: 'major9' },
+  ],
+];
+const EXTENDED_NINTHS_MAJOR: DegreeSpec[][] = [
+  [
+    { degree: 0, quality: 'major9' },
+    { degree: 5, quality: 'major9' },
+    { degree: 3, quality: 'minor7' },
+    { degree: 4, quality: 'dominant13' },
+  ],
+  [
+    { degree: 0, quality: 'major9' },
+    { degree: 6, quality: 'major7' },
+    { degree: 5, quality: 'major9' },
+    { degree: 4, quality: 'dominant9' },
+  ],
+];
+
 function isMajorLike(mode: string): boolean {
   return mode === 'major' || mode === 'lydian' || mode === 'mixolydian';
 }
@@ -144,8 +174,8 @@ export function generateChordProgression(
     bank = majorLike ? SIMPLE_MAJOR : SIMPLE_MINOR;
   } else if (complexity === 'complex') {
     bank = majorLike
-      ? MAJOR_PROGRESSIONS.concat(COMPLEX_MAJOR_EXTRA).concat(EXTENDED_MAJOR)
-      : MINOR_PROGRESSIONS.concat(COMPLEX_MINOR_EXTRA).concat(EXTENDED_MINOR);
+      ? MAJOR_PROGRESSIONS.concat(COMPLEX_MAJOR_EXTRA).concat(EXTENDED_MAJOR).concat(EXTENDED_NINTHS_MAJOR)
+      : MINOR_PROGRESSIONS.concat(COMPLEX_MINOR_EXTRA).concat(EXTENDED_MINOR).concat(EXTENDED_NINTHS_MINOR);
   } else {
     bank = majorLike ? MAJOR_PROGRESSIONS : MINOR_PROGRESSIONS;
   }
