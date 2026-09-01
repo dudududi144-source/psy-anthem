@@ -64,6 +64,26 @@
   </div>
 
   <div class="card">
+    <h2>Voice Presets</h2>
+    <div class="preset-grid">
+      <div class="preset-row"><label>Lead</label><select id="preset-lead"></select></div>
+      <div class="preset-row"><label>Harmony</label><select id="preset-harmony"></select></div>
+      <div class="preset-row"><label>Counter</label><select id="preset-counter"></select></div>
+      <div class="preset-row"><label>Bass</label><select id="preset-bass"></select></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Global Controls</h2>
+    <div class="preset-grid">
+      <div class="control-row"><label>Master Cutoff</label><input id="masterCutoff" type="range" min="200" max="8000" value="8000"></div>
+      <div class="control-row"><label>Reverb Send</label><input id="reverbSend" type="range" min="0" max="100" value="30"></div>
+      <div class="control-row"><label>Delay Send</label><input id="delaySend" type="range" min="0" max="100" value="20"></div>
+      <div class="control-row"><label>Master Drive</label><input id="masterDrive" type="range" min="0" max="100" value="10"></div>
+    </div>
+  </div>
+
+  <div class="card">
     <h2>Piano Roll (click a note to audition it)</h2>
     <div id="roll"></div>
     <div class="legend" id="legend"></div>
