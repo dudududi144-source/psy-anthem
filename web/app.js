@@ -403,3 +403,118 @@ function renderStats(out, config) {
     info.appendChild(div);
   }
 }
+
+// ---------- audio playback ----------
+function ensureSynth() {
+  if (!synth) {
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    synth = new PsySynthBrowser(new Ctx());
+    synth.onFinish = () => setPlaying(false);
+  }
+  return synth;
+}
+
+function setPlaying(state) {
+  isPlaying = state;
+  const btn = document.getElementById('play');
+  btn.textContent = isPlaying ? 'PLAYING...' : 'PLAY';
+  btn.disabled = isPlaying;
+}
+
+function play() {
+  const entry = currentEntry();
+  if (!entry) return;
+  const s = ensureSynth();
+  const fromBeat = parseInt(document.getElementById('playFrom').value, 10) || 0;
+  s.playEvents(entry.out.events, entry.config.bpm ?? 140, fromBeat);
+  setPlaying(true);
+}
+
+function stopPlayback() {
+  if (synth) synth.stop();
+  setPlaying(false);
+}
+
+function auditionNote(pitch, velocity) {
+  const s = ensureSynth();
+  s.playNote(pitch, velocity);
+}
+
+// ---------- export actions ----------
+function copyConfig() {
+  const entry = currentEntry();
+  if (!entry) return;
+  const text = JSON.stringify(entry.config, null, 2);
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(() => flash('copyConfig', 'COPIED'));
+  } else {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    ta.remove();
+    flash('copyConfig', 'COPIED');
+  }
+}
+
+function flash(id, label) {
+  const el = document.getElementById(id);
+  const original = el.dataset.label || el.textContent;
+  el.dataset.label = original;
+  el.textContent = label;
+  setTimeout(() => { el.textContent = original; }, 1200);
+}
+
+function midiFileName(config) {
+  return 'psy-anthem-' + config.seed + '-' + config.intent + '.mid';
+}
+
+function downloadMidi() {
+  const entry = currentEntry();
+  if (!entry) return;
+  const bytes = midiFromOutput(entry.out, entry.config.bpm ?? 140);
+  downloadBlob(bytes, midiFileName(entry.config), 'audio/midi');
+  flash('downloadMidi', 'SAVED');
+}
+
+function downloadJson() {
+  const entry = currentEntry();
+  if (!entry) return;
+  const text = JSON.stringify(entry.out, null, 2);
+  downloadBlob(new TextEncoder().encode(text), 'psy-anthem-' + entry.config.seed + '.json', 'application/json');
+  flash('downloadJson', 'SAVED');
+}
+
+// ---------- errors ----------
+function showError(msg) {
+  const el = document.getElementById('err');
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+function hideError() {
+  document.getElementById('err').style.display = 'none';
+}
+
+// ---------- init ----------
+function init() {
+  initControls();
+  document.getElementById('generate').addEventListener('click', generate);
+  document.getElementById('random').addEventListener('click', () => {
+    document.getElementById('seed').value = String(Math.floor(Math.random() * 1000000));
+    generate();
+  });
+  document.getElementById('play').addEventListener('click', play);
+  document.getElementById('stop').addEventListener('click', stopPlayback);
+  document.getElementById('prev').addEventListener('click', () => navigate(-1));
+  document.getElementById('next').addEventListener('click', () => navigate(1));
+  document.getElementById('copyConfig').addEventListener('click', copyConfig);
+  document.getElementById('downloadMidi').addEventListener('click', downloadMidi);
+  document.getElementById('downloadJson').addEventListener('click', downloadJson);
+  for (const id of ['seed', 'intent', 'curve', 'root', 'mode', 'voices', 'bars', 'density', 'harmony', 'loopMode', 'callResponse']) {
+    document.getElementById(id).addEventListener('change', generate);
+  }
+  generate();
+}
+
+init();
