@@ -173,3 +173,130 @@ export class PsySynthBrowser {
     // Dotted-eighth delay, classic psytrance echo
     this.delayNode.delayTime.value = (60 / Math.max(1, bpm)) * 0.75;
   }
+
+  // ---------- voice rendering ----------
+  _scheduleVoice(note, preset, startTime) {
+    const ctx = this.ctx;
+    const fx = preset.fx || {};
+
+    // Articulation shapes the note.
+    let dur = note.duration;
+    let velocity = note.velocity;
+    if (note.articulation === 'staccato') dur = Math.min(dur, 0.12);
+    if (note.articulation === 'accent') velocity = Math.min(1, velocity * 1.3);
+    if (note.articulation === 'ghost') velocity *= 0.45;
+    const endTime = startTime + Math.max(0.05, dur);
+
+    const env = preset.envelope;
+    const attack = Math.max(0.001, env.attack);
+    const decay = Math.max(0.01, env.decay);
+    const sustain = env.sustain;
+    const release = Math.max(0.02, env.release);
+
+    // --- oscillators (detuned unison) + optional sub -> mix
+    const mix = ctx.createGain();
+    let totalOscGain = 0;
+    const oscList = [];
+    for (const spec of preset.oscillators) {
+      const osc = ctx.createOscillator();
+      osc.type = spec.type;
+      osc.frequency.value = note.frequency;
+      if (osc.detune) osc.detune.value = spec.detune || 0;
+      const og = ctx.createGain();
+      og.gain.value = spec.gain;
+      osc.connect(og);
+      og.connect(mix);
+      osc.start(startTime);
+      osc.stop(endTime + release + 0.05);
+      oscList.push(osc);
+      totalOscGain += spec.gain;
+    }
+    if (preset.sub) {
+      const sub = ctx.createOscillator();
+      sub.type = preset.sub.type || 'sine';
+      sub.frequency.value = note.frequency / Math.pow(2, Math.abs(preset.sub.octaves || 1));
+      const sg = ctx.createGain();
+      sg.gain.value = preset.sub.gain;
+      sub.connect(sg);
+      sg.connect(mix);
+      sub.start(startTime);
+      sub.stop(endTime + release + 0.05);
+      oscList.push(sub);
+      totalOscGain += preset.sub.gain;
+    }
+    mix.gain.value = totalOscGain > 1 ? 1 / totalOscGain : 1;
+
+    // --- voice filter with envelope (classic psy sweep: open then close)
+    const filter = ctx.createBiquadFilter();
+    filter.type = preset.filter.type || 'lowpass';
+    filter.Q.value = preset.filter.resonance || 0;
+    const base = preset.filter.cutoff;
+    const peak = Math.min(14000, base + (preset.filter.envelope || 0) * 6000);
+    filter.frequency.setValueAtTime(peak, startTime);
+    filter.frequency.linearRampToValueAtTime(Math.max(60, base), startTime + attack + decay + 0.05);
+    mix.connect(filter);
+
+    // --- optional per-voice distortion
+    let outNode = filter;
+    if (fx.distortion && fx.distortion > 0) {
+      const shaper = ctx.createWaveShaper();
+      shaper.curve = makeDriveCurve(fx.distortion);
+      filter.connect(shaper);
+      outNode = shaper;
+    }
+
+    // --- ADSR voice gain
+    const voiceGain = ctx.createGain();
+    const g = voiceGain.gain;
+    g.setValueAtTime(0, startTime);
+    g.linearRampToValueAtTime(velocity, startTime + attack);
+    g.linearRampToValueAtTime(velocity * sustain, startTime + attack + decay);
+    const relStart = Math.max(startTime + attack + decay, endTime - release);
+    g.setValueAtTime(velocity * sustain, relStart);
+    g.linearRampToValueAtTime(0.0001, endTime);
+    outNode.connect(voiceGain);
+    voiceGain.connect(this.masterGain);
+
+    // --- global sends (scaled by preset fx amounts, velocity, and macros)
+    if (fx.reverb && this.reverbLevel > 0) {
+      const rg = ctx.createGain();
+      rg.gain.value = fx.reverb * this.reverbLevel * velocity;
+      voiceGain.connect(rg);
+      rg.connect(this.reverbIn);
+    }
+    if (fx.delay && this.delayLevel > 0) {
+      const dg = ctx.createGain();
+      dg.gain.value = fx.delay * this.delayLevel * velocity;
+      voiceGain.connect(dg);
+      dg.connect(this.delayIn);
+    }
+    if (fx.chorus) {
+      const cg = ctx.createGain();
+      cg.gain.value = fx.chorus * 0.8 * velocity;
+      voiceGain.connect(cg);
+      cg.connect(this.chorusIn);
+    }
+
+    // --- optional LFO: wobble on the filter or vibrato on pitch
+    if (preset.lfo) {
+      const lfo = ctx.createOscillator();
+      lfo.frequency.value = preset.lfo.rate;
+      const lfoGain = ctx.createGain();
+      const depth = preset.lfo.depth || 0.5;
+      lfoGain.gain.value = preset.lfo.target === 'pitch' ? depth * 30 : depth * 1200;
+      lfo.connect(lfoGain);
+      const targetParam = preset.lfo.target === 'pitch' ? oscList[0].frequency : filter.frequency;
+      lfoGain.connect(targetParam);
+      lfo.start(startTime);
+      lfo.stop(endTime + release + 0.05);
+      oscList.push(lfo);
+    }
+
+    for (const o of oscList) this.activeNodes.push(o);
+  }
+
+  _scheduleNote(note, startTime) {
+    const presetId = this.presets[note.channel] || DEFAULT_PRESETS[note.channel] || 'psy-lead';
+    const preset = PRESETS[presetId] || PRESETS['psy-lead'];
+    this._scheduleVoice(note, preset, startTime);
+  }
