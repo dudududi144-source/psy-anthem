@@ -137,6 +137,26 @@ export function createAnthemEngine(config: AnthemConfig): AnthemEngine {
         smoothLeadVoice(leadVoice.events, pcs, frozen.targetRange.min, frozen.targetRange.max);
       }
 
+      // 4c. Optional chromatic tension pass (default off -> golden-safe).
+      const tensionAmount = frozen.chromaticTension ?? 0;
+      if (tensionAmount > 0 && leadVoice) {
+        const leadEvents = leadVoice.events.slice().sort((a, b) => a.startBeat - b.startBeat);
+        let lastBar = -1;
+        for (const ev of leadEvents) {
+          const bar = Math.floor(ev.startBeat / 4);
+          if (bar !== lastBar) { lastBar = bar; continue; } // skip first note of each bar
+          if (rng.next() < tensionAmount * 0.5) {
+            const dir = rng.nextBool() ? 1 : -1;
+            const shifted = ev.pitch + dir;
+            if (shifted >= frozen.targetRange.min && shifted <= frozen.targetRange.max) {
+              ev.pitch = shifted;
+              ev.velocity = Math.max(40, Math.round(ev.velocity * 0.8));
+              ev.tension = true;
+            }
+          }
+        }
+      }
+
       // 5. Tension + expression per voice, per bar
       const expressed: InternalNoteEvent[] = [];
       for (const voice of solved.voices) {
