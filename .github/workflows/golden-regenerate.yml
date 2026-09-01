@@ -1,0 +1,25 @@
+name: Golden Regenerate
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - name: Install
+        run: bun install
+      - name: Generate golden MIDI files
+        run: bun run scripts/generate-golden.ts
+      - name: Verify file count
+        run: |
+          COUNT=$(ls golden-midi/*.mid | wc -l)
+          echo "golden files: ${COUNT}"
+          if [ "$COUNT" -ne 10 ]; then echo "::error::expected 10 golden files"; exit 1; fi
+      - name: Upload golden-midi artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: golden-midi
+          path: golden-midi/
