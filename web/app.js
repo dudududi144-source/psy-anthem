@@ -421,23 +421,47 @@ function setPlaying(state) {
   btn.disabled = isPlaying;
 }
 
-function play() {
+function setStatus(msg) {
+  const el = document.getElementById('playStatus');
+  if (el) el.textContent = msg;
+}
+
+async function play() {
   const entry = currentEntry();
   if (!entry) return;
   const s = ensureSynth();
   const fromBeat = parseInt(document.getElementById('playFrom').value, 10) || 0;
-  s.playEvents(entry.out.events, entry.config.bpm ?? 140, fromBeat);
+  setStatus('unlocking audio...');
+  await s.playEvents(entry.out.events, entry.config.bpm ?? 140, fromBeat);
+  if (s.ctx.state !== 'running') {
+    setStatus('AUDIO BLOCKED by the browser. Click TEST SOUND once, then PLAY again.');
+    return;
+  }
   setPlaying(true);
+  setStatus('playing... (notes scheduled at ' + s.ctx.currentTime.toFixed(2) + 's)');
 }
 
 function stopPlayback() {
   if (synth) synth.stop();
   setPlaying(false);
+  setStatus('stopped');
 }
 
 function auditionNote(pitch, velocity) {
   const s = ensureSynth();
   s.playNote(pitch, velocity);
+  setStatus('audition: ' + pitchName(pitch) + (s.ctx.state === 'running' ? '' : ' (audio blocked!)'));
+}
+
+// Quick audibility check: a rising A-major triad, independent of any generation.
+function testSound() {
+  const s = ensureSynth();
+  s.playNote(69, 110);
+  setTimeout(() => s.playNote(73, 110), 180);
+  setTimeout(() => s.playNote(76, 110), 360);
+  setTimeout(() => {
+    setStatus(s.ctx.state === 'running' ? 'audio OK - you should hear 3 notes' : 'audio BLOCKED by browser autoplay policy');
+  }, 60);
 }
 
 // ---------- export actions ----------
@@ -506,6 +530,7 @@ function init() {
   });
   document.getElementById('play').addEventListener('click', play);
   document.getElementById('stop').addEventListener('click', stopPlayback);
+  document.getElementById('testSound').addEventListener('click', testSound);
   document.getElementById('prev').addEventListener('click', () => navigate(-1));
   document.getElementById('next').addEventListener('click', () => navigate(1));
   document.getElementById('copyConfig').addEventListener('click', copyConfig);
@@ -514,6 +539,7 @@ function init() {
   for (const id of ['seed', 'intent', 'curve', 'root', 'mode', 'voices', 'bars', 'density', 'harmony', 'loopMode', 'callResponse']) {
     document.getElementById(id).addEventListener('change', generate);
   }
+  setStatus('ready - GENERATE then PLAY (or TEST SOUND to check your speakers)');
   generate();
 }
 
