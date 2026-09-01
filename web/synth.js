@@ -305,3 +305,121 @@ export class PsySynthBrowser {
     }
     return nodes;
   }
+
+  // Wavetable: crossfaded wave-pair morph + optional sub harmonic.
+  _wavetableVoice(note, preset, startTime, endTime, mix) {
+    const ctx = this.ctx;
+    const wt = preset.wavetable || {};
+    const types = wt.types && wt.types.length > 0 ? wt.types : ['sawtooth', 'square'];
+    const pos = wt.position || { start: 0, end: 0.5, duration: 0.4 };
+    const startIdx = Math.max(0, Math.min(types.length - 1, Math.round((pos.start || 0) * (types.length - 1))));
+    const endIdx = Math.max(0, Math.min(types.length - 1, Math.round((pos.end || 0.5) * (types.length - 1))));
+    const morphDur = Math.max(0.05, Math.min(pos.duration || 0.4, Math.max(0.05, endTime - startTime)));
+    const nodes = [];
+
+    // Wave A fades out, wave B fades in -> audible spectral morph.
+    const oscA = ctx.createOscillator();
+    oscA.type = types[startIdx];
+    oscA.frequency.value = note.frequency;
+    const gainA = ctx.createGain();
+    gainA.gain.setValueAtTime(0.6, startTime);
+    gainA.gain.linearRampToValueAtTime(0.05, startTime + morphDur);
+    oscA.connect(gainA);
+    gainA.connect(mix);
+
+    const oscB = ctx.createOscillator();
+    oscB.type = types[endIdx];
+    oscB.frequency.value = note.frequency;
+    const gainB = ctx.createGain();
+    gainB.gain.setValueAtTime(0.05, startTime);
+    gainB.gain.linearRampToValueAtTime(0.6, startTime + morphDur);
+    oscB.connect(gainB);
+    gainB.connect(mix);
+
+    oscA.start(startTime); oscA.stop(endTime);
+    oscB.start(startTime); oscB.stop(endTime);
+    nodes.push(oscA, oscB);
+
+    // Sub-harmonic layer (one octave below) when configured.
+    if (wt.subHarmonic && wt.subHarmonic.enabled) {
+      const sub = ctx.createOscillator();
+      sub.type = 'sine';
+      sub.frequency.value = note.frequency;
+      if (sub.detune) sub.detune.value = -1200;
+      const subGain = ctx.createGain();
+      subGain.gain.value = wt.subHarmonic.depth || 0.5;
+      sub.connect(subGain);
+      subGain.connect(mix);
+      sub.start(startTime);
+      sub.stop(endTime);
+      nodes.push(sub);
+    }
+    return nodes;
+  }
+
+  // Physical: noise-burst excitation -> resonant body + damped fundamental.
+  _physicalVoice(note, preset, startTime, endTime, mix) {
+    const ctx = this.ctx;
+    const phy = preset.physical || {};
+    const damping = phy.damping !== undefined ? phy.damping : 0.3;
+    const nodes = [];
+
+    // Excitation: short noise burst through a resonant bandpass (the pluck).
+    const burst = ctx.createBufferSource();
+    burst.buffer = makeNoiseBurst(ctx, 0.02);
+    const bodyFilter = ctx.createBiquadFilter();
+    bodyFilter.type = 'bandpass';
+    bodyFilter.frequency.value = note.frequency * 2;
+    bodyFilter.Q.value = 6;
+    const burstGain = ctx.createGain();
+    burstGain.gain.value = (phy.pluck !== undefined ? phy.pluck : 0.9) * 0.8;
+    burst.connect(bodyFilter);
+    bodyFilter.connect(burstGain);
+    burstGain.connect(mix);
+    burst.start(startTime);
+
+    // Sustained damped fundamental (the vibrating string).
+    const fund = ctx.createOscillator();
+    fund.type = 'triangle';
+    fund.frequency.value = note.frequency;
+    const fundGain = ctx.createGain();
+    fundGain.gain.setValueAtTime(0.7, startTime);
+    fundGain.gain.setTargetAtTime(0.001, startTime + 0.02, Math.max(0.03, 0.35 - damping * 0.3));
+    fund.connect(fundGain);
+    fundGain.connect(mix);
+    fund.start(startTime);
+    fund.stop(endTime);
+    nodes.push(burst, fund);
+    return nodes;
+  }
+
+  // Glitch: stochastic retriggered pluck (stutter + pitch jitter).
+  _glitchVoice(note, preset, startTime, endTime, mix) {
+    const ctx = this.ctx;
+    const gl = preset.glitch || {};
+    const rate = gl.rate || 4;
+    const stochastic = gl.stochastic !== undefined ? gl.stochastic : 0.3;
+    const span = Math.max(0.05, endTime - startTime);
+    const retriggers = Math.max(1, Math.min(4, 1 + Math.floor(Math.random() * rate)));
+    const spacing = span / (retriggers + 1);
+    const nodes = [];
+
+    for (let i = 0; i < retriggers; i++) {
+      const tStart = startTime + i * spacing;
+      const tDur = Math.min(spacing * 0.9, 0.12);
+      const pitchJitter = 1 + (Math.random() - 0.5) * stochastic * 0.06;
+      const osc = ctx.createOscillator();
+      osc.type = i % 2 === 0 ? 'sawtooth' : 'square';
+      osc.frequency.value = note.frequency * pitchJitter;
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0, tStart);
+      gain.gain.linearRampToValueAtTime(0.55 - i * 0.08, tStart + 0.003);
+      gain.gain.setTargetAtTime(0.001, tStart + 0.01, Math.max(0.02, tDur * 0.5));
+      osc.connect(gain);
+      gain.connect(mix);
+      osc.start(tStart);
+      osc.stop(tStart + tDur + 0.02);
+      nodes.push(osc);
+    }
+    return nodes;
+  }
