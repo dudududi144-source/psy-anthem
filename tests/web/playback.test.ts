@@ -70,3 +70,121 @@ describe('PsySynthBrowser scheduling (phase-8 engine)', () => {
     expect(lfoGain.outputs[0]).toBe(synth.chorusDelay.delayTime);
     expect((synth.convolver as { buffer: unknown }).buffer).toBeDefined();
   });
+
+  it('skips notes that already ended before fromBeat', async () => {
+    const ctx = new MockAudioContext();
+    const synth = makeSynth(ctx);
+
+    await synth.playEvents([note(60, 0, 1), note(64, 2, 2)], 120, 3);
+
+    expect(synth.lastNoteCount).toBe(1);
+    const freqs = freqSet(ctx);
+    expect(freqs.has(Math.round(midiToFreq(64) * 100) / 100)).toBe(true);
+    expect(freqs.has(Math.round(midiToFreq(60) * 100) / 100)).toBe(false);
+  });
+
+  it('resumes a suspended context before scheduling', async () => {
+    const ctx = new MockAudioContext();
+    ctx.state = 'suspended';
+    const synth = makeSynth(ctx);
+
+    await synth.playEvents([note(60, 0, 1)], 120, 0);
+
+    expect(ctx.resumeCalls).toBe(1);
+    expect(ctx.state).toBe('running');
+    expect(synth.lastNoteCount).toBe(1);
+  });
+
+  it('stop() adds an explicit stop to every scheduled oscillator', async () => {
+    const ctx = new MockAudioContext();
+    const synth = makeSynth(ctx);
+    await synth.playEvents([note(60, 0, 1), note(64, 1, 1)], 120, 0);
+
+    for (const osc of ctx.oscillators()) {
+      expect(osc.stops.length).toBe(1); // natural end-of-note stop
+    }
+    synth.stop();
+    for (const osc of ctx.oscillators()) {
+      expect(osc.stops.length).toBe(2); // explicit stop added
+    }
+  });
+
+  it('playEvents is async (returns a Promise)', () => {
+    const ctx = new MockAudioContext();
+    const synth = makeSynth(ctx);
+    const result = synth.playEvents([note(60, 0, 1)], 140);
+    expect(result).toBeInstanceOf(Promise);
+  });
+
+  it('accent + full velocity produces a strong envelope peak', async () => {
+    const ctx = new MockAudioContext();
+    const synth = makeSynth(ctx);
+    const ev = [{ type: 'note' as const, timestamp: 0, duration: 1, channel: 0, data: { pitch: 60, velocity: 127, articulation: 'accent' as const } }];
+    await synth.playEvents(ev, 120, 0);
+
+    let maxRamp = 0;
+    for (const node of ctx.nodes) {
+      if (node.kind !== 'gain') continue;
+      const g = (node as unknown as { gain: { events: Array<[string, number, number]> } }).gain;
+      for (const ev2 of g.events) {
+        if (ev2[0] === 'ramp' && ev2[1] > maxRamp) maxRamp = ev2[1];
+      }
+    }
+    expect(maxRamp).toBeGreaterThan(0.9);
+  });
+
+  it('bass preset renders a sub-octave oscillator (detune -1200 cents)', async () => {
+    const ctx = new MockAudioContext();
+    const synth = makeSynth(ctx);
+    await synth.playEvents([note(45, 0, 1, 100, 3)], 120, 0); // channel 3 = psy-bass
+    const oscs = ctx.oscillators();
+    const sub = oscs.find((o) => o.detune.value === -1200);
+    expect(sub).toBeDefined();
+    expect(sub!.frequency.value).toBeCloseTo(midiToFreq(45), 3);
+  });
+
+  it('delay time follows tempo (dotted 8th)', async () => {
+    const ctx = new MockAudioContext();
+    const synth = makeSynth(ctx);
+    await synth.playEvents([note(60, 0, 1)], 120, 0);
+    // 120 BPM -> beat 0.5s -> dotted 8th = 0.375s
+    expect((synth.delayNode as unknown as { delayTime: { value: number } }).delayTime.value).toBeCloseTo(0.375, 5);
+  });
+
+  it('testSound schedules 3 staggered tones (C4 E4 G4)', async () => {
+    const ctx = new MockAudioContext();
+    const synth = makeSynth(ctx);
+    expect(typeof synth.testSound).toBe('function');
+
+    const duration = await synth.testSound();
+    expect(duration).toBeCloseTo(1.2, 5);
+    expect(synth.lastNoteCount).toBe(3);
+    const freqs = freqSet(ctx);
+    expect(freqs.has(Math.round(midiToFreq(60) * 100) / 100)).toBe(true);
+    expect(freqs.has(Math.round(midiToFreq(64) * 100) / 100)).toBe(true);
+    expect(freqs.has(Math.round(midiToFreq(67) * 100) / 100)).toBe(true);
+  });
+
+  it('compressor is configured with the psy glue settings', () => {
+    const ctx = new MockAudioContext();
+    const synth = makeSynth(ctx);
+    const comp = synth.compressor as unknown as {
+      threshold: { value: number }; knee: { value: number }; ratio: { value: number };
+      attack: { value: number }; release: { value: number };
+    };
+    expect(comp.threshold.value).toBe(-24);
+    expect(comp.knee.value).toBe(30);
+    expect(comp.ratio.value).toBe(12);
+    expect(comp.attack.value).toBeCloseTo(0.003, 6);
+    expect(comp.release.value).toBeCloseTo(0.25, 6);
+    expect((synth.masterGain as unknown as { gain: { value: number } }).gain.value).toBe(0.5);
+  });
+
+  it('works with no injected library (fallback presets)', async () => {
+    const ctx = new MockAudioContext();
+    const synth = new PsySynthBrowser(ctx as unknown as AudioContext);
+    await synth.playEvents([note(60, 0, 1)], 120, 0);
+    expect(synth.lastNoteCount).toBe(1);
+    expect(ctx.oscillators().length).toBeGreaterThanOrEqual(1);
+  });
+});
