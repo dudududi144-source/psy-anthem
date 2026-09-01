@@ -209,3 +209,99 @@ export class PsySynthBrowser {
     // Dotted-eighth delay, classic psytrance echo
     this.delayNode.delayTime.value = (60 / Math.max(1, bpm)) * 0.75;
   }
+
+  // ---------- phase-9 voice engines ----------
+  // Each engine builds its sound graph into `mix` and returns the startable
+  // nodes (oscillators / buffer sources) for stop() bookkeeping.
+
+  // FM: modulator oscillator drives carrier.frequency (inharmonic sidebands).
+  _fmVoice(note, preset, startTime, endTime, mix) {
+    const ctx = this.ctx;
+    const fm = preset.fm || {};
+    const carrier = ctx.createOscillator();
+    carrier.type = 'sine';
+    carrier.frequency.value = note.frequency;
+
+    const modulator = ctx.createOscillator();
+    modulator.type = 'sine';
+    const ratio = (fm.modulator && fm.modulator.ratio) || 3.5;
+    modulator.frequency.value = note.frequency * ratio;
+
+    const modGain = ctx.createGain();
+    const depth = (fm.modulator && fm.modulator.depth) || 600;
+    modGain.gain.setValueAtTime(depth, startTime);
+    // Spectral movement: mod depth settles over the note.
+    const settle = (fm.modulator && fm.modulator.decay) || 0.25;
+    modGain.gain.setTargetAtTime(depth * 0.35, startTime + 0.01, Math.max(0.02, settle));
+
+    modulator.connect(modGain);
+    modGain.connect(carrier.frequency); // FM!
+    carrier.connect(mix);
+
+    carrier.start(startTime);
+    modulator.start(startTime);
+    carrier.stop(endTime);
+    modulator.stop(endTime);
+    return [carrier, modulator];
+  }
+
+  // Additive: inharmonic partial stack with spectral morphing.
+  _additiveVoice(note, preset, startTime, endTime, mix) {
+    const ctx = this.ctx;
+    const add = preset.additive || {};
+    const partials = add.partials || [{ ratio: 1, amplitude: 1 }];
+    const morph = add.morph || null;
+    const totalAmp = partials.reduce((s, p) => s + p.amplitude, 0) || 1;
+    const nodes = [];
+
+    for (let i = 0; i < partials.length; i++) {
+      const p = partials[i];
+      const osc = ctx.createOscillator();
+      osc.type = 'sine';
+      osc.frequency.value = note.frequency * p.ratio;
+      const gain = ctx.createGain();
+      const startAmp = morph && morph.start && morph.start[i] !== undefined ? morph.start[i] : p.amplitude;
+      gain.gain.setValueAtTime(startAmp / totalAmp, startTime);
+      if (morph && morph.end && morph.end[i] !== undefined) {
+        const morphDur = Math.max(0.05, Math.min(morph.duration || 0.5, Math.max(0.05, endTime - startTime)));
+        gain.gain.linearRampToValueAtTime(morph.end[i] / totalAmp, startTime + morphDur);
+      }
+      osc.connect(gain);
+      gain.connect(mix);
+      osc.start(startTime);
+      osc.stop(endTime);
+      nodes.push(osc);
+    }
+    return nodes;
+  }
+
+  // Granular: cloud of short jittered grains (texture over the note span).
+  _granularVoice(note, preset, startTime, endTime, mix) {
+    const ctx = this.ctx;
+    const gr = preset.granular || {};
+    const density = gr.density || 8;
+    const grainSize = gr.grainSize || 0.05;
+    const jitter = gr.randomize !== undefined ? gr.randomize : 0.3;
+    const span = Math.max(0.05, endTime - startTime);
+    const count = Math.max(1, Math.min(24, Math.ceil(density * span)));
+    const nodes = [];
+
+    for (let i = 0; i < count; i++) {
+      const grain = ctx.createOscillator();
+      grain.type = i % 3 === 0 ? 'triangle' : 'sine';
+      const freqJitter = 1 + (Math.random() - 0.5) * jitter * 0.2;
+      grain.frequency.value = note.frequency * freqJitter;
+      const grainGain = ctx.createGain();
+      const gStart = startTime + (i / density) + (Math.random() - 0.5) * jitter * 0.02;
+      const gPeak = 0.25 + Math.random() * 0.15;
+      grainGain.gain.setValueAtTime(0, gStart);
+      grainGain.gain.linearRampToValueAtTime(gPeak, gStart + 0.004);
+      grainGain.gain.linearRampToValueAtTime(0, gStart + grainSize);
+      grain.connect(grainGain);
+      grainGain.connect(mix);
+      grain.start(gStart);
+      grain.stop(gStart + grainSize + 0.01);
+      nodes.push(grain);
+    }
+    return nodes;
+  }
