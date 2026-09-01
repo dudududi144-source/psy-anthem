@@ -1,7 +1,7 @@
 // PSY ANTHEM - web/app.js (demo v2: generation + playback + downloads)
 import { createAnthemEngine, AnthemIntent, EnergyCurve } from './engine.mjs';
 import { PsySynthBrowser, midiToFreq } from './synth.js';
-import { PRESETS, PRESET_CATEGORIES, DEFAULT_PRESETS } from './presets.js';
+import { PRESETS, PRESET_CATEGORIES, DEFAULT_VOICE_PRESETS } from './presets.js';
 
 const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 const VOICE_COLORS = ['#ff2ec4', '#2ee6ff', '#a06bff', '#ffb02e'];
@@ -409,7 +409,7 @@ function renderStats(out, config) {
 function ensureSynth() {
   if (!synth) {
     const Ctx = window.AudioContext || window.webkitAudioContext;
-    synth = new PsySynthBrowser(new Ctx());
+    synth = new PsySynthBrowser(new Ctx(), { PRESETS, defaults: DEFAULT_VOICE_PRESETS });
     synth.onFinish = () => setPlaying(false);
     applyMacros();
   }
@@ -431,7 +431,7 @@ function initPresetDropdowns() {
       const opt = document.createElement('option');
       opt.value = presetId;
       opt.textContent = PRESETS[presetId].name;
-      if (presetId === DEFAULT_PRESETS[voice]) opt.selected = true;
+      if (presetId === DEFAULT_VOICE_PRESETS[voice]) opt.selected = true;
       select.appendChild(opt);
     }
   }
