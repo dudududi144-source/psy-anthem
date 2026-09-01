@@ -314,3 +314,83 @@ export class PsySynthBrowser {
     const preset = this.PRESETS[presetId] || FALLBACK_PRESETS['basic-lead'];
     this._scheduleVoice(note, preset, startTime);
   }
+
+  // ---------- transport ----------
+  // Play a full AnthemOutput. fromBeat lets the scrubber start mid-piece.
+  // Async: awaits the AudioContext unlock (autoplay policy) before scheduling.
+  async playEvents(events, bpm = 140, fromBeat = 0) {
+    this.stop();
+    if (this.ctx.state === 'suspended') {
+      try { await this.ctx.resume(); } catch (e) { /* context may still be locked */ }
+    }
+    this.setTempo(bpm);
+    const plan = scheduleEvents(events, bpm, fromBeat);
+    const t0 = this.ctx.currentTime + 0.06;
+
+    for (const note of plan.notes) {
+      this._scheduleNote(note, t0 + Math.max(0, note.startAt));
+    }
+
+    this.lastNoteCount = plan.notes.length;
+    if (plan.totalSeconds > 0 && this.onFinish) {
+      this._timer = setTimeout(() => {
+        if (this.onFinish) this.onFinish();
+      }, (plan.totalSeconds + 0.4) * 1000);
+    }
+    return plan.totalSeconds;
+  }
+
+  // Audibility check: three staggered tones (C major triad). Returns total seconds.
+  async testSound() {
+    if (this.ctx.state === 'suspended') {
+      try { await this.ctx.resume(); } catch (e) { /* ignore */ }
+    }
+    const testNotes = [
+      { pitch: 60, duration: 0.3 }, // C4
+      { pitch: 64, duration: 0.3 }, // E4
+      { pitch: 67, duration: 0.3 }, // G4
+    ];
+    const base = this.ctx.currentTime + 0.02;
+    for (let i = 0; i < testNotes.length; i++) {
+      const n = testNotes[i];
+      this._scheduleNote({
+        channel: 0,
+        frequency: midiToFreq(n.pitch),
+        startAt: i * 0.4,
+        duration: n.duration,
+        velocity: 0.8,
+        articulation: 'normal',
+        pitch: n.pitch,
+      }, base + i * 0.4);
+    }
+    this.lastNoteCount = testNotes.length;
+    return 1.2; // total duration in seconds
+  }
+
+  // Audition a single note (piano-roll click).
+  playNote(pitch, velocity = 100) {
+    if (this.ctx.state !== 'running') {
+      try { this.ctx.resume(); } catch (e) { /* ignore */ }
+    }
+    this._scheduleNote({
+      channel: 0,
+      frequency: midiToFreq(pitch),
+      startAt: 0,
+      duration: 0.35,
+      velocity: velocity / 127,
+      articulation: 'normal',
+      pitch,
+    }, this.ctx.currentTime + 0.02);
+  }
+
+  stop() {
+    for (const node of this.activeNodes) {
+      try { node.stop(); } catch (e) { /* already stopped */ }
+    }
+    this.activeNodes = [];
+    if (this._timer) {
+      clearTimeout(this._timer);
+      this._timer = null;
+    }
+  }
+}
