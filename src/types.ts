@@ -63,7 +63,10 @@ export interface AnthemConfig {
 
 export type ChordQuality =
   | 'major' | 'minor' | 'diminished' | 'augmented'
-  | 'dominant7' | 'major7' | 'minor7' | 'sus2' | 'sus4';
+  | 'dominant7' | 'major7' | 'minor7' | 'sus2' | 'sus4'
+  | 'major9' | 'minor9' | 'dominant9'
+  | 'major11' | 'minor11' | 'dominant11'
+  | 'major13' | 'minor13' | 'dominant13';
 
 export interface ChordSymbol {
   root: number;
@@ -111,6 +114,14 @@ export interface MotifDNA {
 
 export type GenerationQuality = 'excellent' | 'good' | 'acceptable' | 'degraded';
 
+export interface ArtisticBreakdown {
+  melodicInterest: number;
+  harmonicRichness: number;
+  rhythmicVariety: number;
+  texturalDepth: number;
+  emotionalArc: number;
+}
+
 export interface GenerationMetadata {
   seed: number;
   intent: AnthemIntent;
@@ -121,6 +132,10 @@ export interface GenerationMetadata {
   quality: GenerationQuality;
   bars: number;
   voices: number;
+  artisticQuality?: number;
+  artisticBreakdown?: ArtisticBreakdown;
+  artisticIssues?: string[];
+  artisticSuggestions?: string[];
 }
 
 export interface AnthemOutput {
