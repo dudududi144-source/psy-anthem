@@ -140,6 +140,15 @@ export function generateChordProgression(
     bar += dur;
     idx++;
   }
+  if (config.loopMode && chords.length > 1) {
+    // Loop closure: the final chord becomes the tonic of the opening chord,
+    // so the progression resolves back to bar 0 without a seam.
+    const first = chords[0]!;
+    const last = chords[chords.length - 1]!;
+    last.root = first.root;
+    last.quality = first.quality;
+    last.extensions = [...first.extensions];
+  }
   return { chords, key: config.scale };
 }
 
