@@ -83,3 +83,30 @@
 button:disabled { opacity: 0.5; cursor: wait; }
 .card { box-shadow: 0 6px 24px rgba(0,0,0,0.35); }
 #roll svg, #tension svg, #chords svg { border: 1px solid var(--line); }
+
+/* --- demo v2: playback + advanced controls --- */
+button.accent {
+  background: linear-gradient(90deg, #3dffa0, #2ee6ff);
+  color: #06281c;
+  font-weight: 700;
+}
+button:disabled { opacity: 0.45; cursor: wait; }
+.checkwrap { display: flex; flex-direction: column; gap: 4px; }
+.check {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 11px; color: var(--dim); text-transform: none; letter-spacing: 0;
+  margin: 0;
+}
+.check input { width: auto; }
+.inline-label { font-size: 11px; color: var(--dim); margin-left: 6px; }
+.inline-select {
+  width: auto; background: var(--panel2); color: var(--text);
+  border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px;
+  font-family: inherit; font-size: 12px;
+}
+.pos { font-size: 11px; color: var(--dim); align-self: center; min-width: 32px; }
+.info {
+  margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--line);
+  font-size: 11px; color: var(--dim); display: flex; flex-direction: column; gap: 4px;
+}
+#roll rect:hover { stroke: #ffffff; stroke-width: 1; }
