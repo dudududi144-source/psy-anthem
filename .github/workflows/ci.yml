@@ -31,6 +31,7 @@ jobs:
           bun run examples/13-call-response.ts > /dev/null
           bun run examples/14-extended-chords.ts > /dev/null
           bun run examples/15-all-15-presets.ts > /dev/null
+          bun run examples/16-psybus-integration.ts > /dev/null
           bun run scripts/verify-playback.ts
           COUNT=$(ls golden-midi/*.mid | wc -l)
           if [ "$COUNT" -ne 10 ]; then echo "::error::expected 10 golden MIDI files"; exit 1; fi
