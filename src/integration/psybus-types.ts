@@ -37,6 +37,9 @@ export type BusNotePayload = {
   channel: number;
 };
 
+export type BusTransportStartPayload = { kind: 'transport.start' };
+export type BusTransportStopPayload = { kind: 'transport.stop' };
+export type BusTransportSeekPayload = { kind: 'transport.seek'; beat: number };
 export type BusNoteOffPayload = { kind: 'note.off'; track: string; note: number };
 export type BusSidechainPayload = { kind: 'sidechain.duck'; target: string; depth: number; releaseMs: number };
 export type BusChokePayload = { kind: 'choke'; group: string; except?: string };
@@ -79,6 +82,9 @@ export type ParamAckPayload = { kind: 'param.ack'; param: string; value: number 
 
 export type PsyBusPayload =
   | BusTransportPayload
+  | BusTransportStartPayload
+  | BusTransportStopPayload
+  | BusTransportSeekPayload
   | BusNotePayload
   | BusNoteOffPayload
   | BusSidechainPayload
