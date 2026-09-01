@@ -161,6 +161,28 @@ anthem.play(0);                          // emit note envelopes through the bus
 Features: transport control (play/stop/seek/clock ticks) - scene management - sidechain ducking -
 choke - telemetry (quality/memorability/events). Full guide: docs/PSYBUS-INTEGRATION.md.
 
+
+## Live Performance (Phase 12)
+
+psy-anthem is a live instrument:
+
+- **Scene Morphing** — crossfade between two generated compositions with
+  linear / exponential / bezier curves; config interpolates, events blend.
+- **Live Automation** — velocity / duration / pitch automations over the bus
+  with curves and auto-completion.
+
+```ts
+import { SceneMorpher } from 'psy-anthem/src/morphing';
+
+const morpher = new SceneMorpher();
+morpher.loadScenes({ fromScene, toScene, durationBars: 8, curve: 'bezier' });
+morpher.updateProgress(progress); // driven by the host clock
+const events = morpher.getEventsAtPosition(positionBeats);
+```
+
+Over the bus: morph.start / morph.update / automation.start / automation.stop.
+See docs/SCENE-MORPHING.md and examples 17-18.
+
 ## Quality Bar
 - All tests green, theory linter passes, memorability ≥ threshold.
 - Determinism: same seed → identical output across 100 runs.
