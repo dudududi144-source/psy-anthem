@@ -5,6 +5,7 @@
 import { createAnthemEngine, AnthemIntent, EnergyCurve } from '../src/index';
 import type { AnthemConfig } from '../src/types';
 import { PsySynthBrowser, midiToFreq } from '../web/synth.js';
+import { PRESETS, DEFAULT_VOICE_PRESETS } from '../web/presets.js';
 import { MockAudioContext } from '../tests/web/mock-audio-context';
 
 const config: AnthemConfig = {
@@ -29,7 +30,7 @@ async function main(): Promise<void> {
   if (out!.events.length === 0) fail('no events generated');
 
   const ctx = new MockAudioContext();
-  const synth = new PsySynthBrowser(ctx as unknown as AudioContext);
+  const synth = new PsySynthBrowser(ctx as unknown as AudioContext, { PRESETS, defaults: DEFAULT_VOICE_PRESETS });
   const seconds = await synth.playEvents(out!.events, config.bpm ?? 140, 0);
 
   const oscs = ctx.oscillators();
@@ -53,6 +54,10 @@ async function main(): Promise<void> {
     const f = Math.round(midiToFreq((e.data as { pitch: number }).pitch) * 100) / 100;
     if (!scheduled.has(f)) fail('fundamental missing from the schedule: ' + f);
   }
+
+  // Bass voice (channel 3, psy-bass) must carry a -1200-cent sub oscillator.
+  const hasSub = oscs.some((o) => o.detune.value === -1200);
+  if (!hasSub) fail('psy-bass sub-octave oscillator (-1200 cents) missing');
 
   console.log('=== PSY ANTHEM - headless playback verification ===');
   console.log('events generated:   ' + out!.events.length);
