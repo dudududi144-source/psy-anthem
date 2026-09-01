@@ -148,7 +148,6 @@ export function buildVoices(input: VoiceLeadingInput, rng: RNG): SolverResult {
           beat += dur;
           idx += idxStep;
         }
-      }
       } else {
         // Harmony / counter: chord tones, half notes, less rhythmically active.
         // Counter (v===2) additionally prefers contrary motion against the lead.
