@@ -585,3 +585,111 @@ export class PsySynthBrowser {
     const preset = this.PRESETS[presetId] || FALLBACK_PRESETS['basic-lead'];
     this._scheduleVoice(note, preset, startTime);
   }
+
+  // ---------- transport ----------
+  isValidEvent(event) {
+    if (!event || event.type !== 'note' || !event.data) return false;
+    const p = event.data.pitch;
+    const v = event.data.velocity;
+    if (typeof p !== 'number' || p < 0 || p > 127) return false;
+    if (typeof v !== 'number' || v < 0 || v > 127) return false;
+    if (typeof event.timestamp !== 'number' || event.timestamp < 0) return false;
+    if (typeof event.duration !== 'number' || event.duration <= 0) return false;
+    return true;
+  }
+
+  // Play a full AnthemOutput. fromBeat lets the scrubber start mid-piece.
+  // Async: awaits the AudioContext unlock (autoplay policy) before scheduling.
+  // Robust: validates events up front and isolates per-note scheduling errors.
+  async playEvents(events, bpm = 140, fromBeat = 0) {
+    this.stop();
+    if (this.ctx.state === 'suspended') {
+      try { await this.ctx.resume(); } catch (e) { /* context may still be locked */ }
+    }
+
+    const valid = Array.isArray(events) ? events.filter((e) => this.isValidEvent(e)) : [];
+    if (valid.length === 0) {
+      this.lastNoteCount = 0;
+      return 0;
+    }
+
+    this.setTempo(bpm);
+    const plan = scheduleEvents(valid, bpm, fromBeat);
+    const t0 = this.ctx.currentTime + 0.06;
+    const schedStart = Date.now();
+
+    // Batch scheduling: plan first, then schedule note by note with isolation.
+    let scheduled = 0;
+    for (const note of plan.notes) {
+      try {
+        this._scheduleNote(note, t0 + Math.max(0, note.startAt));
+        scheduled++;
+      } catch (err) {
+        console.warn('psy-anthem: failed to schedule one note:', err);
+      }
+    }
+
+    this.lastNoteCount = scheduled;
+    this.lastScheduleMs = Date.now() - schedStart;
+    if (plan.totalSeconds > 0 && this.onFinish) {
+      this._timer = setTimeout(() => {
+        if (this.onFinish) this.onFinish();
+      }, (plan.totalSeconds + 0.4) * 1000);
+    }
+    return plan.totalSeconds;
+  }
+
+  // Audibility check: three staggered tones (C major triad). Returns total seconds.
+  async testSound() {
+    if (this.ctx.state === 'suspended') {
+      try { await this.ctx.resume(); } catch (e) { /* ignore */ }
+    }
+    const testNotes = [
+      { pitch: 60, duration: 0.3 }, // C4
+      { pitch: 64, duration: 0.3 }, // E4
+      { pitch: 67, duration: 0.3 }, // G4
+    ];
+    const base = this.ctx.currentTime + 0.02;
+    for (let i = 0; i < testNotes.length; i++) {
+      const n = testNotes[i];
+      this._scheduleNote({
+        channel: 0,
+        frequency: midiToFreq(n.pitch),
+        startAt: i * 0.4,
+        duration: n.duration,
+        velocity: 0.8,
+        articulation: 'normal',
+        pitch: n.pitch,
+      }, base + i * 0.4);
+    }
+    this.lastNoteCount = testNotes.length;
+    return 1.2; // total duration in seconds
+  }
+
+  // Audition a single note (piano-roll click).
+  playNote(pitch, velocity = 100) {
+    if (this.ctx.state !== 'running') {
+      try { this.ctx.resume(); } catch (e) { /* ignore */ }
+    }
+    this._scheduleNote({
+      channel: 0,
+      frequency: midiToFreq(pitch),
+      startAt: 0,
+      duration: 0.35,
+      velocity: velocity / 127,
+      articulation: 'normal',
+      pitch,
+    }, this.ctx.currentTime + 0.02);
+  }
+
+  stop() {
+    for (const node of this.activeNodes) {
+      try { node.stop(); } catch (e) { /* already stopped */ }
+    }
+    this.activeNodes = [];
+    if (this._timer) {
+      clearTimeout(this._timer);
+      this._timer = null;
+    }
+  }
+}
