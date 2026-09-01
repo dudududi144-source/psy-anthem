@@ -170,13 +170,14 @@ export function buildVoices(input: VoiceLeadingInput, rng: RNG): SolverResult {
             const leadDir = Math.sign(leadNow.pitch - leadPrev.pitch);
             if (leadDir !== 0) {
               // Pick the chord tone moving contrary to the lead, closest to the current position.
+              const ref = prevPitch; // non-null here (narrowed by the outer guard)
               const candidates: number[] = [];
               for (const t of tones) {
-                const cand = snapToScale(nearestPitchOfClass(t, prevPitch, lo, hi), pcs, lo, hi);
-                if (Math.sign(cand - prevPitch) === -leadDir && cand !== prevPitch) candidates.push(cand);
+                const cand = snapToScale(nearestPitchOfClass(t, ref, lo, hi), pcs, lo, hi);
+                if (Math.sign(cand - ref) === -leadDir && cand !== ref) candidates.push(cand);
               }
               if (candidates.length > 0) {
-                candidates.sort((a, b) => Math.abs(a - prevPitch) - Math.abs(b - prevPitch));
+                candidates.sort((a, b) => Math.abs(a - ref) - Math.abs(b - ref));
                 chosen = candidates[0]!;
               }
             }
