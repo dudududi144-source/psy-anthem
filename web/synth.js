@@ -36,27 +36,33 @@ export function midiToFreq(pitch) {
 }
 
 const VOICE_STYLE = {
-  0: { type: 'sawtooth', cutoff: 2400, gain: 0.5 },   // lead
-  1: { type: 'square', cutoff: 1400, gain: 0.28 },    // harmony
-  2: { type: 'triangle', cutoff: 3200, gain: 0.4 },   // counter
-  3: { type: 'sine', cutoff: 700, gain: 0.6 },        // bass
+  0: { type: 'sawtooth', cutoff: 2400, gain: 0.65 },  // lead
+  1: { type: 'square', cutoff: 1400, gain: 0.4 },     // harmony
+  2: { type: 'triangle', cutoff: 3200, gain: 0.5 },   // counter
+  3: { type: 'sine', cutoff: 700, gain: 0.75 },       // bass
 };
 
 export class PsySynthBrowser {
   constructor(audioContext) {
     this.ctx = audioContext;
     this.masterGain = this.ctx.createGain();
-    this.masterGain.gain.value = 0.3;
-    this.masterGain.connect(this.ctx.destination);
+    this.masterGain.gain.value = 0.5;
+    // Glue compressor so quiet devices still hear the mix clearly.
+    this.compressor = this.ctx.createDynamicsCompressor();
+    this.masterGain.connect(this.compressor);
+    this.compressor.connect(this.ctx.destination);
     this.activeNodes = [];
     this._timer = null;
     this.onFinish = null;
   }
 
   // Play a full AnthemOutput. fromBeat lets the scrubber start mid-piece.
-  playEvents(events, bpm = 140, fromBeat = 0) {
+  // Async: awaits the AudioContext unlock (autoplay policy) before scheduling.
+  async playEvents(events, bpm = 140, fromBeat = 0) {
     this.stop();
-    if (this.ctx.state === 'suspended') this.ctx.resume();
+    if (this.ctx.state !== 'running') {
+      try { await this.ctx.resume(); } catch (e) { /* context may still be locked */ }
+    }
     const plan = scheduleEvents(events, bpm, fromBeat);
     const t0 = this.ctx.currentTime + 0.06;
 
@@ -109,9 +115,11 @@ export class PsySynthBrowser {
     this.activeNodes.push(osc);
   }
 
-  // Audition a single note (piano-roll click).
+  // Audition a single note (piano-roll click / TEST SOUND).
   playNote(pitch, velocity = 100) {
-    if (this.ctx.state === 'suspended') this.ctx.resume();
+    if (this.ctx.state !== 'running') {
+      try { this.ctx.resume(); } catch (e) { /* ignore */ }
+    }
     this._scheduleNote({
       channel: 0,
       frequency: midiToFreq(pitch),
