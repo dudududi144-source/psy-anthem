@@ -92,3 +92,138 @@ function downloadBlob(bytes, filename, mime) {
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 2000);
 }
+
+// ---------- controls ----------
+function fillSelect(id, values, labels) {
+  const el = document.getElementById(id);
+  el.innerHTML = '';
+  for (let i = 0; i < values.length; i++) {
+    const opt = document.createElement('option');
+    opt.value = values[i];
+    opt.textContent = labels ? labels[i] : values[i];
+    el.appendChild(opt);
+  }
+}
+
+function initControls() {
+  const intents = Object.values(AnthemIntent);
+  fillSelect('intent', intents, intents.map((s) => s.replace(/-/g, ' ')));
+  document.getElementById('intent').value = AnthemIntent.EUPHORIC_TRANCE;
+  const curves = [EnergyCurve.ARC, EnergyCurve.BUILD_DROP, EnergyCurve.WAVE, EnergyCurve.FLAT];
+  fillSelect('curve', curves);
+  document.getElementById('curve').value = EnergyCurve.ARC;
+  fillSelect('root', NOTE_NAMES.map((_, i) => String(i)), NOTE_NAMES);
+  fillSelect('mode', MODES);
+  fillSelect('density', ['sparse', 'medium', 'dense']);
+  document.getElementById('density').value = 'medium';
+  fillSelect('harmony', ['simple', 'standard', 'complex']);
+  document.getElementById('harmony').value = 'standard';
+  fillSelect('playFrom', ['0']);
+}
+
+function readConfig() {
+  const cfg = {
+    seed: parseInt(document.getElementById('seed').value, 10) || 0,
+    intent: document.getElementById('intent').value,
+    scale: {
+      root: parseInt(document.getElementById('root').value, 10) || 0,
+      mode: document.getElementById('mode').value,
+    },
+    energyCurve: document.getElementById('curve').value,
+    targetRange: { min: 48, max: 84 },
+    voices: parseInt(document.getElementById('voices').value, 10),
+    bars: parseInt(document.getElementById('bars').value, 10),
+    bpm: 140,
+    density: document.getElementById('density').value,
+    harmonyComplexity: document.getElementById('harmony').value,
+    loopMode: document.getElementById('loopMode').checked,
+    callResponse: document.getElementById('callResponse').checked,
+  };
+  if (cfg.energyCurve === EnergyCurve.CUSTOM) {
+    cfg.customCurve = [
+      { position: 0.0, energy: 0.25 }, { position: 0.2, energy: 0.9 },
+      { position: 0.5, energy: 0.3 }, { position: 0.8, energy: 1.0 },
+      { position: 1.0, energy: 0.2 },
+    ];
+  }
+  return cfg;
+}
+
+function applyConfigToControls(cfg) {
+  document.getElementById('seed').value = String(cfg.seed);
+  document.getElementById('intent').value = cfg.intent;
+  document.getElementById('root').value = String(cfg.scale.root);
+  document.getElementById('mode').value = cfg.scale.mode;
+  document.getElementById('curve').value = cfg.energyCurve;
+  document.getElementById('voices').value = String(cfg.voices);
+  document.getElementById('bars').value = String(cfg.bars);
+  document.getElementById('density').value = cfg.density ?? 'medium';
+  document.getElementById('harmony').value = cfg.harmonyComplexity ?? 'standard';
+  document.getElementById('loopMode').checked = Boolean(cfg.loopMode);
+  document.getElementById('callResponse').checked = Boolean(cfg.callResponse);
+}
+
+// ---------- generation + history ----------
+function currentEntry() {
+  return historyIndex >= 0 ? history[historyIndex] : null;
+}
+
+function generate() {
+  hideError();
+  const config = readConfig();
+  let out = null;
+  try {
+    out = createAnthemEngine(config).generate();
+  } catch (e) {
+    showError('Config error: ' + e.message);
+    return;
+  }
+  if (!out) {
+    showError('Solver failed for this config. Try another seed.');
+    return;
+  }
+  history.push({ config, out });
+  if (history.length > 10) history.shift();
+  historyIndex = history.length - 1;
+  renderCurrent();
+}
+
+function navigate(delta) {
+  const next = historyIndex + delta;
+  if (next < 0 || next >= history.length) return;
+  historyIndex = next;
+  renderCurrent();
+}
+
+function renderCurrent() {
+  const entry = currentEntry();
+  if (!entry) return;
+  stopPlayback();
+  applyConfigToControls(entry.config);
+  renderRoll(entry.out, entry.config);
+  renderTension(entry.out, entry.config);
+  renderChords(entry.out);
+  renderMotif(entry.out);
+  renderStats(entry.out, entry.config);
+  renderPlayFrom(entry.config);
+  updateNavButtons();
+}
+
+function updateNavButtons() {
+  document.getElementById('prev').disabled = historyIndex <= 0;
+  document.getElementById('next').disabled = historyIndex >= history.length - 1;
+  document.getElementById('posLabel').textContent = history.length === 0 ? '' : (historyIndex + 1) + '/' + history.length;
+}
+
+function renderPlayFrom(config) {
+  const sel = document.getElementById('playFrom');
+  const cur = sel.value;
+  sel.innerHTML = '';
+  for (let b = 0; b < config.bars; b += 4) {
+    const opt = document.createElement('option');
+    opt.value = String(b);
+    opt.textContent = 'bar ' + (b + 1);
+    sel.appendChild(opt);
+  }
+  if (cur && parseInt(cur, 10) < config.bars) sel.value = cur;
+}
