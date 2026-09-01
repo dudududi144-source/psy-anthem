@@ -83,6 +83,16 @@ export class MockBuffer {
   getChannelData(i: number): Float32Array { return this.data[i]!; }
 }
 
+export class MockBufferSource extends MockNode {
+  buffer: MockBuffer | null = null;
+  playbackRate = new MockParam(1);
+  starts: number[] = [];
+  stops: number[] = [];
+  constructor() { super('buffer-src'); }
+  start(t: number) { this.starts.push(t); }
+  stop(t?: number) { this.stops.push(t ?? -1); }
+}
+
 export class MockAudioContext {
   state = 'running';
   currentTime = 1.0;
@@ -101,6 +111,7 @@ export class MockAudioContext {
   createBuffer(channels: number, length: number, sampleRate: number): MockBuffer {
     return new MockBuffer(channels, length, sampleRate);
   }
+  createBufferSource(): MockBufferSource { const n = new MockBufferSource(); this.nodes.push(n); return n; }
 
   async resume() { this.resumeCalls++; this.state = 'running'; }
 
