@@ -428,17 +428,26 @@ function setStatus(msg) {
 
 async function play() {
   const entry = currentEntry();
-  if (!entry) return;
-  const s = ensureSynth();
-  const fromBeat = parseInt(document.getElementById('playFrom').value, 10) || 0;
-  setStatus('unlocking audio...');
-  await s.playEvents(entry.out.events, entry.config.bpm ?? 140, fromBeat);
-  if (s.ctx.state !== 'running') {
-    setStatus('AUDIO BLOCKED by the browser. Click TEST SOUND once, then PLAY again.');
+  if (!entry) {
+    showError('Generate an anthem first.');
     return;
   }
-  setPlaying(true);
-  setStatus('playing... (notes scheduled at ' + s.ctx.currentTime.toFixed(2) + 's)');
+  try {
+    setStatus('unlocking audio...');
+    const s = ensureSynth();
+    const fromBeat = parseInt(document.getElementById('playFrom').value, 10) || 0;
+    const duration = await s.playEvents(entry.out.events, entry.config.bpm ?? 140, fromBeat);
+    if (s.ctx.state !== 'running') {
+      setStatus('AUDIO BLOCKED by the browser. Click TEST SOUND once, then PLAY again.');
+      return;
+    }
+    setPlaying(true);
+    setStatus('playing ' + duration.toFixed(1) + 's (' + entry.out.events.length + ' events)');
+  } catch (e) {
+    setStatus('AUDIO BLOCKED by browser - click TEST SOUND to unlock');
+    showError('Playback error: ' + e.message);
+    console.error(e);
+  }
 }
 
 function stopPlayback() {
@@ -453,15 +462,20 @@ function auditionNote(pitch, velocity) {
   setStatus('audition: ' + pitchName(pitch) + (s.ctx.state === 'running' ? '' : ' (audio blocked!)'));
 }
 
-// Quick audibility check: a rising A-major triad, independent of any generation.
-function testSound() {
-  const s = ensureSynth();
-  s.playNote(69, 110);
-  setTimeout(() => s.playNote(73, 110), 180);
-  setTimeout(() => s.playNote(76, 110), 360);
-  setTimeout(() => {
-    setStatus(s.ctx.state === 'running' ? 'audio OK - you should hear 3 notes' : 'audio BLOCKED by browser autoplay policy');
-  }, 60);
+// Quick audibility check: C major triad via synth.testSound(), independent of any generation.
+async function testSound() {
+  try {
+    setStatus('unlocking audio...');
+    const s = ensureSynth();
+    setStatus('playing test tones...');
+    const duration = await s.testSound();
+    setStatus(s.ctx.state === 'running'
+      ? 'audio OK - 3 test tones (' + duration.toFixed(1) + 's)'
+      : 'audio BLOCKED by browser autoplay policy - click again');
+  } catch (e) {
+    setStatus('AUDIO BLOCKED - click again to unlock');
+    console.error(e);
+  }
 }
 
 // ---------- export actions ----------
