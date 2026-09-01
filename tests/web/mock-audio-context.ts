@@ -11,6 +11,8 @@ class MockParam {
   }
   setValueAtTime(v: number, t: number) { this.events.push(['set', v, t]); }
   linearRampToValueAtTime(v: number, t: number) { this.events.push(['ramp', v, t]); }
+  setTargetAtTime(v: number, t: number, _tc: number) { this.events.push(['target', v, t]); }
+  exponentialRampToValueAtTime(v: number, t: number) { this.events.push(['exp', v, t]); }
 }
 
 class MockNode {
