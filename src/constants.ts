@@ -32,6 +32,8 @@ export const INTENT_INTERVAL_POOLS: Record<AnthemIntent, readonly number[]> = {
   [AnthemIntent.FULL_ON]: [5, 7, 12],
   [AnthemIntent.EMOTIONAL_BREAKDOWN]: [3, 4, 9, 10],
   [AnthemIntent.FOREST]: [2, 3, 6, 7, 10],
+  // Step-friendly pool: singable, lyrical leads (M2, m3, M3, P4, P5)
+  [AnthemIntent.EMOTIONAL_LEAD]: [2, 3, 4, 5, 7],
 };
 
 export const INTENT_TENSION_WEIGHTS: Record<AnthemIntent, TensionWeights> = {
@@ -41,6 +43,7 @@ export const INTENT_TENSION_WEIGHTS: Record<AnthemIntent, TensionWeights> = {
   [AnthemIntent.FULL_ON]: { harmonic: 0.15, rhythmic: 0.35, register: 0.2, dynamic: 0.2, density: 0.1 },
   [AnthemIntent.EMOTIONAL_BREAKDOWN]: { harmonic: 0.3, rhythmic: 0.15, register: 0.3, dynamic: 0.15, density: 0.1 },
   [AnthemIntent.FOREST]: { harmonic: 0.3, rhythmic: 0.3, register: 0.15, dynamic: 0.1, density: 0.15 },
+  [AnthemIntent.EMOTIONAL_LEAD]: { harmonic: 0.25, rhythmic: 0.15, register: 0.3, dynamic: 0.2, density: 0.1 },
 };
 
 // Voice ranges (MIDI): lead, harmony, counter, bass
