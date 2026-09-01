@@ -145,6 +145,22 @@ Layered techniques are written as 'A+B' (e.g. Granular+FM); modifiers like Disto
 
 **Artistic Quality** — every generation carries a 0-100 artistic score with a five-dimension breakdown, issues and suggestions (docs/ARTISTIC-QUALITY.md). The demo shows the panel live.
 
+## PSYBUS Integration (Phase 11)
+
+psy-anthem speaks PSYBUS through PsyAnthemAdapter:
+
+```ts
+import { PsyAnthemAdapter, InMemoryPSYBUS } from 'psy-anthem';
+
+const bus = new InMemoryPSYBUS(42);
+const anthem = new PsyAnthemAdapter({ deviceId: 'anthem-001', seed: 42, send: (m) => bus.publish(m) });
+anthem.loadScene('scene-001', config);   // generate
+anthem.play(0);                          // emit note envelopes through the bus
+```
+
+Features: transport control (play/stop/seek/clock ticks) - scene management - sidechain ducking -
+choke - telemetry (quality/memorability/events). Full guide: docs/PSYBUS-INTEGRATION.md.
+
 ## Quality Bar
 - All tests green, theory linter passes, memorability ≥ threshold.
 - Determinism: same seed → identical output across 100 runs.
