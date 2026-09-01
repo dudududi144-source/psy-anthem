@@ -149,20 +149,50 @@ export function buildVoices(input: VoiceLeadingInput, rng: RNG): SolverResult {
           idx += idxStep;
         }
       }
- else {
+      } else {
         // Harmony / counter: chord tones, half notes, less rhythmically active.
+        // Counter (v===2) additionally prefers contrary motion against the lead.
         const divisions = 2;
         const dur = beatsPerBar / divisions;
+        const leadEvents = v === 2
+          ? (byVoice.get(0) ?? []).slice().sort((a, b) => a.startBeat - b.startBeat)
+          : [];
+        let leadIdx = 0;
         for (let k = 0; k < divisions; k++) {
           const beat = k * dur;
-          const toneIdx = (k + bar) % tones.length;
-          const pc = tones[toneIdx]!;
-          const anchor = prevPitch !== null ? prevPitch : Math.round((lo + hi) / 2);
-          const target = nearestPitchOfClass(pc, anchor, lo, hi);
-          const pitch = snapToScale(target, pcs, lo, hi);
+          const slotStart = bar * beatsPerBar + beat;
+          let chosen: number | null = null;
+
+          if (v === 2 && leadEvents.length > 1 && prevPitch !== null) {
+            // Advance to the lead note sounding at this slot.
+            while (leadIdx + 1 < leadEvents.length && leadEvents[leadIdx + 1]!.startBeat <= slotStart) leadIdx++;
+            const leadNow = leadEvents[leadIdx]!;
+            const leadPrev = leadEvents[Math.max(0, leadIdx - 1)]!;
+            const leadDir = Math.sign(leadNow.pitch - leadPrev.pitch);
+            if (leadDir !== 0) {
+              // Pick the chord tone moving contrary to the lead, closest to the current position.
+              const candidates: number[] = [];
+              for (const t of tones) {
+                const cand = snapToScale(nearestPitchOfClass(t, prevPitch, lo, hi), pcs, lo, hi);
+                if (Math.sign(cand - prevPitch) === -leadDir && cand !== prevPitch) candidates.push(cand);
+              }
+              if (candidates.length > 0) {
+                candidates.sort((a, b) => Math.abs(a - prevPitch) - Math.abs(b - prevPitch));
+                chosen = candidates[0]!;
+              }
+            }
+          }
+
+          if (chosen === null) {
+            const toneIdx = (k + bar) % tones.length;
+            const pc = tones[toneIdx]!;
+            const anchor = prevPitch !== null ? prevPitch : Math.round((lo + hi) / 2);
+            chosen = snapToScale(nearestPitchOfClass(pc, anchor, lo, hi), pcs, lo, hi);
+          }
+
           const velocity = v === 1 ? 80 : 70;
-          events.push({ voice: v, pitch, startBeat: bar * beatsPerBar + beat, duration: dur, velocity });
-          prevPitch = pitch;
+          events.push({ voice: v, pitch: chosen, startBeat: slotStart, duration: dur, velocity });
+          prevPitch = chosen;
         }
       }
     }
