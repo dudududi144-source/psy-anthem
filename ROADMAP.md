@@ -15,3 +15,13 @@ Every phase ends green. No phase starts until the previous phase is fully valida
 - Engine: EMOTIONAL_LEAD intent, density, harmonyComplexity, loopMode, callResponse
 - Engine: arpeggio smoothing (lead leaps > P4 become scale steps) + ARCH contour bias
 - Golden MIDI collection regenerated for the new engine output
+
+## Phase 9 — Modern Sound Design (complete)
+- Six synthesis techniques: FM, Additive (+spectral morph), Granular, Wavetable (+sub), Physical, Glitch
+- Old retro presets removed; six V2 presets shipped (crystal/plasma/nebula/glitch/neuro/quantum)
+- Chromatic tension pass (chromaticTension, default off, tension-flagged notes exempt from scale lint)
+- Extended harmony: major7/minor7/dom7 banks in harmonyComplexity 'complex'
+- Counter voice with contrary motion vs the lead
+- Generative melodies: fractal (midpoint displacement) + chaos (logistic map)
+- Robust playback: event validation, per-note error isolation, latency reporting
+- Golden MIDI collection regenerated for the new counter voice
