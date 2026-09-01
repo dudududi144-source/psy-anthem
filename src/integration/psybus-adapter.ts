@@ -62,6 +62,32 @@ export class PsyAnthemAdapter {
     this.send = send;
   }
 
+  // ---- observable state ----
+
+  getBpm(): number {
+    return this.bpm;
+  }
+
+  getCurrentSceneId(): string | null {
+    return this.currentSceneId;
+  }
+
+  getCurrentConfig(): AnthemConfig | null {
+    return this.currentConfig;
+  }
+
+  isDucked(): boolean {
+    return this.duck !== null;
+  }
+
+  isPlayingNow(): boolean {
+    return this.isPlaying;
+  }
+
+  getTransportPosition(): number {
+    return this.transportPosition;
+  }
+
   // ---- control plane ----
 
   loadScene(sceneId: string, config: AnthemConfig): void {
@@ -221,15 +247,22 @@ export class PsyAnthemAdapter {
     const events = out.events.filter((e) => e.timestamp >= position && e.timestamp < end);
     if (events.length === 0) return;
 
+    // An active sidechain duck attenuates this emission window, then releases.
+    const duckState = this.duck;
+    const duckDepth = duckState ? Math.max(0, Math.min(1, duckState.depth)) : 0;
+
     // Real PSYBUS note envelopes (consumed directly by synth/drum adapters)...
     for (const e of events) {
       if (e.type !== 'note') continue;
       const data = e.data as NoteData;
+      const vel = duckDepth > 0
+        ? Math.max(0, Math.round(data.velocity * (1 - duckDepth)))
+        : data.velocity;
       const payload: BusNotePayload = {
         kind: 'note',
         track: this.trackId,
         note: data.pitch,
-        vel: data.velocity,
+        vel,
         durBeats: e.duration,
         channel: e.channel,
       };
@@ -237,7 +270,11 @@ export class PsyAnthemAdapter {
       this.activeNotes.add(data.pitch);
     }
     // ...plus the control-plane batch message (spec compat).
-    this.emit({ kind: 'composition.events', events, position });
+    const batch: CompositionEventsPayload = duckDepth > 0
+      ? { kind: 'composition.events', events, position, ducked: true }
+      : { kind: 'composition.events', events, position };
+    this.emit(batch);
+    if (duckState) this.duck = null; // duck consumed by this emission window
   }
 
   private emitAllNotesOff(): void {
