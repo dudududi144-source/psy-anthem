@@ -116,6 +116,7 @@ export class PsyAnthemAdapter {
       this.currentSceneId = sceneId;
       this.transportPosition = 0;
       this.activeNotes.clear();
+      this.morpher = null; // a fresh scene supersedes any active morph
       this.emit({ kind: 'scene.loaded', sceneId, config, metadata: out.metadata });
     } catch (err) {
       this.emit({ kind: 'error', device: this.deviceId, code: 'scene-load-error', message: String(err) });
@@ -289,28 +290,51 @@ export class PsyAnthemAdapter {
   }
 
   private emitEventsAtPosition(position: number): void {
-    const out = this.currentOutput;
-    if (!out) return;
-    const end = position + this.emitWindowBeats;
-    const events = out.events.filter((e) => e.timestamp >= position && e.timestamp < end);
+    this.transportPosition = position;
+    this.tickAutomations();
+
+    // Event source: morpher (during/after a morph) or the current scene.
+    let events: MusicalEvent[];
+    if (this.morpher) {
+      events = this.morpher.getEventsAtPosition(position, this.emitWindowBeats);
+    } else {
+      const out = this.currentOutput;
+      if (!out) return;
+      const end = position + this.emitWindowBeats;
+      events = out.events.filter((e) => e.timestamp >= position && e.timestamp < end);
+    }
     if (events.length === 0) return;
 
-    // An active sidechain duck attenuates this emission window, then releases.
+    // Live modifiers: sidechain duck + parameter automations.
     const duckState = this.duck;
     const duckDepth = duckState ? Math.max(0, Math.min(1, duckState.depth)) : 0;
+    const velocityScale = this.automationValue('velocity');
+    const durationScale = this.automationValue('duration');
+    const pitchValue = this.automationValue('pitch');
+    const transpose = pitchValue !== null ? Math.round(pitchValue * 12) : 0;
 
-    // Real PSYBUS note envelopes (consumed directly by synth/drum adapters)...
+    const scaledEvents: MusicalEvent[] = [];
     for (const e of events) {
       if (e.type !== 'note') continue;
       const data = e.data as NoteData;
-      const vel = duckDepth > 0
-        ? Math.max(0, Math.round(data.velocity * (1 - duckDepth)))
-        : data.velocity;
+      let vel = data.velocity;
+      if (duckDepth > 0) vel = Math.round(vel * (1 - duckDepth));
+      if (velocityScale !== null) vel = Math.round(vel * velocityScale);
+      vel = Math.max(0, Math.min(127, vel));
+      let dur = e.duration;
+      if (durationScale !== null) dur = Math.max(0.0625, dur * durationScale);
+      const pitch = transpose !== 0 ? Math.max(0, Math.min(127, data.pitch + transpose)) : data.pitch;
+      scaledEvents.push({ ...e, duration: dur, data: { ...data, pitch, velocity: vel } });
+    }
+
+    // Real PSYBUS note envelopes (consumed directly by synth/drum adapters)...
+    for (const e of scaledEvents) {
+      const data = e.data as NoteData;
       const payload: BusNotePayload = {
         kind: 'note',
         track: this.trackId,
         note: data.pitch,
-        vel,
+        vel: data.velocity,
         durBeats: e.duration,
         channel: e.channel,
       };
@@ -319,8 +343,8 @@ export class PsyAnthemAdapter {
     }
     // ...plus the control-plane batch message (spec compat).
     const batch: CompositionEventsPayload = duckDepth > 0
-      ? { kind: 'composition.events', events, position, ducked: true }
-      : { kind: 'composition.events', events, position };
+      ? { kind: 'composition.events', events: scaledEvents, position, ducked: true }
+      : { kind: 'composition.events', events: scaledEvents, position };
     this.emit(batch);
     if (duckState) this.duck = null; // duck consumed by this emission window
   }
