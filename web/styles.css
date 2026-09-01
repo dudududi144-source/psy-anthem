@@ -110,3 +110,7 @@ button:disabled { opacity: 0.45; cursor: wait; }
   font-size: 11px; color: var(--dim); display: flex; flex-direction: column; gap: 4px;
 }
 #roll rect:hover { stroke: #ffffff; stroke-width: 1; }
+
+.status {
+  font-size: 11px; color: var(--cyan); align-self: center; letter-spacing: 0.5px;
+}
