@@ -49,8 +49,7 @@ export {
 export type { ArtisticReport } from './quality/artistic-validator';
 export { scoreStepwise, scoreContour, scoreRhythmicVariety, motifCoverage } from './solver/objective';
 
-// Phase 11 - PSYBUS integration
-export { PsyAnthemAdapter } from './integration/psybus-adapter';
-export type { PsyAnthemAdapterConfig } from './integration/psybus-adapter';
-export { InMemoryPSYBUS } from './integration/in-memory-bus';
-export type { PsyBusEnvelope, PsyBusPayload, SpecMessage } from './integration/psybus-types';
+// Phase 11 - PSYBUS integration is intentionally NOT re-exported here.
+// The core bundle (this entry) stays lean for the browser demo; hosts import
+// the adapter via its own entry point:
+//   import { PsyAnthemAdapter, InMemoryPSYBUS } from 'psy-anthem/src/integration';
