@@ -1,7 +1,7 @@
 // PSY ANTHEM - testing/ab-test.ts
 // Compare composition algorithms and measure parameter sensitivity.
 import { createAnthemEngine } from '../index';
-import type { AnthemConfig, AnthemOutput, MusicalEvent, NoteData } from '../types';
+import type { AnthemConfig, AnthemOutput, NoteData } from '../types';
 import { scalePitchClasses, snapToScale } from '../harmony/intervals';
 import { calculateAdvancedQualityScore } from '../validation/advanced-theory';
 import type { AdvancedQualityReport, ComponentScores } from '../validation/advanced-theory';
