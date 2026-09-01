@@ -109,13 +109,36 @@ export function buildVoices(input: VoiceLeadingInput, rng: RNG): SolverResult {
       } else if (v === 0) {
         // Lead: transformed motif laid across each bar.
         const fallback = sections[0]!;
-        const t = transformMotifForSection(motif, section ?? fallback);
+        let activeSection = section ?? fallback;
+        if (config.loopMode && bar === config.bars - 1 && sections.length > 0) {
+          // Closing bar restates the opening material so the loop closes cleanly.
+          activeSection = sections[0]!;
+        }
+        if (config.callResponse && section) {
+          const rel = bar - section.startBar;
+          if (rel % 2 === 1) {
+            // Answer bar: same material sequenced up a step.
+            activeSection = {
+              ...activeSection,
+              motifTransforms: [
+                ...activeSection.motifTransforms,
+                { type: 'SEQUENCE', params: { degree: 2 } },
+              ],
+            };
+          }
+        }
+        const t = transformMotifForSection(motif, activeSection);
+        const densityLevel = config.density ?? 'medium';
+        let durFactor = 1;
+        let idxStep = 1;
+        if (densityLevel === 'dense') durFactor = 0.6;
+        if (densityLevel === 'sparse') idxStep = 2;
         let beat = 0;
         let idx = 0;
         while (beat < beatsPerBar) {
           const note = t.notes[idx % t.notes.length]!;
-          const rawDur = t.rhythm[idx % t.rhythm.length]!;
-          const dur = Math.min(rawDur, beatsPerBar - beat);
+          const rawDur = t.rhythm[idx % t.rhythm.length]! * durFactor;
+          const dur = Math.min(Math.max(0.25, rawDur), beatsPerBar - beat);
           const anchor = prevPitch !== null ? prevPitch : Math.round((lo + hi) / 2);
           const target = nearestPitchOfClass(note % 12, anchor, lo, hi);
           const snapped = snapToScale(target, pcs, lo, hi);
@@ -123,7 +146,7 @@ export function buildVoices(input: VoiceLeadingInput, rng: RNG): SolverResult {
           events.push({ voice: v, pitch, startBeat: bar * beatsPerBar + beat, duration: dur, velocity: 96 });
           prevPitch = pitch;
           beat += dur;
-          idx++;
+          idx += idxStep;
         }
       }
  else {
