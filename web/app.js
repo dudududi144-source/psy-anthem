@@ -206,8 +206,37 @@ function renderCurrent() {
   renderChords(entry.out);
   renderMotif(entry.out);
   renderStats(entry.out, entry.config);
+  renderArtisticQuality(entry.out);
   renderPlayFrom(entry.config);
   updateNavButtons();
+}
+
+function renderArtisticQuality(out) {
+  const el = document.getElementById('artisticPanel');
+  if (!el) return;
+  const meta = out.metadata;
+  const score = meta.artisticQuality;
+  if (score === undefined) { el.innerHTML = ''; return; }
+  const bd = meta.artisticBreakdown || {};
+  const issues = meta.artisticIssues || [];
+  const suggestions = meta.artisticSuggestions || [];
+  const pct = (v) => Math.round((v || 0) * 100);
+
+  let html = '<div class="aq-score">' + score + '<span>/100</span></div>';
+  html += '<div class="aq-grid">';
+  html += '<div>Melodic Interest<div class="bar"><i style="width:' + pct(bd.melodicInterest) + '%"></i></div></div>';
+  html += '<div>Harmonic Richness<div class="bar"><i style="width:' + pct(bd.harmonicRichness) + '%"></i></div></div>';
+  html += '<div>Rhythmic Variety<div class="bar"><i style="width:' + pct(bd.rhythmicVariety) + '%"></i></div></div>';
+  html += '<div>Textural Depth<div class="bar"><i style="width:' + pct(bd.texturalDepth) + '%"></i></div></div>';
+  html += '<div>Emotional Arc<div class="bar"><i style="width:' + pct(bd.emotionalArc) + '%"></i></div></div>';
+  html += '</div>';
+  if (issues.length > 0) {
+    html += '<div class="aq-issues">' + issues.map((i) => '! ' + i).join('<br>') + '</div>';
+  }
+  if (suggestions.length > 0) {
+    html += '<div class="aq-suggest">' + suggestions.map((s) => '> ' + s).join('<br>') + '</div>';
+  }
+  el.innerHTML = html;
 }
 
 function updateNavButtons() {
