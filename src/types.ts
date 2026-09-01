@@ -13,6 +13,7 @@ export enum AnthemIntent {
   FULL_ON = 'full-on',
   EMOTIONAL_BREAKDOWN = 'emotional-breakdown',
   FOREST = 'forest',
+  EMOTIONAL_LEAD = 'emotional-lead',
 }
 
 export type ScaleMode =
@@ -34,6 +35,9 @@ export enum EnergyCurve {
 
 export interface NoteRange { min: number; max: number; }
 
+export type DensityLevel = 'sparse' | 'medium' | 'dense';
+export type HarmonyComplexity = 'simple' | 'standard' | 'complex';
+
 export interface CustomCurvePoint { position: number; energy: number; }
 
 export interface AnthemConfig {
@@ -46,6 +50,11 @@ export interface AnthemConfig {
   bars: number;   // 8-128
   bpm?: number;   // default 140
   customCurve?: CustomCurvePoint[];
+  // --- advanced composition controls (all optional, all deterministic) ---
+  density?: DensityLevel;                // note activity per bar (default medium)
+  harmonyComplexity?: HarmonyComplexity; // progression language (default standard)
+  loopMode?: boolean;                    // last bar connects back to the first
+  callResponse?: boolean;                // alternating question/answer bars
 }
 
 // ================= OUTPUT =================
