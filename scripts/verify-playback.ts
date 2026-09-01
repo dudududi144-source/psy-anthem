@@ -40,9 +40,15 @@ async function main(): Promise<void> {
   if (synth.lastNoteCount !== noteCount) fail('scheduled notes ' + synth.lastNoteCount + ' != event notes ' + noteCount);
   if (oscs.length < noteCount) fail('too few oscillators: ' + oscs.length + ' for ' + noteCount + ' notes');
 
-  // Every oscillator must be started and carry a sane frequency.
+  // Every oscillator must be started exactly once.
   for (const osc of oscs) {
     if (osc.starts.length !== 1) fail('oscillator not started exactly once');
+  }
+  // Voice oscillators must carry audible, sane frequencies.
+  // Sub-audio oscillators (< 20 Hz) are modulators, e.g. the global chorus LFO at 0.5 Hz.
+  const voiceOscs = oscs.filter((o) => o.frequency.value >= 20);
+  if (voiceOscs.length < noteCount) fail('too few voice oscillators: ' + voiceOscs.length + ' for ' + noteCount + ' notes');
+  for (const osc of voiceOscs) {
     if (!(osc.frequency.value >= 20 && osc.frequency.value <= 16000)) fail('frequency out of range: ' + osc.frequency.value);
   }
 
