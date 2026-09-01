@@ -161,6 +161,7 @@ export interface InternalNoteEvent {
   duration: number;
   velocity: number;
   articulation?: Articulation;
+  tension?: boolean;
 }
 
 export interface VoiceOutput {
