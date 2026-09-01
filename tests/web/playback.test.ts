@@ -71,9 +71,14 @@ describe('PsySynthBrowser playback (mock context)', () => {
     const synth = new PsySynthBrowser(ctx as unknown as AudioContext);
     await synth.playEvents([note(60, 0, 1), note(64, 1, 1), note(67, 2, 1)], 120, 0);
 
-    synth.stop();
+    // Each oscillator already carries its scheduled natural stop (end of note).
     for (const osc of ctx.oscillators()) {
       expect(osc.stops.length).toBe(1);
+    }
+    // An explicit stop adds one more stop call per oscillator.
+    synth.stop();
+    for (const osc of ctx.oscillators()) {
+      expect(osc.stops.length).toBe(2);
     }
   });
 
