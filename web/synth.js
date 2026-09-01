@@ -467,29 +467,48 @@ export class PsySynthBrowser {
     const release = Math.max(0.02, env.release);
 
     // --- technique sound graph -> mix
+    // Supports layered techniques written as 'A+B' (e.g. 'Granular+FM'):
+    // each known engine renders into its own layer gain; secondary layers sit
+    // behind the primary. Non-engine tokens act as modifiers (Distortion, Bitcrush).
     const mix = ctx.createGain();
-    let techNodes;
-    switch (preset.technique) {
-      case 'FM':
-        techNodes = this._fmVoice(note, preset, startTime, endTime, mix);
-        break;
-      case 'Additive':
-        techNodes = this._additiveVoice(note, preset, startTime, endTime, mix);
-        break;
-      case 'Granular':
-        techNodes = this._granularVoice(note, preset, startTime, endTime, mix);
-        break;
-      case 'Wavetable':
-        techNodes = this._wavetableVoice(note, preset, startTime, endTime, mix);
-        break;
-      case 'Physical':
-        techNodes = this._physicalVoice(note, preset, startTime, endTime, mix);
-        break;
-      case 'Glitch':
-        techNodes = this._glitchVoice(note, preset, startTime, endTime, mix);
-        break;
-      default:
-        techNodes = this._subtractiveVoice(note, preset, startTime, endTime, mix);
+    const KNOWN_ENGINES = ['FM', 'Additive', 'Granular', 'Wavetable', 'Physical', 'Glitch'];
+    const parts = String(preset.technique || '').split('+').map((s) => s.trim()).filter((s) => s.length > 0);
+    const engines = parts.filter((p) => KNOWN_ENGINES.includes(p));
+    const modifiers = parts.filter((p) => !KNOWN_ENGINES.includes(p));
+
+    let techNodes = [];
+    if (engines.length === 0) {
+      techNodes = this._subtractiveVoice(note, preset, startTime, endTime, mix);
+    } else {
+      for (let ei = 0; ei < engines.length; ei++) {
+        const layerGain = ctx.createGain();
+        layerGain.gain.value = ei === 0 ? 1 : 0.45;
+        layerGain.connect(mix);
+        const eng = engines[ei];
+        let nodes = [];
+        if (eng === 'FM') nodes = this._fmVoice(note, preset, startTime, endTime, layerGain);
+        else if (eng === 'Additive') nodes = this._additiveVoice(note, preset, startTime, endTime, layerGain);
+        else if (eng === 'Granular') nodes = this._granularVoice(note, preset, startTime, endTime, layerGain);
+        else if (eng === 'Wavetable') nodes = this._wavetableVoice(note, preset, startTime, endTime, layerGain);
+        else if (eng === 'Physical') nodes = this._physicalVoice(note, preset, startTime, endTime, layerGain);
+        else if (eng === 'Glitch') nodes = this._glitchVoice(note, preset, startTime, endTime, layerGain);
+        for (const n of nodes) techNodes.push(n);
+      }
+    }
+
+    // --- optional generic sub layer (works with any technique via preset.sub)
+    if (preset.sub && preset.sub.octaves) {
+      const sub = ctx.createOscillator();
+      sub.type = preset.sub.type || 'sine';
+      sub.frequency.value = note.frequency;
+      if (sub.detune) sub.detune.value = 1200 * preset.sub.octaves; // negative = down
+      const subGain = ctx.createGain();
+      subGain.gain.value = preset.sub.gain !== undefined ? preset.sub.gain : 0.5;
+      sub.connect(subGain);
+      subGain.connect(mix);
+      sub.start(startTime);
+      sub.stop(endTime);
+      techNodes.push(sub);
     }
 
     // --- optional voice filter with per-note cutoff envelope
@@ -511,8 +530,11 @@ export class PsySynthBrowser {
       outNode = filter;
     }
 
-    // --- optional per-voice distortion
-    const driveAmount = fx.distortion !== undefined ? fx.distortion : (fx.bitcrush || 0);
+    // --- optional per-voice distortion (modifier-aware: 'Distortion'/'Bitcrush')
+    let driveAmount = fx.distortion !== undefined ? fx.distortion : (fx.bitcrush || 0);
+    if ((modifiers.includes('Distortion') || modifiers.includes('Bitcrush')) && driveAmount <= 0) {
+      driveAmount = 0.5;
+    }
     if (driveAmount > 0) {
       const shaper = ctx.createWaveShaper();
       shaper.curve = makeDriveCurve(driveAmount);
