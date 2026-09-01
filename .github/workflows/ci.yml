@@ -23,7 +23,10 @@ jobs:
           bun scripts/cli.ts --seed 42 --bars 16 --output /tmp/ci-anthem.mid > /dev/null
           test -s /tmp/ci-anthem.mid
           bun scripts/cli.ts --help > /dev/null
-          echo "examples + CLI OK"
+          bun run examples/09-ab-testing.ts > /dev/null
+          COUNT=$(ls golden-midi/*.mid | wc -l)
+          if [ "$COUNT" -ne 10 ]; then echo "::error::expected 10 golden MIDI files"; exit 1; fi
+          echo "examples + CLI + golden collection OK"
       - name: Bundle
         run: bun run bundle
       - name: Bundle size gate (20KB)
