@@ -104,6 +104,32 @@ bun run examples/01-basic-generation.ts
 - docs/MIDI-INTEGRATION.md - SMF details + DAW import
 - Live demo: https://dudududi144-source.github.io/psy-anthem/
 
+## Listen in Browser
+
+The live demo plays the generated anthem directly - no DAW required:
+
+1. GENERATE ANTHEM (or change any control)
+2. Press PLAY (optionally from a specific bar)
+3. Click piano-roll notes to audition them
+4. DOWNLOAD MIDI / DOWNLOAD JSON / COPY CONFIG for use elsewhere
+
+Playback runs in web/synth.js (Web Audio, per-voice timbres, ADSR,
+articulation-aware). The engine stays WHAT-layer; playback is presentation.
+
+## Advanced Controls
+
+| Control | Values | Effect |
+|---------|--------|--------|
+| intent EMOTIONAL_LEAD | enum | Step-friendly lyrical leads (M2, m3, M3, P4, P5 pool) |
+| density | sparse / medium / dense | Note activity per bar |
+| harmonyComplexity | simple / standard / complex | Progression language (adds secondary dominants at complex) |
+| loopMode | on/off | Harmonic + melodic closure back to bar 1 |
+| callResponse | on/off | Question/answer bar pairs (answer = motif sequenced up a step) |
+
+The engine also applies arpeggio smoothing to the lead (leaps > P4 become
+scale steps in the same direction), keeping melodies singable without losing
+direction or register.
+
 ## Quality Bar
 - All tests green, theory linter passes, memorability ≥ threshold.
 - Determinism: same seed → identical output across 100 runs.
