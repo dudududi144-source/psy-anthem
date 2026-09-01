@@ -105,3 +105,49 @@ describe('PsySynthBrowser playback (mock context)', () => {
     expect(peak).toBeGreaterThan(0.6); // accent boosts the peak
   });
 });
+
+describe('PsySynthBrowser contract (requested checks)', () => {
+  it('playEvents is async (returns a Promise)', () => {
+    const ctx = new MockAudioContext();
+    const synth = new PsySynthBrowser(ctx as unknown as AudioContext);
+    const result = synth.playEvents([note(60, 0, 1)], 140);
+    expect(result).toBeInstanceOf(Promise);
+  });
+
+  it('exposes a testSound method that schedules 3 staggered tones (C4 E4 G4)', async () => {
+    const ctx = new MockAudioContext();
+    const synth = new PsySynthBrowser(ctx as unknown as AudioContext);
+    expect(typeof synth.testSound).toBe('function');
+
+    const duration = await synth.testSound();
+    expect(duration).toBeCloseTo(1.2, 5);
+
+    const oscs = ctx.oscillators();
+    expect(oscs.length).toBe(3);
+    expect(oscs[0]!.frequency.value).toBeCloseTo(midiToFreq(60), 3);
+    expect(oscs[1]!.frequency.value).toBeCloseTo(midiToFreq(64), 3);
+    expect(oscs[2]!.frequency.value).toBeCloseTo(midiToFreq(67), 3);
+    // Staggered starts 0.4s apart
+    expect(oscs[1]!.starts[0]! - oscs[0]!.starts[0]!).toBeCloseTo(0.4, 5);
+    expect(oscs[2]!.starts[0]! - oscs[1]!.starts[0]!).toBeCloseTo(0.4, 5);
+  });
+
+  it('compressor is configured and sits between masterGain and destination', () => {
+    const ctx = new MockAudioContext();
+    const synth = new PsySynthBrowser(ctx as unknown as AudioContext);
+    expect(synth.compressor).toBeDefined();
+    expect(synth.masterGain).toBeDefined();
+    const comp = synth.compressor as unknown as {
+      threshold: { value: number }; knee: { value: number }; ratio: { value: number };
+      attack: { value: number }; release: { value: number }; outputs: unknown[];
+    };
+    expect(comp.threshold.value).toBe(-24);
+    expect(comp.knee.value).toBe(30);
+    expect(comp.ratio.value).toBe(12);
+    expect(comp.attack.value).toBeCloseTo(0.003, 6);
+    expect(comp.release.value).toBeCloseTo(0.25, 6);
+    expect((synth.masterGain as unknown as { outputs: unknown[] }).outputs[0]).toBe(synth.compressor);
+    expect(comp.outputs[0]).toBe(ctx.destination);
+    expect((synth.masterGain as unknown as { gain: { value: number } }).gain.value).toBe(0.5);
+  });
+});
