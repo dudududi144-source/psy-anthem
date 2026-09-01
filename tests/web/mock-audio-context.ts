@@ -41,6 +41,15 @@ export class MockFilter extends MockNode {
   constructor() { super('filter'); }
 }
 
+export class MockCompressor extends MockNode {
+  threshold = new MockParam(-24);
+  knee = new MockParam(30);
+  ratio = new MockParam(12);
+  attack = new MockParam(0.003);
+  release = new MockParam(0.25);
+  constructor() { super('compressor'); }
+}
+
 export class MockAudioContext {
   state = 'running';
   currentTime = 1.0;
@@ -51,7 +60,7 @@ export class MockAudioContext {
   createOscillator(): MockOscillator { const n = new MockOscillator(); this.nodes.push(n); return n; }
   createGain(): MockGain { const n = new MockGain(); this.nodes.push(n); return n; }
   createBiquadFilter(): MockFilter { const n = new MockFilter(); this.nodes.push(n); return n; }
-  createDynamicsCompressor(): MockNode { const n = new MockNode('compressor'); this.nodes.push(n); return n; }
+  createDynamicsCompressor(): MockCompressor { const n = new MockCompressor(); this.nodes.push(n); return n; }
 
   async resume() { this.resumeCalls++; this.state = 'running'; }
 
