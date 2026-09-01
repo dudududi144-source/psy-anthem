@@ -2,6 +2,7 @@
 // Produces a DAW-validation bundle: the 10 golden MIDIs plus a checklist.
 // Run: bun run scripts/validate-in-daw.ts
 // Then import daw-validation/*.mid into your DAW (see docs/DAW-INTEGRATION.md).
+import { writeFileSync } from 'node:fs';
 import { GOLDEN_SPECS } from './generate-golden';
 import { createAnthemEngine } from '../src/index';
 import { writeMidiFile } from '../src/export';
@@ -49,9 +50,7 @@ function main(): void {
     total += bytes;
     console.log(spec.file.padEnd(32), String(bytes).padStart(6) + ' bytes', spec.description);
   }
-  writeMidiFile; // keep import explicit for clarity
-  const fs = require('node:fs') as typeof import('node:fs');
-  fs.writeFileSync(OUT_DIR + '/CHECKLIST.md', CHECKLIST);
+  writeFileSync(OUT_DIR + '/CHECKLIST.md', CHECKLIST);
   console.log('');
   console.log('wrote 10 MIDI files + CHECKLIST.md to ' + OUT_DIR + '/ (' + total + ' bytes of MIDI)');
   console.log('next: import into your DAW and work through daw-validation/CHECKLIST.md');
