@@ -232,6 +232,29 @@ export class PsyAnthemAdapter {
       case 'choke':
         this.handleChoke();
         break;
+      case 'morph.start':
+        this.handleMorphStart(
+          pl.fromScene as AnthemConfig,
+          pl.toScene as AnthemConfig,
+          Number(pl.durationBars ?? pl.duration ?? 8),
+          String(pl.curve ?? 'linear') as MorphCurve,
+        );
+        break;
+      case 'morph.update':
+        this.handleMorphUpdate(Number(pl.progress ?? 0));
+        break;
+      case 'automation.start':
+        this.handleAutomationStart(
+          String(pl.param ?? 'velocity') as AutomationParam,
+          Number(pl.startValue ?? 1),
+          Number(pl.endValue ?? 1),
+          Number(pl.durationBeats ?? pl.duration ?? 8),
+          String(pl.curve ?? 'linear') as MorphCurve,
+        );
+        break;
+      case 'automation.stop':
+        this.handleAutomationStop(String(pl.param ?? 'velocity') as AutomationParam);
+        break;
       default:
         break;
     }
