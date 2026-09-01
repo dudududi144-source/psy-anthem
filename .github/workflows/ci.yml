@@ -27,6 +27,7 @@ jobs:
           bun run examples/11-emotional-lead.ts > /dev/null
           bun run examples/12-loop-mode.ts > /dev/null
           bun run examples/13-call-response.ts > /dev/null
+          bun run scripts/verify-playback.ts
           COUNT=$(ls golden-midi/*.mid | wc -l)
           if [ "$COUNT" -ne 10 ]; then echo "::error::expected 10 golden MIDI files"; exit 1; fi
           echo "examples + CLI + golden collection OK"
