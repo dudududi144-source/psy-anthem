@@ -130,6 +130,21 @@ The engine also applies arpeggio smoothing to the lead (leaps > P4 become
 scale steps in the same direction), keeping melodies singable without losing
 direction or register.
 
+## Sound Engine (Phase 10)
+
+The demo ships **15 presets** across six modern synthesis techniques:
+
+- **Lead (5)**: Crystal (FM), Plasma (Additive+morph), Glass (Physical), Vapor (Granular+FM), Neon (Wavetable+Distortion)
+- **Harmony (3)**: Nebula (Granular), Aurora (12-partial Additive morph), Void (dark Granular)
+- **Counter (3)**: Glitch Pluck (stochastic stutter), Digital Pluck (FM+bitcrush), Metallic Bell (inharmonic Additive)
+- **Bass (4)**: Neuro (Wavetable+sub), Quantum (Physical), Plasma (Granular+Sub -2 oct), Gravity (Physical+filter sweep)
+
+Layered techniques are written as 'A+B' (e.g. Granular+FM); modifiers like Distortion/Bitcrush/Sub map to drive/sub layers.
+
+**Extended chords** — harmonyComplexity: 'complex' now includes major9/minor9/dom9 and 13ths.
+
+**Artistic Quality** — every generation carries a 0-100 artistic score with a five-dimension breakdown, issues and suggestions (docs/ARTISTIC-QUALITY.md). The demo shows the panel live.
+
 ## Quality Bar
 - All tests green, theory linter passes, memorability ≥ threshold.
 - Determinism: same seed → identical output across 100 runs.
