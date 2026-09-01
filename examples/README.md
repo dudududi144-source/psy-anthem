@@ -1,6 +1,6 @@
 # PSY ANTHEM — Examples
 
-Nine runnable programs covering the full public API. All examples run with bun from the repo root:
+Thirteen runnable programs covering the full public API. All examples run with bun from the repo root:
 
 ```bash
 bun install
@@ -20,6 +20,9 @@ bun run examples/01-basic-generation.ts
 | 07-how-layer-integration.ts | WHAT → HOW contract (mock psysynth) | dispatch report |
 | 08-determinism-demo.ts | Same seed → byte-identical output (incl. MIDI bytes) | pass/fail |
 | 09-ab-testing.ts | Algorithm A/B comparison + parameter sensitivity | comparison report |
+| 11-emotional-lead.ts | Step-friendly EMOTIONAL_LEAD intent vs euphoric | stepwise comparison |
+| 12-loop-mode.ts | loopMode harmonic + melodic closure | closure check |
+| 13-call-response.ts | Question/answer bar structure | occurrence map |
 
 ## Notes
 
