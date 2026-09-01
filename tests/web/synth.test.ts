@@ -35,11 +35,11 @@ describe('scheduleEvents', () => {
   });
 
   it('skips notes that end before the start beat and offsets the rest', () => {
-    const plan = scheduleEvents(events, 120, 1.5);
-    expect(plan.notes.length).toBe(1); // only the note spanning beat 2..4
-    expect(plan.notes[0].startBeat).toBe(2);
-    expect(plan.notes[0].startAt).toBeCloseTo(0.5, 5); // beat 2 - start 1.5
-    expect(plan.notes[0].duration).toBeCloseTo(1.0, 5); // remainder of 2 beats
+    const plan = scheduleEvents(events, 120, 2.5);
+    expect(plan.notes.length).toBe(1); // only the note spanning beats 2..4 survives
+    expect(plan.notes[0].startBeat).toBe(2.5); // clipped to the start point
+    expect(plan.notes[0].startAt).toBeCloseTo(0, 5); // plays immediately
+    expect(plan.notes[0].duration).toBeCloseTo(0.75, 5); // 2 beats minus 0.5 already elapsed
   });
 
   it('passes velocity and articulation through', () => {
