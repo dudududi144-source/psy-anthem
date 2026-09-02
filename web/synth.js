@@ -275,6 +275,15 @@ export class PsySynthBrowser {
     this.masterFilter.connect(this.compressor);
     this.compressor.connect(this.ctx.destination);
 
+    // ---------- per-voice mixer (track gain nodes -> masterGain)
+    this.trackGains = [];
+    for (let ch = 0; ch < 4; ch++) {
+      const tg = this.ctx.createGain();
+      tg.gain.value = 1.0;
+      tg.connect(this.masterGain);
+      this.trackGains.push(tg);
+    }
+
     // ---------- global reverb send (convolution)
     this.reverbLevel = 0.3;
     this.reverbIn = this.ctx.createGain();
@@ -735,7 +744,8 @@ export class PsySynthBrowser {
     g.setValueAtTime(velocity * sustain, relStart);
     g.linearRampToValueAtTime(0.0001, endTime);
     outNode.connect(voiceGain);
-    voiceGain.connect(this.masterGain);
+    const tg = this.trackGains[note.channel] || this.masterGain;
+    voiceGain.connect(tg);
 
     // --- global sends (preset amounts x global macros x velocity)
     const reverbSend = fx.reverbSend !== undefined ? fx.reverbSend : (fx.reverb || 0);
