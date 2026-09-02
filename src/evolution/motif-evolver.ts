@@ -89,9 +89,11 @@ export class MotifEvolver {
       if (m) mutations.push(m);
     }
 
-    // Guarantee audible evolution: at least one pitch must move.
-    const hasPitchChange = mutations.some((m) => m.type === 'pitch' || m.type === 'interval');
-    if (!hasPitchChange) {
+    // Guarantee audible evolution: at least one pitch must actually move
+    // relative to the pre-evolution snapshot (a mutation that reverts a note
+    // does not count as movement).
+    const anyPitchMoved = evolvedNotes.some((n, i) => n !== originalSnapshot[i]);
+    if (!anyPitchMoved) {
       const position = this.rng.nextInt(0, evolvedNotes.length - 1);
       const dir = this.rng.nextBool() ? 1 : -1;
       const max = Math.max(1, this.config.constraints.maxIntervalChange);
