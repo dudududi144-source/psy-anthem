@@ -481,7 +481,7 @@ export class PsySynthBrowser {
       // Stereo width: spread unison voices across the field for a wide sound.
       if (nOsc > 1 && hasPanner) {
         const pan = ctx.createStereoPanner();
-        pan.pan.value = ((oi / (nOsc - 1)) * 2 - 1) * 0.55;
+        pan.pan.value = ((oi / (nOsc - 1)) * 2 - 1) * 0.7;
         og.connect(pan);
         pan.connect(mix);
       } else {
