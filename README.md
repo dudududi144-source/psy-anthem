@@ -183,6 +183,22 @@ const events = morpher.getEventsAtPosition(positionBeats);
 Over the bus: morph.start / morph.update / automation.start / automation.stop.
 See docs/SCENE-MORPHING.md and examples 17-18.
 
+
+## Real-time Generative Evolution (Phase 13)
+
+The anthem invents music while playing:
+
+- **Motif evolution** — constrained mutations (pitch / rhythm / interval / contour)
+  with shallow / medium / deep depths and hard bounds (maxIntervalChange,
+  preserveRhythm, preserveContour).
+- **Harmonic evolution** — tritone / relative / parallel / chromatic chord
+  substitutions with an allowlist and per-chord probability.
+- Evolution is applied audibly (lead pitch-class remap + chord-root
+  transposition) without mutating the stored composition.
+
+Bus: realtime.enable / realtime.evolve / realtime.disable (+ realtime.evolved).
+See docs/REALTIME-EVOLUTION.md and examples 19-20.
+
 ## Quality Bar
 - All tests green, theory linter passes, memorability ≥ threshold.
 - Determinism: same seed → identical output across 100 runs.
