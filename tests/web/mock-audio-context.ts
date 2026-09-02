@@ -102,6 +102,7 @@ export class MockAudioContext {
   state = 'running';
   currentTime = 1.0;
   sampleRate = 44100;
+  readonly isMock = true;
   destination = new MockNode('destination');
   nodes: MockNode[] = [];
   resumeCalls = 0;
