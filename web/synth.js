@@ -666,28 +666,54 @@ export class PsySynthBrowser {
 
     this.setTempo(bpm);
     const plan = scheduleEvents(valid, bpm, fromBeat);
-    const t0 = this.ctx.currentTime + 0.06;
-    const schedStart = Date.now();
 
-    // Batch scheduling: plan first, then schedule note by note with isolation.
-    let scheduled = 0;
-    for (const note of plan.notes) {
-      try {
-        this._scheduleNote(note, t0 + Math.max(0, note.startAt));
-        scheduled++;
-      } catch (err) {
-        console.warn('psy-anthem: failed to schedule one note:', err);
-      }
-    }
+    // ---- Lookahead scheduling (fixes lag/stutter/latency) ----
+    // Instead of creating every audio node up front (which can be thousands of
+    // nodes for a long anthem and stalls the audio thread), we schedule only a
+    // short window ahead of the playhead and top it up on a timer. This is the
+    // standard "tale of two clocks" Web Audio pattern.
+    this._plan = plan.notes;
+    this._planIndex = 0;
+    this._t0 = this.ctx.currentTime + 0.06;
+    this._lookahead = 0.15;   // schedule 150ms ahead
+    this._schedPeriod = 30;   // top up every 30ms
+    this._scheduledCount = 0;
 
-    this.lastNoteCount = scheduled;
-    this.lastScheduleMs = Date.now() - schedStart;
+    this._scheduleNext();
+    this._schedTimer = setInterval(() => this._scheduleNext(), this._schedPeriod);
+
+    this.lastNoteCount = plan.notes.length;
     if (plan.totalSeconds > 0 && this.onFinish) {
-      this._timer = setTimeout(() => {
+      this._finishTimer = setTimeout(() => {
         if (this.onFinish) this.onFinish();
       }, (plan.totalSeconds + 0.4) * 1000);
     }
     return plan.totalSeconds;
+  }
+
+  // Schedule notes that fall within the lookahead window, advancing the pointer.
+  _scheduleNext() {
+    if (!this._plan || this._planIndex >= this._plan.length) {
+      if (this._schedTimer) { clearInterval(this._schedTimer); this._schedTimer = null; }
+      return;
+    }
+    const horizon = this.ctx.currentTime + this._lookahead;
+    while (this._planIndex < this._plan.length) {
+      const note = this._plan[this._planIndex];
+      const noteTime = this._t0 + Math.max(0, note.startAt);
+      if (noteTime > horizon) break;
+      try {
+        this._scheduleNote(note, noteTime);
+        this._scheduledCount++;
+      } catch (err) {
+        console.warn('psy-anthem: failed to schedule one note:', err);
+      }
+      this._planIndex++;
+    }
+    if (this._planIndex >= this._plan.length && this._schedTimer) {
+      clearInterval(this._schedTimer);
+      this._schedTimer = null;
+    }
   }
 
   // Audibility check: three staggered tones (C major triad). Returns total seconds.
@@ -734,6 +760,10 @@ export class PsySynthBrowser {
   }
 
   stop() {
+    if (this._schedTimer) { clearInterval(this._schedTimer); this._schedTimer = null; }
+    if (this._finishTimer) { clearTimeout(this._finishTimer); this._finishTimer = null; }
+    this._plan = null;
+    this._planIndex = 0;
     for (const node of this.activeNodes) {
       try { node.stop(); } catch (e) { /* already stopped */ }
     }
