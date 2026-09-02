@@ -89,14 +89,23 @@ describe('Real-time generative evolution', () => {
       if (realtime) {
         adapter.handleMessage({ type: 'realtime.enable', deviceId: 'test-anthem', payload: { config: realtimeConfig } });
       }
-      adapter.handleMessage({ type: 'transport.position', deviceId: 'test-anthem', payload: { position: 8 } });
-      const batch = messages.filter(
-        (m) => m.payload.kind === 'composition.events' && (m.payload as { position: number }).position === 8,
-      ).pop();
-      return ((batch!.payload as { events: Array<{ type: string; channel: number; data: { pitch: number } }> }).events)
-        .filter((e) => e.type === 'note' && e.channel === 0)
-        .map((e) => e.data.pitch)
-        .join(',');
+      // Collect every emission window across the first bar (full motif pass).
+      for (let step = 0; step < 16; step++) {
+        adapter.handleMessage({
+          type: 'transport.position',
+          deviceId: 'test-anthem',
+          payload: { position: step * 0.25 },
+        });
+      }
+      const batches = messages.filter((m) => m.payload.kind === 'composition.events');
+      const pitches: number[] = [];
+      for (const batch of batches) {
+        const events = (batch.payload as { events: Array<{ type: string; channel: number; data: { pitch: number } }> }).events;
+        for (const e of events) {
+          if (e.type === 'note' && e.channel === 0) pitches.push(e.data.pitch);
+        }
+      }
+      return pitches.join(',');
     };
     const plain = run(false);
     const evolved = run(true);
