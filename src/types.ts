@@ -55,7 +55,6 @@ export interface AnthemConfig {
   // --- advanced composition controls (all optional, all deterministic) ---
   density?: DensityLevel;                // note activity per bar (default medium)
   harmonyComplexity?: HarmonyComplexity; // progression language (default standard)
-  drums?: boolean;                       // add psytrance drum track on GM channel 9 (default off)
   loopMode?: boolean;                    // last bar connects back to the first
   callResponse?: boolean;                // alternating question/answer bars
 }
