@@ -4,6 +4,21 @@
 // act as modifiers (Distortion, Bitcrush, Sub, Filter).
 export const PRESETS = {
   // ===== LEAD (5) =====
+  'psy-supersaw': {
+    name: 'Psy Supersaw',
+    technique: 'Subtractive',
+    description: 'Wide detuned supersaw with sub-oscillator warmth - the classic psy lead.',
+    oscillators: [
+      { type: 'sawtooth', detune: -12, gain: 0.33 },
+      { type: 'sawtooth', detune: 0, gain: 0.4 },
+      { type: 'sawtooth', detune: 12, gain: 0.33 },
+    ],
+    sub: { gain: 0.35, octaves: -1 },
+    filter: { type: 'lowpass', cutoff: 2600, resonance: 8, envelope: { amount: 1800, decay: 0.18 } },
+    envelope: { attack: 0.004, decay: 0.12, sustain: 0.55, release: 0.18 },
+    fx: { distortion: 0.25, delaySend: 0.25, reverbSend: 0.2 },
+  },
+
   'crystal-lead': {
     name: 'Crystal Lead',
     technique: 'FM',
@@ -187,7 +202,7 @@ export const PRESETS = {
 export const PRESETS_V2 = PRESETS;
 
 export const DEFAULT_VOICE_PRESETS = {
-  0: 'crystal-lead',   // Lead
+  0: 'psy-supersaw',   // Lead
   1: 'nebula-pad',     // Harmony
   2: 'glitch-pluck',   // Counter
   3: 'neuro-bass',     // Bass
@@ -195,7 +210,7 @@ export const DEFAULT_VOICE_PRESETS = {
 
 // Voice categories for the UI dropdowns.
 export const PRESET_CATEGORIES = {
-  lead: ['crystal-lead', 'plasma-lead', 'glass-lead', 'vapor-lead', 'neon-lead'],
+  lead: ['psy-supersaw', 'crystal-lead', 'plasma-lead', 'glass-lead', 'vapor-lead', 'neon-lead'],
   harmony: ['nebula-pad', 'aurora-pad', 'void-pad'],
   counter: ['glitch-pluck', 'digital-pluck', 'metallic-bell'],
   bass: ['neuro-bass', 'quantum-bass', 'plasma-bass', 'gravity-bass'],
