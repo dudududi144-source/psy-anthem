@@ -429,7 +429,11 @@ export class PsySynthBrowser {
     const ctx = this.ctx;
     const nodes = [];
     let totalOscGain = 0;
-    for (const spec of preset.oscillators || []) {
+    const oscSpecs = preset.oscillators || [];
+    const nOsc = oscSpecs.length;
+    const hasPanner = typeof ctx.createStereoPanner === 'function';
+    for (let oi = 0; oi < nOsc; oi++) {
+      const spec = oscSpecs[oi];
       const osc = ctx.createOscillator();
       osc.type = spec.type;
       osc.frequency.value = note.frequency;
@@ -437,11 +441,36 @@ export class PsySynthBrowser {
       const og = ctx.createGain();
       og.gain.value = spec.gain;
       osc.connect(og);
-      og.connect(mix);
+      // Stereo width: spread unison voices across the field for a wide sound.
+      if (nOsc > 1 && hasPanner) {
+        const pan = ctx.createStereoPanner();
+        pan.pan.value = ((oi / (nOsc - 1)) * 2 - 1) * 0.55;
+        og.connect(pan);
+        pan.connect(mix);
+      } else {
+        og.connect(mix);
+      }
       osc.start(startTime);
       osc.stop(endTime);
       nodes.push(osc);
       totalOscGain += spec.gain;
+    }
+    // Sub-oscillator: sine an octave (or preset.sub.octaves) below for weight/warmth.
+    // Opt-in via preset.sub = { gain, octaves }.
+    if (preset.sub) {
+      const subGain = preset.sub.gain !== undefined ? preset.sub.gain : 0.4;
+      const subOct = preset.sub.octaves !== undefined ? preset.sub.octaves : -1;
+      const sub = ctx.createOscillator();
+      sub.type = 'sine';
+      sub.frequency.value = note.frequency * Math.pow(2, subOct);
+      const sg = ctx.createGain();
+      sg.gain.value = subGain;
+      sub.connect(sg);
+      sg.connect(mix);
+      sub.start(startTime);
+      sub.stop(endTime);
+      nodes.push(sub);
+      totalOscGain += subGain;
     }
     mix.gain.value = totalOscGain > 1 ? 1 / totalOscGain : 1;
     return nodes;
