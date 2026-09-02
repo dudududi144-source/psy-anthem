@@ -17,6 +17,9 @@ const history = [];      // last 10 generations: { config, out }
 let historyIndex = -1;
 let synth = null;
 let isPlaying = false;
+let playDurationSec = 0;   // total duration of current playback (seconds)
+let playStartCtxTime = 0;  // ctx.currentTime when playback started
+let progressRaf = 0;      // requestAnimationFrame id
 
 // ---------- SMF encoder (browser port of src/export/midi.ts) ----------
 function varLen(value) {
