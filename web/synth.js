@@ -597,7 +597,11 @@ export class PsySynthBrowser {
         filter.frequency.setValueAtTime(Math.max(40, base), startTime);
       }
       mix.connect(filter);
-      outNode = filter;
+      // Gentle drive after the filter for analog warmth.
+      const filterDrive = ctx.createWaveShaper();
+      filterDrive.curve = makeWarmCurve(0.3);
+      filter.connect(filterDrive);
+      outNode = filterDrive;
     }
 
     // --- optional per-voice distortion (modifier-aware: 'Distortion'/'Bitcrush')
