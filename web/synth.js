@@ -864,8 +864,8 @@ export class PsySynthBrowser {
     this._t0 = this.ctx.currentTime + 0.06;
     // In a mock context the clock never advances, so schedule everything up
     // front; in a real context schedule only a short lookahead window.
-    this._lookahead = this.ctx.isMock ? Number.MAX_SAFE_INTEGER : 0.15;
-    this._schedPeriod = 30;   // top up every 30ms
+    this._lookahead = this.ctx.isMock ? Number.MAX_SAFE_INTEGER : 0.35;
+    this._schedPeriod = 25;   // top up every 25ms
     this._scheduledCount = 0;
 
     this._scheduleNext();
