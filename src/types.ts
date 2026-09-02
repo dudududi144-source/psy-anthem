@@ -91,7 +91,7 @@ export interface HarmonicAnalysis {
 
 export type TransformType =
   | 'TRANSPOSE' | 'SEQUENCE' | 'INVERT' | 'RETROGRADE' | 'AUGMENT'
-  | 'DIMINISH' | 'TRUNCATE' | 'EXTEND' | 'RHYTHMIC_SHIFT' | 'ORNAMENT';
+  | 'DIMINISH' | 'TRUNCATE' | 'EXTEND' | 'RHYTHMIC_SHIFT' | 'ORNAMENT' | 'EVOLUTION';
 
 export interface Transformation {
   type: TransformType;
