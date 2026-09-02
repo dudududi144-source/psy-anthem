@@ -2,11 +2,11 @@
 import { describe, it, expect } from 'bun:test';
 import { PRESETS, PRESETS_V2, PRESET_CATEGORIES, DEFAULT_VOICE_PRESETS } from '../../web/presets.js';
 
-const KNOWN_ENGINES = ['FM', 'Additive', 'Granular', 'Wavetable', 'Physical', 'Glitch'];
+const KNOWN_ENGINES = ['Subtractive', 'FM', 'Additive', 'Granular', 'Wavetable', 'Physical', 'Glitch'];
 
-describe('Preset library (phase 10 - 15 presets)', () => {
-  it('has exactly 15 presets with name/technique/envelope', () => {
-    expect(Object.keys(PRESETS).length).toBe(15);
+describe('Preset library (phase 10 - 16 presets)', () => {
+  it('has exactly 16 presets with name/technique/envelope', () => {
+    expect(Object.keys(PRESETS).length).toBe(16);
     for (const [id, preset] of Object.entries(PRESETS)) {
       expect(preset.name).toBeDefined();
       expect(preset.technique).toBeDefined();
@@ -34,15 +34,15 @@ describe('Preset library (phase 10 - 15 presets)', () => {
     }
   });
 
-  it('categories cover all 15 presets exactly once', () => {
+  it('categories cover all 16 presets exactly once', () => {
     const listed = Object.values(PRESET_CATEGORIES).flat();
-    expect(listed.length).toBe(15);
-    expect(new Set(listed).size).toBe(15);
+    expect(listed.length).toBe(16);
+    expect(new Set(listed).size).toBe(16);
     for (const id of listed) expect(PRESETS[id]).toBeDefined();
   });
 
-  it('category counts: 5 leads, 3 pads, 3 counters, 4 basses', () => {
-    expect(PRESET_CATEGORIES.lead.length).toBe(5);
+  it('category counts: 6 leads, 3 pads, 3 counters, 4 basses', () => {
+    expect(PRESET_CATEGORIES.lead.length).toBe(6);
     expect(PRESET_CATEGORIES.harmony.length).toBe(3);
     expect(PRESET_CATEGORIES.counter.length).toBe(3);
     expect(PRESET_CATEGORIES.bass.length).toBe(4);
@@ -69,5 +69,17 @@ describe('Preset library (phase 10 - 15 presets)', () => {
 
   it('plasma-bass carries a -2 octave sub', () => {
     expect(PRESETS['plasma-bass'].sub.octaves).toBe(-2);
+  });
+
+  it('psy-supersaw default lead has unison oscillators + sub-oscillator', () => {
+    const p = PRESETS['psy-supersaw'];
+    expect(DEFAULT_VOICE_PRESETS[0]).toBe('psy-supersaw');
+    expect(p.technique).toBe('Subtractive');
+    expect(p.oscillators.length).toBeGreaterThanOrEqual(3);
+    expect(p.sub).toBeDefined();
+    expect(p.sub.octaves).toBe(-1);
+    const detunes = p.oscillators.map((o) => o.detune);
+    expect(detunes).toContain(-12);
+    expect(detunes).toContain(12);
   });
 });
