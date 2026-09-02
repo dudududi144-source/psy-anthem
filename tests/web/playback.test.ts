@@ -42,11 +42,13 @@ describe('PsySynthBrowser scheduling (phase-8 engine)', () => {
     expect(startOf.some((t) => Math.abs(t - 1.06) < 1e-6)).toBe(true);
   });
 
-  it('master chain: masterGain -> drive shaper -> master filter -> compressor -> destination', () => {
+  it('master chain: masterGain -> warm -> drive shaper -> master filter -> compressor -> destination', () => {
     const ctx = new MockAudioContext();
     const synth = makeSynth(ctx);
     const mg = synth.masterGain as unknown as { outputs: Array<{ kind: string; outputs: unknown[] }> };
-    expect(mg.outputs[0]).toBe(synth.driveShaper);
+    expect(mg.outputs[0]).toBe(synth.warmShaper);
+    const warm = synth.warmShaper as unknown as { outputs: unknown[] };
+    expect(warm.outputs[0]).toBe(synth.driveShaper);
     const shaper = synth.driveShaper as unknown as { outputs: unknown[] };
     expect(shaper.outputs[0]).toBe(synth.masterFilter);
     const mf = synth.masterFilter as unknown as { outputs: unknown[] };
