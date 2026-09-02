@@ -96,6 +96,20 @@ export function makeImpulseResponse(ctx, seconds = 2.2, decay = 3.2) {
   return buffer;
 }
 
+// Asymmetric soft-clip curve for analog-style warmth (adds even harmonics).
+export function makeWarmCurve(amount) {
+  const n = 512;
+  const curve = new Float32Array(n);
+  const k = 1 + amount * 4;
+  for (let i = 0; i < n; i++) {
+    const x = (i / (n - 1)) * 2 - 1;
+    // Asymmetric soft clip: slight DC bias adds even harmonics (warmth).
+    const driven = Math.tanh((x + 0.02) * k);
+    curve[i] = driven / Math.tanh(k * 1.02);
+  }
+  return curve;
+}
+
 // Short decaying white-noise burst for physical-modeling excitation.
 export function makeNoiseBurst(ctx, seconds = 0.02) {
   const rate = ctx.sampleRate || 44100;
@@ -144,7 +158,10 @@ export class PsySynthBrowser {
     this.compressor.ratio.value = 12;
     this.compressor.attack.value = 0.003;
     this.compressor.release.value = 0.25;
-    this.masterGain.connect(this.driveShaper);
+    this.warmShaper = this.ctx.createWaveShaper();
+    this.warmShaper.curve = makeWarmCurve(0.6);
+    this.masterGain.connect(this.warmShaper);
+    this.warmShaper.connect(this.driveShaper);
     this.driveShaper.connect(this.masterFilter);
     this.masterFilter.connect(this.compressor);
     this.compressor.connect(this.ctx.destination);
