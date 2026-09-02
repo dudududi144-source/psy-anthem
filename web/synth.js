@@ -62,15 +62,35 @@ export function makeDriveCurve(amount) {
   return curve;
 }
 
-// Stereo impulse response for the convolution reverb (exponential decay noise).
-export function makeImpulseResponse(ctx, seconds = 1.8, decay = 3.5) {
+// Stereo impulse response for the convolution reverb.
+// Richer than plain decay noise: stereo-decorrelated channels, a few early
+// reflections for space/definition, then a smooth exponential tail.
+export function makeImpulseResponse(ctx, seconds = 2.2, decay = 3.2) {
   const rate = ctx.sampleRate || 44100;
   const length = Math.max(1, Math.floor(rate * seconds));
   const buffer = ctx.createBuffer(2, length, rate);
   for (let ch = 0; ch < 2; ch++) {
     const data = buffer.getChannelData(ch);
+    // Seeded-ish decorrelation: offset the noise phase per channel.
+    const phase = ch * 0.37;
     for (let i = 0; i < length; i++) {
-      data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / length, decay);
+      const t = i / length;
+      // Smooth exponential tail (pow curve for a natural-sounding decay).
+      const tail = Math.pow(1 - t, decay);
+      // Pseudo-random noise, decorrelated between channels.
+      const n = Math.sin((i + 1) * (12.9898 + ch * 3.7) + phase) * 43758.5453;
+      const noise = (n - Math.floor(n)) * 2 - 1;
+      data[i] = noise * tail;
+    }
+    // Early reflections: a handful of discrete taps in the first ~80ms.
+    const early = [0.012, 0.023, 0.037, 0.052, 0.068];
+    for (let k = 0; k < early.length; k++) {
+      const idx = Math.floor(early[k] * rate) + ch * 3;
+      if (idx < length) {
+        const amp = 0.5 * Math.pow(1 - early[k] / 0.08, 1.5) * (k % 2 === ch ? 1 : 0.7);
+        data[idx] += amp;
+        if (idx + 1 < length) data[idx + 1] += amp * 0.5;
+      }
     }
   }
   return buffer;
