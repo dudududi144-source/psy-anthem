@@ -488,6 +488,9 @@ function applyMacros() {
   synth.setReverbSend(sliderValue('reverbSend', 30) / 100);
   synth.setDelaySend(sliderValue('delaySend', 20) / 100);
   synth.setMasterDrive(sliderValue('masterDrive', 10) / 100);
+  for (let ch = 0; ch < 4; ch++) {
+    synth.setTrackVolume(ch, sliderValue('trackVol' + ch, 100) / 100);
+  }
 }
 
 function setPlaying(state) {
@@ -666,6 +669,9 @@ function init() {
   document.getElementById('pause').addEventListener('click', pausePlayback);
   for (const id of ['seed', 'intent', 'curve', 'root', 'mode', 'voices', 'bars', 'density', 'harmony', 'loopMode', 'callResponse']) {
     document.getElementById(id).addEventListener('change', generate);
+  }
+  for (let ch = 0; ch < 4; ch++) {
+    document.getElementById('trackVol' + ch).addEventListener('input', applyMacros);
   }
   setStatus('ready - GENERATE then PLAY (or TEST SOUND to check your speakers)');
   generate();
