@@ -418,3 +418,4 @@ function assessQuality(memorability: number, lintScore: number): GenerationQuali
   if (memorability >= VALIDATION_THRESHOLDS.MIN_MEMORABILITY && lintScore >= 70) return 'acceptable';
   return 'degraded';
 }
+// (drums fully removed - melody-focused)
