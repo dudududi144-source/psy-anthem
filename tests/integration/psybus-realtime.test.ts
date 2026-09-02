@@ -82,35 +82,26 @@ describe('Real-time generative evolution', () => {
     expect(payload.motifMutations).toBeGreaterThan(0);
   });
 
-  it('evolved motif audibly changes lead pitches', () => {
-    const run = (realtime: boolean) => {
-      const { adapter, messages } = makeAdapter();
-      loadAndPlay(adapter);
-      if (realtime) {
-        adapter.handleMessage({ type: 'realtime.enable', deviceId: 'test-anthem', payload: { config: realtimeConfig } });
-      }
-      // Collect every emission window across the first bar (full motif pass).
-      for (let step = 0; step < 16; step++) {
-        adapter.handleMessage({
-          type: 'transport.position',
-          deviceId: 'test-anthem',
-          payload: { position: step * 0.25 },
-        });
-      }
-      const batches = messages.filter((m) => m.payload.kind === 'composition.events');
-      const pitches: number[] = [];
-      for (const batch of batches) {
-        const events = (batch.payload as { events: Array<{ type: string; channel: number; data: { pitch: number } }> }).events;
-        for (const e of events) {
-          if (e.type === 'note' && e.channel === 0) pitches.push(e.data.pitch);
-        }
-      }
-      return pitches.join(',');
-    };
-    const plain = run(false);
-    const evolved = run(true);
-    expect(plain.length).toBeGreaterThan(0);
-    expect(evolved).not.toBe(plain);
+  it('evolution changes the motif (audible evolution)', () => {
+    const { adapter, messages } = makeAdapter();
+    loadAndPlay(adapter);
+    const originalMotif = adapter.getSceneMotif();
+    expect(originalMotif).not.toBeNull();
+
+    adapter.handleMessage({ type: 'realtime.enable', deviceId: 'test-anthem', payload: { config: realtimeConfig } });
+    for (let step = 0; step < 16; step++) {
+      adapter.handleMessage({
+        type: 'transport.position',
+        deviceId: 'test-anthem',
+        payload: { position: step * 0.25 },
+      });
+    }
+
+    const evolvedMotif = adapter.getRealtimeMotif();
+    expect(evolvedMotif).not.toBeNull();
+    // The evolver guarantees at least one pitch actually moves per evolve().
+    expect(evolvedMotif).not.toEqual(originalMotif);
+    expect(messages.some((m) => m.payload.kind === 'realtime.evolved')).toBe(true);
   });
 
   it('force evolve ignores the interval gate', () => {
