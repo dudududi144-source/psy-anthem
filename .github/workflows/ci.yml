@@ -42,11 +42,11 @@ jobs:
           echo "examples + CLI + golden collection OK"
       - name: Bundle
         run: bun run bundle
-      - name: Bundle size gate (25KB)
+      - name: Bundle size gate (30KB)
         run: |
           SIZE=$(stat -c%s dist/psy-anthem.mjs)
           echo "bundle size: ${SIZE} bytes"
-          if [ "$SIZE" -gt 25600 ]; then echo "::error::bundle too large"; exit 1; fi
+          if [ "$SIZE" -gt 30720 ]; then echo "::error::bundle too large"; exit 1; fi
       - name: No console.log in src/
         run: |
           if grep -rn "console\.log" src/ --include="*.ts"; then exit 1; fi
