@@ -500,9 +500,13 @@ export class PsySynthBrowser {
       const sub = ctx.createOscillator();
       sub.type = 'sine';
       sub.frequency.value = note.frequency * Math.pow(2, subOct);
+      // Gentle warm saturation on the sub for bass weight/growl.
+      const subShaper = ctx.createWaveShaper();
+      subShaper.curve = makeWarmCurve(0.4);
       const sg = ctx.createGain();
       sg.gain.value = subGain;
-      sub.connect(sg);
+      sub.connect(subShaper);
+      subShaper.connect(sg);
       sg.connect(mix);
       sub.start(startTime);
       sub.stop(endTime);
