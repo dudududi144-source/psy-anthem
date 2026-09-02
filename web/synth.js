@@ -859,7 +859,7 @@ export class PsySynthBrowser {
     // them all up front. Web Audio is designed for this and it avoids the
     // setInterval-throttling gaps that lookahead scheduling introduced.
     this._plan = plan.notes;
-    this._t0 = this.ctx.currentTime + 0.08;
+    this._t0 = this.ctx.currentTime + 0.06;
     this._scheduledCount = 0;
     for (const note of plan.notes) {
       try {
