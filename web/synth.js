@@ -854,25 +854,21 @@ export class PsySynthBrowser {
     this.setTempo(bpm);
     const plan = scheduleEvents(valid, bpm, fromBeat);
 
-    // ---- Lookahead scheduling (fixes lag/stutter/latency) ----
-    // Instead of creating every audio node up front (which can be thousands of
-    // nodes for a long anthem and stalls the audio thread), we schedule only a
-    // short window ahead of the playhead and top it up on a timer. This is the
-    // standard "tale of two clocks" Web Audio pattern.
+    // ---- Full upfront scheduling ----
+    // For a composition engine every note is known ahead of time, so we schedule
+    // them all up front. Web Audio is designed for this and it avoids the
+    // setInterval-throttling gaps that lookahead scheduling introduced.
     this._plan = plan.notes;
-    this._planIndex = 0;
-    this._t0 = this.ctx.currentTime + 0.06;
-    // In a mock context the clock never advances, so schedule everything up
-    // front; in a real context schedule only a short lookahead window.
-    this._lookahead = this.ctx.isMock ? Number.MAX_SAFE_INTEGER : 0.6;
-    this._schedPeriod = 20;   // top up every 20ms
+    this._t0 = this.ctx.currentTime + 0.08;
     this._scheduledCount = 0;
-
-    // Schedule the first ~1 second up front so playback starts immediately
-    // with a full buffer, then the interval tops it up.
-    this._initialHorizon = 1.0;
-    this._scheduleNext();
-    this._schedTimer = setInterval(() => this._scheduleNext(), this._schedPeriod);
+    for (const note of plan.notes) {
+      try {
+        this._scheduleNote(note, this._t0 + Math.max(0, note.startAt));
+        this._scheduledCount++;
+      } catch (err) {
+        console.warn('psy-anthem: failed to schedule one note:', err);
+      }
+    }
 
     this.lastNoteCount = plan.notes.length;
     if (plan.totalSeconds > 0 && this.onFinish) {
@@ -881,36 +877,6 @@ export class PsySynthBrowser {
       }, (plan.totalSeconds + 0.4) * 1000);
     }
     return plan.totalSeconds;
-  }
-
-  // Schedule notes that fall within the lookahead window, advancing the pointer.
-  _scheduleNext() {
-    if (!this._plan || this._planIndex >= this._plan.length) {
-      if (this._schedTimer) { clearInterval(this._schedTimer); this._schedTimer = null; }
-      return;
-    }
-    // On the very first pass use a wider initial horizon so playback starts
-    // with a full second already scheduled; afterwards use the normal lookahead.
-    let horizon = this.ctx.currentTime + this._lookahead;
-    if (this._scheduledCount === 0 && this._initialHorizon) {
-      horizon = Math.max(horizon, this._t0 + this._initialHorizon);
-    }
-    while (this._planIndex < this._plan.length) {
-      const note = this._plan[this._planIndex];
-      const noteTime = this._t0 + Math.max(0, note.startAt);
-      if (noteTime > horizon) break;
-      try {
-        this._scheduleNote(note, noteTime);
-        this._scheduledCount++;
-      } catch (err) {
-        console.warn('psy-anthem: failed to schedule one note:', err);
-      }
-      this._planIndex++;
-    }
-    if (this._planIndex >= this._plan.length && this._schedTimer) {
-      clearInterval(this._schedTimer);
-      this._schedTimer = null;
-    }
   }
 
   // Audibility check: three staggered tones (C major triad). Returns total seconds.
