@@ -142,7 +142,6 @@ function readConfig() {
     harmonyComplexity: document.getElementById('harmony').value,
     loopMode: document.getElementById('loopMode').checked,
     callResponse: document.getElementById('callResponse').checked,
-    drums: document.getElementById('drums').checked,
   };
   if (cfg.energyCurve === EnergyCurve.CUSTOM) {
     cfg.customCurve = [
