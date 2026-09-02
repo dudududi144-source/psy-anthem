@@ -75,11 +75,12 @@ describe('Preset library (phase 10 - 16 presets)', () => {
     const p = PRESETS['psy-supersaw'];
     expect(DEFAULT_VOICE_PRESETS[0]).toBe('psy-supersaw');
     expect(p.technique).toBe('Subtractive');
-    expect(p.oscillators.length).toBeGreaterThanOrEqual(3);
+    expect(p.oscillators.length).toBeGreaterThanOrEqual(5);
     expect(p.sub).toBeDefined();
     expect(p.sub.octaves).toBe(-1);
     const detunes = p.oscillators.map((o) => o.detune);
-    expect(detunes).toContain(-12);
-    expect(detunes).toContain(12);
+    expect(detunes).toContain(-16);
+    expect(detunes).toContain(16);
+    expect(detunes).toContain(0);
   });
 });
