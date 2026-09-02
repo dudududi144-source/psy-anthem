@@ -131,6 +131,7 @@ export class PsyAnthemAdapter {
       this.transportPosition = 0;
       this.activeNotes.clear();
       this.morpher = null; // a fresh scene supersedes any active morph
+      this.realtime = null; // ...and any live evolution state
       this.emit({ kind: 'scene.loaded', sceneId, config, metadata: out.metadata });
     } catch (err) {
       this.emit({ kind: 'error', device: this.deviceId, code: 'scene-load-error', message: String(err) });
