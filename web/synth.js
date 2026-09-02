@@ -977,6 +977,18 @@ export class PsySynthBrowser {
     return audioBufferToWav(buffer);
   }
 
+  // Per-voice mixer: set a voice's volume (0-1).
+  setTrackVolume(channel, volume) {
+    const tg = this.trackGains[channel];
+    if (tg) tg.gain.value = Math.max(0, Math.min(1, volume));
+  }
+
+  // Per-voice mixer: mute/unmute a voice.
+  setTrackMuted(channel, muted) {
+    const tg = this.trackGains[channel];
+    if (tg) tg.gain.value = muted ? 0 : 1;
+  }
+
   stop() {
     if (this._schedTimer) { clearInterval(this._schedTimer); this._schedTimer = null; }
     if (this._finishTimer) { clearTimeout(this._finishTimer); this._finishTimer = null; }
