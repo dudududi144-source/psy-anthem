@@ -5,6 +5,7 @@
 // stop/seek. Deterministic composition path; envelope metadata (ts) is transport-level.
 
 import { createAnthemEngine } from '../engine';
+import { createRNG } from '../rng';
 import type { AnthemConfig, AnthemOutput, ChordSymbol, MusicalEvent, NoteData } from '../types';
 import { SceneMorpher } from '../morphing/scene-morpher';
 import { MotifEvolver } from '../evolution/motif-evolver';
@@ -430,7 +431,7 @@ export class PsyAnthemAdapter {
     const interval = Math.max(1, rt.config.regenerationIntervalBars);
     if (!force && bar - rt.lastEvolutionBar < interval) return;
 
-    const evolvedMotif = rt.motifEvolver.evolve(bar);
+    rt.motifEvolver.evolve(bar);
     const evolvedChords = rt.harmonicEvolver.evolve();
 
     // Chord-root deltas transpose the non-lead voices inside each chord window.
