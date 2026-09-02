@@ -535,6 +535,12 @@ export class PsyAnthemAdapter {
     }
     if (events.length === 0) return;
 
+    // Real-time evolution: trigger periodic evolution and apply it to events.
+    if (this.realtime && this.realtime.config.enabled) {
+      this.handleRealtimeEvolve(false);
+      events = this.applyEvolutionToEvents(events);
+    }
+
     // Live modifiers: sidechain duck + parameter automations.
     const duckState = this.duck;
     const duckDepth = duckState ? Math.max(0, Math.min(1, duckState.depth)) : 0;
