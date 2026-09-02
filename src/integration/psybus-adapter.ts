@@ -7,6 +7,8 @@
 import { createAnthemEngine } from '../engine';
 import type { AnthemConfig, AnthemOutput, MusicalEvent, NoteData } from '../types';
 import { SceneMorpher } from '../morphing/scene-morpher';
+import { MotifEvolver } from '../evolution/motif-evolver';
+import { HarmonicEvolver } from '../evolution/harmonic-evolver';
 import type {
   AutomationParam,
   BusNotePayload,
@@ -14,6 +16,7 @@ import type {
   MorphCurve,
   PsyBusEnvelope,
   PsyBusPayload,
+  RealtimeGenerationConfig,
   SpecMessage,
 } from './psybus-types';
 
@@ -23,6 +26,16 @@ interface ActiveAutomation {
   startBeat: number;
   durationBeats: number;
   curve: MorphCurve;
+}
+
+interface RealtimeState {
+  config: RealtimeGenerationConfig;
+  motifEvolver: MotifEvolver;
+  harmonicEvolver: HarmonicEvolver;
+  originalCoreNotes: number[];
+  originalChords: ChordSymbol[];
+  chordDeltas: Map<number, number>; // chord index -> transpose delta (semitones)
+  lastEvolutionBar: number;
 }
 
 export interface PsyAnthemAdapterConfig {
@@ -52,6 +65,7 @@ export class PsyAnthemAdapter {
   private activeNotes = new Set<number>();
   private morpher: SceneMorpher | null = null;
   private automations = new Map<AutomationParam, ActiveAutomation>();
+  private realtime: RealtimeState | null = null;
 
   constructor(config: PsyAnthemAdapterConfig) {
     this.deviceId = config.deviceId;
