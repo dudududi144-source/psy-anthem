@@ -6,7 +6,6 @@ import type {
   HarmonicAnalysis, InternalNoteEvent, MotifDNA, MusicalEvent, NoteData,
 } from './types';
 import { createRNG } from './rng';
-import type { RNG } from './rng';
 import { generateMotif } from './motif/generator';
 import { generateChordProgression } from './harmony/chord-progressions';
 import { buildVoices } from './harmony/voice-leading';
