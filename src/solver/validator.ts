@@ -23,19 +23,23 @@ export function theoryLint(events: MusicalEvent[], config: AnthemConfig): Theory
       errors.push({ type: 'INVALID_PITCH', message: 'bad pitch value' });
       continue;
     }
-    if (pitch < config.targetRange.min || pitch > config.targetRange.max) {
-      errors.push({ type: 'OUT_OF_RANGE', bar: Math.floor(ev.timestamp / 4), message: 'pitch outside targetRange' });
-    }
-    const isTension = (ev.data as { tension?: boolean }).tension === true;
-    if (!isTension && !isInScale(pitch, pcs)) {
-      errors.push({ type: 'OUT_OF_SCALE', bar: Math.floor(ev.timestamp / 4), message: 'pitch outside scale' });
+    // Drums (channel 9) are exempt from range/scale/duration theory checks.
+    const isDrum = ev.channel === 9;
+    if (!isDrum) {
+      if (pitch < config.targetRange.min || pitch > config.targetRange.max) {
+        errors.push({ type: 'OUT_OF_RANGE', bar: Math.floor(ev.timestamp / 4), message: 'pitch outside targetRange' });
+      }
+      const isTension = (ev.data as { tension?: boolean }).tension === true;
+      if (!isTension && !isInScale(pitch, pcs)) {
+        errors.push({ type: 'OUT_OF_SCALE', bar: Math.floor(ev.timestamp / 4), message: 'pitch outside scale' });
+      }
     }
     if (typeof velocity !== 'number' || velocity < 0 || velocity > 127) {
       errors.push({ type: 'INVALID_VELOCITY', message: 'bad velocity value' });
     }
     if (ev.duration <= 0 || !Number.isFinite(ev.duration)) {
       errors.push({ type: 'INVALID_DURATION', message: 'bad duration value' });
-    } else {
+    } else if (!isDrum) {
       const allowed = ALLOWED_DURATIONS as readonly number[];
       if (!allowed.includes(ev.duration)) {
         warnings.push({ type: 'UNUSUAL_DURATION', message: 'duration not in canonical set' });
