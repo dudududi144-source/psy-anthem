@@ -747,9 +747,32 @@ export class PsySynthBrowser {
   }
 
   _scheduleNote(note, startTime) {
+    // Channel 9 is the GM drum channel - route to the drum engine.
+    if (note.channel === 9) {
+      this._scheduleDrum(note, startTime);
+      return;
+    }
     const presetId = this.presets[note.channel] || this.presets[0] || Object.keys(this.PRESETS)[0];
     const preset = this.PRESETS[presetId] || FALLBACK_PRESETS['basic-lead'];
     this._scheduleVoice(note, preset, startTime);
+  }
+
+  _scheduleDrum(note, startTime) {
+    const vel = note.velocity;
+    if (vel <= 0.001) return; // silent note
+    const pitch = note.pitch;
+    const dest = this.masterGain;
+    if (pitch === 36) {
+      this.activeNodes.push(...scheduleKick(this.ctx, dest, startTime, vel));
+    } else if (pitch === 38 || pitch === 39) {
+      this.activeNodes.push(...scheduleSnare(this.ctx, dest, startTime, vel));
+    } else if (pitch === 42) {
+      this.activeNodes.push(...scheduleHat(this.ctx, dest, startTime, vel, false));
+    } else if (pitch === 46) {
+      this.activeNodes.push(...scheduleHat(this.ctx, dest, startTime, vel, true));
+    } else {
+      this.activeNodes.push(...schedulePerc(this.ctx, dest, startTime, vel, pitch * 8));
+    }
   }
 
   // ---------- transport ----------
