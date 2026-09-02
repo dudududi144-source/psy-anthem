@@ -122,6 +122,76 @@ export function makeNoiseBurst(ctx, seconds = 0.02) {
   return buffer;
 }
 
+// ---------- Drum engine (channel 9 = drums, GM-standard) ----------
+// Drum pitch map (GM): kick=36, snare=38, clap=39, hatClosed=42, hatOpen=46,
+// percLow=43, percHigh=50.
+
+export function scheduleKick(ctx, dest, time, vel) {
+  const osc = ctx.createOscillator();
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(160, time);
+  osc.frequency.exponentialRampToValueAtTime(45, time + 0.09);
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(vel, time);
+  g.gain.exponentialRampToValueAtTime(0.001, time + 0.22);
+  osc.connect(g); g.connect(dest);
+  osc.start(time); osc.stop(time + 0.25);
+  return [osc];
+}
+
+export function scheduleHat(ctx, dest, time, vel, open) {
+  const src = ctx.createBufferSource();
+  src.buffer = makeNoiseBurst(ctx, open ? 0.25 : 0.06);
+  const hp = ctx.createBiquadFilter();
+  hp.type = 'highpass'; hp.frequency.value = open ? 7000 : 8500;
+  const g = ctx.createGain();
+  const decay = open ? 0.22 : 0.05;
+  g.gain.setValueAtTime(vel * 0.6, time);
+  g.gain.exponentialRampToValueAtTime(0.001, time + decay);
+  src.connect(hp); hp.connect(g); g.connect(dest);
+  src.start(time); src.stop(time + decay + 0.02);
+  return [src];
+}
+
+export function scheduleSnare(ctx, dest, time, vel) {
+  const nodes = [];
+  const noise = ctx.createBufferSource();
+  noise.buffer = makeNoiseBurst(ctx, 0.18);
+  const bp = ctx.createBiquadFilter();
+  bp.type = 'bandpass'; bp.frequency.value = 1800; bp.Q.value = 0.8;
+  const ng = ctx.createGain();
+  ng.gain.setValueAtTime(vel * 0.7, time);
+  ng.gain.exponentialRampToValueAtTime(0.001, time + 0.16);
+  noise.connect(bp); bp.connect(ng); ng.connect(dest);
+  noise.start(time); noise.stop(time + 0.18);
+  nodes.push(noise);
+  const tone = ctx.createOscillator();
+  tone.type = 'triangle'; tone.frequency.value = 190;
+  const tg = ctx.createGain();
+  tg.gain.setValueAtTime(vel * 0.4, time);
+  tg.gain.exponentialRampToValueAtTime(0.001, time + 0.08);
+  tone.connect(tg); tg.connect(dest);
+  tone.start(time); tone.stop(time + 0.1);
+  nodes.push(tone);
+  return nodes;
+}
+
+export function schedulePerc(ctx, dest, time, vel, pitch) {
+  const osc = ctx.createOscillator();
+  osc.type = 'square';
+  const base = pitch || 400;
+  osc.frequency.setValueAtTime(base, time);
+  osc.frequency.exponentialRampToValueAtTime(base * 0.5, time + 0.08);
+  const bp = ctx.createBiquadFilter();
+  bp.type = 'bandpass'; bp.frequency.value = base; bp.Q.value = 4;
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(vel * 0.4, time);
+  g.gain.exponentialRampToValueAtTime(0.001, time + 0.1);
+  osc.connect(bp); bp.connect(g); g.connect(dest);
+  osc.start(time); osc.stop(time + 0.12);
+  return [osc];
+}
+
 // Minimal fallback so the engine never crashes without an injected library.
 export const FALLBACK_PRESETS = {
   'basic-lead': {
