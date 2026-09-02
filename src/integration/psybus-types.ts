@@ -116,6 +116,47 @@ export type AutomationStartedPayload = {
 };
 export type AutomationStoppedPayload = { kind: 'automation.stopped'; param: AutomationParam };
 
+// ---- Phase 13: real-time generative evolution ----
+
+export type EvolutionDepth = 'shallow' | 'medium' | 'deep';
+export type HarmonicSubstitution = 'tritone' | 'relative' | 'parallel' | 'chromatic';
+
+export type EvolutionConstraintsConfig = {
+  preserveRhythm: boolean;
+  preserveContour: boolean;
+  maxIntervalChange: number; // semitones
+};
+
+export type MotifEvolutionConfig = {
+  mutationRate: number; // 0-1 per regeneration
+  evolutionDepth: EvolutionDepth;
+  constraints: EvolutionConstraintsConfig;
+};
+
+export type HarmonicEvolutionConfig = {
+  substitutionRate: number; // 0-1 per chord
+  allowedSubstitutions: HarmonicSubstitution[];
+};
+
+export type RealtimeGenerationConfig = {
+  enabled: boolean;
+  motifEvolution: MotifEvolutionConfig;
+  harmonicEvolution: HarmonicEvolutionConfig;
+  regenerationIntervalBars: number;
+};
+
+export type RealtimeEnablePayload = { kind: 'realtime.enable'; config: RealtimeGenerationConfig };
+export type RealtimeDisablePayload = { kind: 'realtime.disable' };
+export type RealtimeEvolvePayload = { kind: 'realtime.evolve'; force?: boolean };
+export type RealtimeEnabledPayload = { kind: 'realtime.enabled' };
+export type RealtimeDisabledPayload = { kind: 'realtime.disabled' };
+export type RealtimeEvolvedPayload = {
+  kind: 'realtime.evolved';
+  bar: number;
+  motifMutations: number;
+  harmonicSubstitutions: number;
+};
+
 export type PsyBusPayload =
   | BusTransportPayload
   | BusTransportStartPayload
@@ -143,7 +184,13 @@ export type PsyBusPayload =
   | AutomationStartPayload
   | AutomationStopPayload
   | AutomationStartedPayload
-  | AutomationStoppedPayload;
+  | AutomationStoppedPayload
+  | RealtimeEnablePayload
+  | RealtimeDisablePayload
+  | RealtimeEvolvePayload
+  | RealtimeEnabledPayload
+  | RealtimeDisabledPayload
+  | RealtimeEvolvedPayload;
 
 // Spec-compat message shape (flat): normalized into envelopes by the adapter.
 export interface SpecMessage {
