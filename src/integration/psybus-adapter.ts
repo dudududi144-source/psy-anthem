@@ -5,7 +5,7 @@
 // stop/seek. Deterministic composition path; envelope metadata (ts) is transport-level.
 
 import { createAnthemEngine } from '../engine';
-import type { AnthemConfig, AnthemOutput, MusicalEvent, NoteData } from '../types';
+import type { AnthemConfig, AnthemOutput, ChordSymbol, MusicalEvent, NoteData } from '../types';
 import { SceneMorpher } from '../morphing/scene-morpher';
 import { MotifEvolver } from '../evolution/motif-evolver';
 import { HarmonicEvolver } from '../evolution/harmonic-evolver';
@@ -216,6 +216,15 @@ export class PsyAnthemAdapter {
       case 'automation.stop':
         this.handleAutomationStop(p.param);
         break;
+      case 'realtime.enable':
+        this.handleRealtimeEnable(p.config);
+        break;
+      case 'realtime.disable':
+        this.handleRealtimeDisable();
+        break;
+      case 'realtime.evolve':
+        this.handleRealtimeEvolve(p.force === true);
+        break;
       default:
         break;
     }
@@ -269,6 +278,15 @@ export class PsyAnthemAdapter {
         break;
       case 'automation.stop':
         this.handleAutomationStop(String(pl.param ?? 'velocity') as AutomationParam);
+        break;
+      case 'realtime.enable':
+        this.handleRealtimeEnable(pl.config as RealtimeGenerationConfig);
+        break;
+      case 'realtime.disable':
+        this.handleRealtimeDisable();
+        break;
+      case 'realtime.evolve':
+        this.handleRealtimeEvolve(pl.force === true);
         break;
       default:
         break;
