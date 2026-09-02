@@ -60,6 +60,9 @@ export function applyTransform(notes: number[], rhythm: number[], t: Transformat
       }
       return { notes: [...notes], rhythm: r };
     }
+    case 'EVOLUTION':
+      // Evolution is applied by the MotifEvolver; the transformer passes through.
+      return { notes: [...notes], rhythm: [...rhythm] };
     case 'ORNAMENT': {
       const out: number[] = [];
       const or: number[] = [];
