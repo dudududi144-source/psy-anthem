@@ -93,6 +93,11 @@ export class MockBufferSource extends MockNode {
   stop(t?: number) { this.stops.push(t ?? -1); }
 }
 
+export class MockStereoPanner extends MockNode {
+  pan = new MockParam(0);
+  constructor() { super('panner'); }
+}
+
 export class MockAudioContext {
   state = 'running';
   currentTime = 1.0;
@@ -105,6 +110,7 @@ export class MockAudioContext {
   createGain(): MockGain { const n = new MockGain(); this.nodes.push(n); return n; }
   createBiquadFilter(): MockFilter { const n = new MockFilter(); this.nodes.push(n); return n; }
   createDynamicsCompressor(): MockCompressor { const n = new MockCompressor(); this.nodes.push(n); return n; }
+  createStereoPanner(): MockStereoPanner { const n = new MockStereoPanner(); this.nodes.push(n); return n; }
   createDelay(_max?: number): MockDelay { const n = new MockDelay(); this.nodes.push(n); return n; }
   createConvolver(): MockConvolver { const n = new MockConvolver(); this.nodes.push(n); return n; }
   createWaveShaper(): MockShaper { const n = new MockShaper(); this.nodes.push(n); return n; }
