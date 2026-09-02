@@ -48,3 +48,12 @@ Every phase ends green. No phase starts until the previous phase is fully valida
 - morph.start / morph.update / automation.start / automation.stop envelope kinds
 - psyboss: PsyBossAnthemAdapter.startMorph / updateMorph / startAutomation / stopAutomation
 - Examples 17-18 + 7 new morphing/automation tests
+
+## Phase 13 — Real-time Generative Evolution (complete)
+- MotifEvolver: constrained mutations (pitch/rhythm/interval/contour), 3 depths,
+  guaranteed-audible evolution, evolution history + reset
+- HarmonicEvolver: tritone / relative / parallel / chromatic substitutions (allowlist + rate)
+- Adapter: realtime.enable/disable/evolve over the bus; evolution applied audibly
+  (lead pitch-class remap + chord-root transposition) without mutating the composition
+- psyboss: enableRealtimeGeneration / disableRealtimeGeneration / forceEvolution
+- Examples 19-20 + 24 new evolution tests
