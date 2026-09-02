@@ -210,6 +210,10 @@ export function createAnthemEngine(config: AnthemConfig): AnthemEngine {
         }
       }
 
+      // 5b. Drum pattern (voice 9 / GM channel 9)
+      const drums = generateDrumPattern(frozen, rng);
+      for (const d of drums) expressed.push(d);
+
       // 6. Canonical events
       const events = toMusicalEvents(expressed);
 
