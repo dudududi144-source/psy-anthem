@@ -602,6 +602,36 @@ function downloadJson() {
   flash('downloadJson', 'SAVED');
 }
 
+// Offline-render the anthem to a WAV file and download it.
+async function downloadWav() {
+  const entry = currentEntry();
+  if (!entry) { showError('Generate an anthem first.'); return; }
+  try {
+    setStatus('rendering audio offline...');
+    const s = ensureSynth();
+    s.setPresets(getCurrentPresets());
+    applyMacros();
+    const wav = await s.renderToWav(entry.out.events, entry.config.bpm ?? 140, 0);
+    if (!wav) { showError('Offline rendering not supported in this browser.'); return; }
+    downloadBlob(wav, 'psy-anthem-' + entry.config.seed + '.wav', 'audio/wav');
+    setStatus('WAV exported (' + Math.round(wav.length / 1024) + ' KB)');
+  } catch (e) {
+    showError('WAV render error: ' + e.message);
+  }
+}
+
+// Pause / resume the live audio context.
+function pausePlayback() {
+  if (!synth) return;
+  if (synth.ctx.state === 'running') {
+    synth.ctx.suspend();
+    setStatus('paused');
+  } else if (synth.ctx.state === 'suspended') {
+    synth.ctx.resume();
+    setStatus('resumed');
+  }
+}
+
 // ---------- errors ----------
 function showError(msg) {
   const el = document.getElementById('err');
@@ -632,6 +662,8 @@ function init() {
   document.getElementById('copyConfig').addEventListener('click', copyConfig);
   document.getElementById('downloadMidi').addEventListener('click', downloadMidi);
   document.getElementById('downloadJson').addEventListener('click', downloadJson);
+  document.getElementById('downloadWav').addEventListener('click', downloadWav);
+  document.getElementById('pause').addEventListener('click', pausePlayback);
   for (const id of ['seed', 'intent', 'curve', 'root', 'mode', 'voices', 'bars', 'density', 'harmony', 'loopMode', 'callResponse']) {
     document.getElementById(id).addEventListener('change', generate);
   }
