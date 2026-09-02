@@ -398,6 +398,17 @@ export class PsyAnthemAdapter {
     return this.realtime !== null && this.realtime.config.enabled;
   }
 
+  /** Original (scene) motif core notes, or null if no scene loaded. */
+  getSceneMotif(): number[] | null {
+    return this.currentOutput ? [...this.currentOutput.motifDNA.coreNotes] : null;
+  }
+
+  /** Current evolved motif core notes, or null if realtime not active. */
+  getRealtimeMotif(): number[] | null {
+    if (!this.realtime) return null;
+    return [...this.realtime.motifEvolver.getCurrentMotif().coreNotes];
+  }
+
   private handleRealtimeEnable(config: RealtimeGenerationConfig): void {
     const out = this.currentOutput;
     if (!out) {
