@@ -106,36 +106,6 @@ function smoothLeadVoice(events: InternalNoteEvent[], pcs: number[], lo: number,
   }
 }
 
-// Drum pitch map (GM): kick=36, snare=38, clap=39, hatClosed=42, hatOpen=46, percLow=43, percHigh=50.
-// Psytrance drum pattern: rolling kick on beats, offbeat hats, snare on beat 4.
-// Returns drum events on voice 9 (GM drum channel).
-function generateDrumPattern(frozen: AnthemConfig, rng: RNG): InternalNoteEvent[] {
-  const drums: InternalNoteEvent[] = [];
-  const sixteenth = 0.25; // beats
-  for (let bar = 0; bar < frozen.bars; bar++) {
-    const barStart = bar * 4;
-    // Kick on every beat (0,4,8,12 sixteenths = beats 0,1,2,3)
-    for (const s of [0, 4, 8, 12]) {
-      drums.push({ voice: 9, pitch: 36, startBeat: barStart + s * sixteenth, duration: 0.2, velocity: 110 });
-    }
-    // Offbeat closed hats on the 'and' (sixteenths 2,6,10,14)
-    for (const s of [2, 6, 10, 14]) {
-      drums.push({ voice: 9, pitch: 42, startBeat: barStart + s * sixteenth, duration: 0.1, velocity: 70 });
-    }
-    // Extra 16th hats for drive (sixteenths 1,3,5,7,...) at lower velocity
-    for (const s of [1, 3, 5, 7, 9, 11, 13, 15]) {
-      if (rng.next() < 0.5) {
-        drums.push({ voice: 9, pitch: 42, startBeat: barStart + s * sixteenth, duration: 0.08, velocity: 45 });
-      }
-    }
-    // Snare on beat 4 (sixteenth 12), open hat at end of every 4 bars
-    drums.push({ voice: 9, pitch: 38, startBeat: barStart + 12 * sixteenth, duration: 0.2, velocity: 95 });
-    if ((bar + 1) % 4 === 0) {
-      drums.push({ voice: 9, pitch: 46, startBeat: barStart + 14 * sixteenth, duration: 0.4, velocity: 80 });
-    }
-  }
-  return drums;
-}
 
 export function createAnthemEngine(config: AnthemConfig): AnthemEngine {
   validateConfig(config);
