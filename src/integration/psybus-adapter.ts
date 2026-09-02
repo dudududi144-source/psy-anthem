@@ -390,6 +390,107 @@ export class PsyAnthemAdapter {
     }
   }
 
+  // ---- phase 13: real-time generative evolution ----
+
+  isRealtimeEnabled(): boolean {
+    return this.realtime !== null && this.realtime.config.enabled;
+  }
+
+  private handleRealtimeEnable(config: RealtimeGenerationConfig): void {
+    const out = this.currentOutput;
+    if (!out) {
+      this.emit({ kind: 'error', device: this.deviceId, code: 'realtime-no-scene', message: 'Cannot enable realtime generation without a loaded composition' });
+      return;
+    }
+    const motifEvolver = new MotifEvolver(out.motifDNA, createRNG(this.seed + 1), config.motifEvolution);
+    const harmonicEvolver = new HarmonicEvolver(out.harmonicAnalysis.chords, createRNG(this.seed + 2), config.harmonicEvolution);
+    this.realtime = {
+      config,
+      motifEvolver,
+      harmonicEvolver,
+      originalCoreNotes: [...out.motifDNA.coreNotes],
+      originalChords: out.harmonicAnalysis.chords.map((c) => ({ ...c })),
+      chordDeltas: new Map(),
+      lastEvolutionBar: -1,
+    };
+    this.emit({ kind: 'realtime.enabled' });
+  }
+
+  private handleRealtimeDisable(): void {
+    if (!this.realtime) return;
+    this.realtime = null;
+    this.emit({ kind: 'realtime.disabled' });
+  }
+
+  private handleRealtimeEvolve(force: boolean): void {
+    const rt = this.realtime;
+    if (!rt || !rt.config.enabled) return;
+    const bar = Math.floor(this.transportPosition / 4);
+    const interval = Math.max(1, rt.config.regenerationIntervalBars);
+    if (!force && bar - rt.lastEvolutionBar < interval) return;
+
+    const evolvedMotif = rt.motifEvolver.evolve(bar);
+    const evolvedChords = rt.harmonicEvolver.evolve();
+
+    // Chord-root deltas transpose the non-lead voices inside each chord window.
+    rt.chordDeltas = new Map();
+    for (let i = 0; i < evolvedChords.length && i < rt.originalChords.length; i++) {
+      const delta = evolvedChords[i]!.root - rt.originalChords[i]!.root;
+      if (delta !== 0) rt.chordDeltas.set(i, delta);
+    }
+    rt.lastEvolutionBar = bar;
+
+    const history = rt.motifEvolver.getEvolutionHistory();
+    const lastEvent = history.length > 0 ? history[history.length - 1]! : null;
+    this.emit({
+      kind: 'realtime.evolved',
+      bar,
+      motifMutations: lastEvent ? lastEvent.mutations.length : 0,
+      harmonicSubstitutions: rt.chordDeltas.size,
+    });
+  }
+
+  /**
+   * Apply the evolved motif + harmony to emission-window events.
+   * Lead (channel 0): pitch classes remapped through the evolved motif.
+   * Other voices: transposed by the substituted chord-root deltas.
+   */
+  private applyEvolutionToEvents(events: MusicalEvent[]): MusicalEvent[] {
+    const rt = this.realtime;
+    if (!rt) return events;
+    const evolved = rt.motifEvolver.getCurrentMotif();
+
+    const pcMap = new Map<number, number>();
+    const n = Math.min(rt.originalCoreNotes.length, evolved.coreNotes.length);
+    for (let i = 0; i < n; i++) {
+      pcMap.set(((rt.originalCoreNotes[i]! % 12) + 12) % 12, ((evolved.coreNotes[i]! % 12) + 12) % 12);
+    }
+
+    return events.map((e) => {
+      if (e.type !== 'note') return e;
+      const data = e.data as NoteData;
+      if (e.channel === 0) {
+        const pc = ((data.pitch % 12) + 12) % 12;
+        const newPc = pcMap.get(pc);
+        if (newPc === undefined || newPc === pc) return e;
+        let newPitch = data.pitch - pc + newPc;
+        if (newPitch > 127) newPitch -= 12;
+        if (newPitch < 0) newPitch += 12;
+        return { ...e, data: { ...data, pitch: newPitch } };
+      }
+      // Non-lead voices follow chord-root substitutions by window.
+      const bar = Math.floor(e.timestamp / 4);
+      const chordIdx = rt.originalChords.findIndex(
+        (c) => bar >= c.startBar && bar < c.startBar + c.durationBars,
+      );
+      if (chordIdx < 0) return e;
+      const delta = rt.chordDeltas.get(chordIdx);
+      if (!delta) return e;
+      const newPitch = Math.max(0, Math.min(127, data.pitch + delta));
+      return { ...e, data: { ...data, pitch: newPitch } };
+    });
+  }
+
   // ---- internals ----
 
   private handleSidechainDuck(depth: number, releaseMs: number): void {
