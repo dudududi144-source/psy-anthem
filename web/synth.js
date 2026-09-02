@@ -938,6 +938,35 @@ export class PsySynthBrowser {
     }, this.ctx.currentTime + 0.02);
   }
 
+  // Render events offline to an AudioBuffer (for WAV export). Uses an
+  // OfflineAudioContext and schedules all notes up front (no lookahead clock).
+  async renderOffline(events, bpm = 140, fromBeat = 0) {
+    const valid = Array.isArray(events) ? events.filter((e) => this.isValidEvent(e)) : [];
+    if (valid.length === 0) return null;
+    const plan = scheduleEvents(valid, bpm, fromBeat);
+    if (plan.totalSeconds <= 0) return null;
+    const durationSec = plan.totalSeconds + 1.5; // tail for release/reverb
+    const sampleRate = this.ctx.sampleRate || 44100;
+    const length = Math.ceil(durationSec * sampleRate);
+    if (typeof OfflineAudioContext === 'undefined') return null;
+    const offlineCtx = new OfflineAudioContext(2, length, sampleRate);
+    const off = new PsySynthBrowser(offlineCtx, { PRESETS: this.PRESETS, defaults: this.presets });
+    // Mirror current master drive/warmth so the render matches the live sound.
+    const t0 = 0.06;
+    for (const note of plan.notes) {
+      off._scheduleNote(note, t0 + Math.max(0, note.startAt));
+    }
+    const buffer = await offlineCtx.startRendering();
+    return buffer;
+  }
+
+  // Convenience: render events and return WAV bytes.
+  async renderToWav(events, bpm = 140, fromBeat = 0) {
+    const buffer = await this.renderOffline(events, bpm, fromBeat);
+    if (!buffer) return null;
+    return audioBufferToWav(buffer);
+  }
+
   stop() {
     if (this._schedTimer) { clearInterval(this._schedTimer); this._schedTimer = null; }
     if (this._finishTimer) { clearTimeout(this._finishTimer); this._finishTimer = null; }
