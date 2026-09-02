@@ -526,6 +526,9 @@ async function play() {
       return;
     }
     setPlaying(true);
+    playDurationSec = duration;
+    playStartCtxTime = s._t0 || s.ctx.currentTime;
+    startProgressLoop();
     setStatus('playing ' + duration.toFixed(1) + 's (' + entry.out.events.length + ' events)');
   } catch (e) {
     setStatus('AUDIO BLOCKED by browser - click TEST SOUND to unlock');
@@ -537,7 +540,50 @@ async function play() {
 function stopPlayback() {
   if (synth) synth.stop();
   setPlaying(false);
+  stopProgressLoop();
+  const pb = document.getElementById('progressBar');
+  if (pb) pb.value = 0;
+  const pl = document.getElementById('progressLabel');
+  if (pl) pl.textContent = 'stopped';
   setStatus('stopped');
+}
+
+// ---- playback progress ----
+function startProgressLoop() {
+  stopProgressLoop();
+  const tick = () => {
+    if (!synth || !isPlaying) return;
+    const elapsed = synth.ctx.currentTime - playStartCtxTime;
+    const pct = playDurationSec > 0 ? Math.min(100, (elapsed / playDurationSec) * 100) : 0;
+    const pb = document.getElementById('progressBar');
+    if (pb && document.activeElement !== pb) pb.value = pct.toFixed(1);
+    const pl = document.getElementById('progressLabel');
+    if (pl) pl.textContent = elapsed.toFixed(1) + 's / ' + playDurationSec.toFixed(1) + 's';
+    if (elapsed >= playDurationSec) {
+      setPlaying(false);
+      stopProgressLoop();
+      setStatus('finished');
+      return;
+    }
+    progressRaf = requestAnimationFrame(tick);
+  };
+  progressRaf = requestAnimationFrame(tick);
+}
+
+function stopProgressLoop() {
+  if (progressRaf) { cancelAnimationFrame(progressRaf); progressRaf = 0; }
+}
+
+// Seek: restart playback from the selected progress percentage.
+function seekToProgress() {
+  const entry = currentEntry();
+  if (!entry || !synth) return;
+  const pb = document.getElementById('progressBar');
+  const pct = parseFloat(pb.value) || 0;
+  const totalBeats = entry.out.metadata.bars * 4;
+  const fromBeat = Math.floor((pct / 100) * totalBeats);
+  document.getElementById('playFrom').value = String(fromBeat);
+  play();
 }
 
 function auditionNote(pitch, velocity) {
@@ -670,6 +716,7 @@ function init() {
   document.getElementById('downloadJson').addEventListener('click', downloadJson);
   document.getElementById('downloadWav').addEventListener('click', downloadWav);
   document.getElementById('pause').addEventListener('click', pausePlayback);
+  document.getElementById('progressBar').addEventListener('change', seekToProgress);
   for (const id of ['seed', 'intent', 'curve', 'root', 'mode', 'voices', 'bars', 'density', 'harmony', 'loopMode', 'callResponse']) {
     document.getElementById(id).addEventListener('change', generate);
   }
