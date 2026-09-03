@@ -1,11 +1,11 @@
-// PSY ANTHEM - web/app.js  (Hyperstage UI v3.3)
+// PSY ANTHEM - web/app.js  (Hyperstage UI v3.4)
 // Presentation layer over the WHAT engine (engine.mjs) and HOW synth (synth.js).
 import { createAnthemEngine, AnthemIntent, EnergyCurve } from './engine.mjs';
 import { PsySynthBrowser, midiToFreq } from './synth.js';
 import { PRESETS, PRESET_CATEGORIES, DEFAULT_VOICE_PRESETS } from './presets.js';
 import { createStateStore } from './state.js';
 
-console.info('[PSY ANTHEM] Hyperstage v3.3 loaded - app.js module OK');
+console.info('[PSY ANTHEM] Hyperstage v3.4 loaded - app.js module OK');
 
 // ---------- shell state store + global error boundaries ----------
 export const appState = createStateStore({ status: 'ready', error: null, playing: false });
@@ -96,6 +96,14 @@ function downloadBlob(bytes, filename, mime){
   setTimeout(()=>URL.revokeObjectURL(url),2000);
 }
 
+// ---------- on-page debug strip (visible diagnostics) ----------
+const dbgState={audio:'—',last:'boot'};
+function dbg(msg){
+  dbgState.last=msg;
+  const el=$('debugStrip');
+  if(el) el.textContent='Hyperstage v3.4 · audio: '+dbgState.audio+' · last: '+msg;
+}
+
 // ---------- toast / status ----------
 let toastTimer=0;
 function toast(msg, kind){
@@ -118,6 +126,8 @@ function ensureSynth(){
   if(synth.ctx && synth.ctx.state==='suspended'){
     synth.ctx.resume().catch(()=>{ /* needs a user gesture - will retry on PLAY */ });
   }
+  dbgState.audio=synth.ctx?String(synth.ctx.state):'—';
+  dbg('synth created · ctx='+dbgState.audio);
   return synth;
 }
 function applyMacros(){
@@ -188,6 +198,7 @@ function generate(){
   historyIndex=history.length-1;
   renderCurrent();
   const meta=out.metadata||{};
+  dbg('generated · '+out.events.length+' events · seed '+cfg.seed);
   toast('Anthem generated · seed '+cfg.seed+' · '+(meta.generationTimeMs||0)+'ms','ok');
   appState.set({status:'ready'});
 }
@@ -367,12 +378,16 @@ async function play(opts){
     }
     if(s.ctx && s.ctx.state!=='running'){
       appState.set({status:'error'});
+      dbgState.audio=String(s.ctx.state);
+      dbg('PLAY blocked · ctx='+s.ctx.state);
       toast('🔇 audio blocked by the browser — click 🔊 once, then PLAY again','error');
       console.warn('psy-anthem: AudioContext state is', s.ctx.state, '- autoplay policy blocked it');
       return;
     }
     playDurationSec=dur||0; playStartCtxTime=s._t0||s.ctx.currentTime;
     setPlaying(true);
+    dbgState.audio=String(s.ctx.state);
+    dbg('PLAY ok · '+entry.out.events.length+' events · '+Math.round(dur||0)+'s · ctx='+s.ctx.state);
     toast('▶ playing '+Math.round(dur||0)+'s ('+entry.out.events.length+' events)','ok');
   } catch(e){
     appState.set({error:'Playback failed: '+(e&&e.message?e.message:String(e))});
@@ -475,11 +490,16 @@ function init(){
   $('play').addEventListener('click',play);
   $('stop').addEventListener('click',stopPlayback);
   $('testSound').addEventListener('click',async ()=>{
+    const btn=$('testSound');
     const s=ensureSynth();
     try{ if(s.ctx.state==='suspended') await s.ctx.resume(); }catch(e){ /* blocked */ }
     try{ await s.testSound(); }catch(e){ /* ignore */ }
-    if(s.ctx.state==='running') toast('🔊 audio unlocked','ok');
-    else toast('🔇 still blocked — click anywhere on the page, then 🔊 again','error');
+    const ok=s.ctx && s.ctx.state==='running';
+    dbgState.audio=s.ctx?String(s.ctx.state):'—';
+    dbg(ok?'TEST SOUND ok':'TEST SOUND blocked · ctx='+dbgState.audio);
+    btn.textContent=ok?'🔊 OK':'🔇 blocked';
+    toast(ok?'🔊 audio works — press PLAY':'🔇 audio is blocked by the browser/environment',ok?'ok':'error');
+    setTimeout(()=>{ btn.textContent='🔊'; },3000);
   });
   $('prev').addEventListener('click',()=>navigate(-1));
   $('next').addEventListener('click',()=>navigate(1));
@@ -509,6 +529,7 @@ function init(){
   },{ once:true });
   startViz();
   setStatusReady();
+  dbg('ready · press GENERATE then PLAY');
 }
 function setStatusReady(){ appState.set({status:'ready'}); }
 init();

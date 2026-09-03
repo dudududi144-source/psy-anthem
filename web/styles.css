@@ -284,3 +284,10 @@ input[type=range]::-moz-range-thumb{
   letter-spacing:.08em; color:#0a0c1d; background:var(--cyan); box-shadow:0 0 12px rgba(46,230,255,.5);
   text-transform:uppercase; font-weight:700;
 }
+
+.debug-strip{
+  max-width:1560px; margin:0 auto; padding:7px 22px;
+  font-family:var(--mono); font-size:11.5px; letter-spacing:.05em; color:var(--cyan);
+  background:rgba(46,230,255,.06); border-bottom:1px solid rgba(46,230,255,.18);
+  text-align:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
