@@ -177,6 +177,8 @@ export const FALLBACK_PRESETS = {
   },
 };
 
+export const FALLBACK_DEFAULTS = { 0: 'basic-lead', 1: 'basic-lead', 2: 'basic-lead', 3: 'basic-lead' };
+
 
 
 
