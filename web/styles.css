@@ -307,3 +307,6 @@ input[type=range]::-moz-range-thumb{
 .ac-btn.yes{border-color:rgba(61,255,160,.5); color:var(--lime)}
 .ac-btn.no{border-color:rgba(255,77,109,.5); color:#ff8fa3}
 .ac-btn:hover{transform:translateY(-1px)}
+
+.wav-wrap{margin-top:10px}
+.wav-player{width:100%; border-radius:10px; outline:none}

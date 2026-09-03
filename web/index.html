@@ -6,11 +6,11 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>PSY ANTHEM · Hyperstage v3.9</title>
+<title>PSY ANTHEM · Hyperstage v3.10</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/space-grotesk@5.0.0/500.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/space-grotesk@5.0.0/700.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/jetbrains-mono@5.0.0/400.css">
-<link rel="stylesheet" href="./styles.css?v=39">
+<link rel="stylesheet" href="./styles.css?v=40">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🎛%3C/text%3E%3C/svg%3E">
 </head>
 <body>
@@ -30,11 +30,11 @@
   <div class="status-chip">
     <span id="statusLed" class="led led-ready"></span>
     <span id="statusText">ready</span>
-    <span class="ver-badge">Hyperstage v3.9</span>
+    <span class="ver-badge">Hyperstage v3.10</span>
   </div>
 </header>
 
-<div id="debugStrip" class="debug-strip">Hyperstage v3.9 · booting…</div>
+<div id="debugStrip" class="debug-strip">Hyperstage v3.10 · booting…</div>
 
 <div id="audioCheckBanner" class="ac-banner" hidden>
   <div id="audioCheckMsg" class="ac-msg">🔊 שני צפצופים נשלחו (660+880 הרץ) — שמעת אותם?</div>
@@ -103,12 +103,16 @@
       <button id="play" class="btn play" disabled>▶ PLAY</button>
       <button id="stop" class="btn ghost">■</button>
       <button id="testSound" class="btn ghost" title="speaker check">🔊</button>
+      <button id="audioCheckTop" class="btn ghost" title="audio check">🩺</button>
+      <button id="playWav" class="btn ghost" title="render + play via WAV (fallback path)">◉ WAV PLAY</button>
       <label class="inline">
         <span class="lbl">from bar</span>
         <select id="playFrom" class="small"></select>
       </label>
       <span id="posLabel" class="pos mono">0:00.0 / 0:00.0</span>
     </div>
+
+    <div id="wavWrap" class="wav-wrap"></div>
 
     <div class="progress-wrap">
       <div class="progress-track"><div id="progressFill" class="progress-fill"></div></div>
@@ -181,6 +185,6 @@
   <a href="https://github.com/dudududi144-source/psy-anthem">github</a>
 </footer>
 
-<script type="module" src="./app.js?v=39"></script>
+<script type="module" src="./app.js?v=40"></script>
 </body>
 </html>

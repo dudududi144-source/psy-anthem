@@ -1,11 +1,11 @@
-// PSY ANTHEM - web/app.js  (Hyperstage UI v3.9)
+// PSY ANTHEM - web/app.js  (Hyperstage UI v3.10)
 // Presentation layer over the WHAT engine (engine.mjs) and HOW synth (synth.js).
 import { createAnthemEngine, AnthemIntent, EnergyCurve } from './engine.mjs';
 import { PsySynthBrowser, midiToFreq } from './synth.js';
 import { PRESETS, PRESET_CATEGORIES, DEFAULT_VOICE_PRESETS } from './presets.js';
 import { createStateStore } from './state.js';
 
-console.info('[PSY ANTHEM] Hyperstage v3.9 loaded - app.js module OK');
+console.info('[PSY ANTHEM] Hyperstage v3.10 loaded - app.js module OK');
 
 // ---------- shell state store + global error boundaries ----------
 export const appState = createStateStore({ status: 'ready', error: null, playing: false });
@@ -101,7 +101,7 @@ const dbgState={audio:'—',last:'boot'};
 function dbg(msg){
   dbgState.last=msg;
   const el=$('debugStrip');
-  if(el) el.textContent='Hyperstage v3.9 · audio: '+dbgState.audio+' · last: '+msg;
+  if(el) el.textContent='Hyperstage v3.10 · audio: '+dbgState.audio+' · last: '+msg;
 }
 
 // ---------- toast / status ----------
@@ -511,6 +511,38 @@ function startViz(){
   loop();
 }
 
+// ---------- WAV fallback playback: offline render -> <audio> element ----------
+async function playViaWav(){
+  const entry=currentEntry();
+  if(!entry){ toast('Generate an anthem first','info'); return; }
+  const s=ensureSynth();
+  dbg('rendering WAV offline…');
+  toast('◉ rendering WAV offline…','info');
+  let bytes=null;
+  try{ bytes=await s.renderToWav(entry.out.events, entry.config.bpm||140, 0); }
+  catch(e){ bytes=null; }
+  if(!bytes){ appState.set({error:'WAV render failed'}); toast('WAV render failed','error'); return; }
+  const blob=new Blob([bytes],{type:'audio/wav'});
+  const url=URL.createObjectURL(blob);
+  let wa=$('wavPlayer');
+  if(!wa){
+    wa=document.createElement('audio');
+    wa.id='wavPlayer'; wa.controls=true; wa.className='wav-player';
+    const wrap=$('wavWrap'); if(wrap) wrap.appendChild(wa);
+  }
+  wa.src=url;
+  wa.onended=()=>{ dbg('WAV playback finished'); };
+  try{
+    await wa.play();
+    dbg('WAV playback started via <audio> element');
+    console.info('[PSY ANTHEM] WAV playback started via <audio> element (independent path)');
+    toast('▶ playing via WAV — independent audio path','ok');
+  }catch(e){
+    dbg('WAV autoplay blocked — press play on the audio player');
+    toast('לחץ על כפתור הנגינה בנגן שהופיע','info');
+  }
+}
+
 // ---------- export ----------
 function midiFileName(cfg){ return 'psy-anthem-seed'+cfg.seed+'-'+cfg.intent+'.mid'; }
 function doDownloadMidi(){ const e=currentEntry(); if(!e)return; downloadBlob(midiFromOutput(e.out,e.config.bpm||140), midiFileName(e.config),'audio/midi'); toast('MIDI exported','ok'); }
@@ -550,6 +582,8 @@ function init(){
   $('random').addEventListener('click',()=>{ $('seed').value=String(Math.floor(Math.random()*2147483647)); generate(); });
   $('play').addEventListener('click',play);
   $('stop').addEventListener('click',stopPlayback);
+  const pw=$('playWav'); if(pw) pw.addEventListener('click',playViaWav);
+  const act=$('audioCheckTop'); if(act) act.addEventListener('click',audioCheckFlow);
   const acBtn=$('audioCheck');
   if(acBtn) acBtn.addEventListener('click',audioCheckFlow);
   const acYes=$('audioCheckYes'); if(acYes) acYes.addEventListener('click',()=>audioCheckAnswer(true));
