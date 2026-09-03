@@ -1,5 +1,23 @@
 # Changelog
 
+## 5.3.0 - FREEZE playback (full quality, zero live load)
+
+Field report: "not playing, massive load." The full live graph is simply
+too heavy for very weak/loaded machines in real time. The professional
+answer is the DAW "freeze/consolidate" pattern - no sound reduction:
+
+- ▶ PLAY now FREEZE-plays: renders the ENTIRE anthem with the full engine
+  (all voices/presets/FX) in an OfflineAudioContext, then plays the result
+  through a media element. Zero live WebAudio processing during playback;
+  rendering is cached per take and re-rendered only on new takes.
+- New ▶ LIVE button keeps the real-time WebAudio path available.
+- Space triggers FREEZE playback; STOP stops it; progress/playhead track
+  the media element while frozen.
+- synth.js: offline render schedules notes in 24-note chunks (no ~1s
+  main-thread block during the bounce render itself).
+
+
+
 ## 5.2.0 - Origin-hygiene guard
 
 Investigation result: main.js does not exist anywhere in psy-anthem (web/

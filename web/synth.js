@@ -997,8 +997,13 @@ export class PsySynthBrowser {
     const off = new PsySynthBrowser(offlineCtx, { PRESETS: this.PRESETS, defaults: this.presets });
     // Mirror current master drive/warmth so the render matches the live sound.
     const t0 = 0.06;
-    for (const note of plan.notes) {
+    // Chunked so the burst of node creation never blocks the main thread
+    // for a full second on weak machines (offline rendering itself is
+    // faster than real time once it starts).
+    for (let i = 0; i < plan.notes.length; i++) {
+      const note = plan.notes[i];
       off._scheduleNote(note, t0 + Math.max(0, note.startAt));
+      if ((i % 24) === 23) await new Promise((resolve) => setTimeout(resolve, 0));
     }
     const buffer = await offlineCtx.startRendering();
     return buffer;

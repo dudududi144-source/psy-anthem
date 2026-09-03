@@ -1,11 +1,11 @@
-// PSY ANTHEM - web/app.js  (Hyperstage UI v5.2)
+// PSY ANTHEM - web/app.js  (Hyperstage UI v5.3)
 // Presentation layer over the WHAT engine (engine.mjs) and HOW synth (synth.js).
 import { createAnthemEngine, AnthemIntent, EnergyCurve } from './engine.mjs';
 import { PsySynthBrowser, midiToFreq, audioBufferToWav } from './synth.js';
 import { PRESETS, PRESET_CATEGORIES, DEFAULT_VOICE_PRESETS } from './presets.js';
 import { createStateStore } from './state.js';
 
-console.info('[PSY ANTHEM] Hyperstage v5.2 loaded - app.js module OK');
+console.info('[PSY ANTHEM] Hyperstage v5.3 loaded - app.js module OK');
 
 // ---------- shell state store + global error boundaries ----------
 export const appState = createStateStore({ status: 'ready', error: null, playing: false });
@@ -78,6 +78,10 @@ let lastSchedStrip=-1;
 let lastDropStrip=-1;
 let vizSkip=false;
 let progFrame=0;
+let bounceAudio=null;
+let bounceUrl=null;
+let bounceKey='';
+let bounceMode=false;
 let historyIndex = -1;
 let synth = null;
 let isPlaying = false;
@@ -131,7 +135,7 @@ const dbgState={audio:'—',last:'boot'};
 function dbg(msg){
   dbgState.last=msg;
   const el=$('debugStrip');
-  if(el) el.textContent='Hyperstage v5.2 · audio: '+dbgState.audio+' · last: '+msg;
+  if(el) el.textContent='Hyperstage v5.3 · audio: '+dbgState.audio+' · last: '+msg;
 }
 
 // ---------- toast / status ----------
@@ -146,6 +150,57 @@ appState.subscribe((state)=>{
   if(txt) txt.textContent = state.status;
   if(led) led.className='led '+(state.status==='playing'?'led-play':state.status==='error'?'led-err':'led-ready');
 });
+
+// ---------- FREEZE playback: full-quality offline bounce -> <audio> ----------
+// The DAW "freeze/consolidate" pattern: render the entire anthem with the
+// FULL engine (every voice, preset and FX - nothing reduced) in an
+// OfflineAudioContext, then play the result through a media element.
+// Zero live WebAudio load during playback, so weak machines play smoothly.
+function takeKey(){
+  const e=currentEntry();
+  return e ? historyIndex+':'+e.config.seed+':'+e.config.bars+':'+e.config.intent : '';
+}
+async function ensureBounce(){
+  const entry=currentEntry();
+  if(!entry) return null;
+  const key=takeKey();
+  if(bounceUrl && bounceKey===key) return bounceUrl;
+  const s=ensureSynth();
+  dbg('FREEZE: rendering full-quality bounce…');
+  const buffer=await s.renderOffline(entry.out.events, entry.config.bpm||140, 0);
+  if(!buffer) return null;
+  const bytes=await audioBufferToWav(buffer);
+  if(bounceUrl){ try{ URL.revokeObjectURL(bounceUrl); }catch(e){ /* ignore */ } }
+  bounceUrl=URL.createObjectURL(new Blob([bytes],{type:'audio/wav'}));
+  bounceKey=key;
+  dbg('FREEZE ready · '+Math.round(buffer.duration)+'s full-quality');
+  console.info('[PSY ANTHEM] FREEZE bounce rendered:', Math.round(buffer.duration)+'s');
+  return bounceUrl;
+}
+async function playBounce(){
+  const entry=currentEntry();
+  if(!entry){ toast('Generate an anthem first','info'); return; }
+  if(isPlaying){ stopPlayback(); return; }
+  toast('◉ rendering full-quality bounce…','info');
+  let url=null;
+  try{ url=await ensureBounce(); }catch(e){ url=null; }
+  if(!url){
+    toast('bounce failed — falling back to live','error');
+    return play();
+  }
+  if(!bounceAudio){
+    bounceAudio=new Audio();
+    bounceAudio.addEventListener('ended',()=>{ if(bounceMode){ setPlaying(false); setProgress(0); } });
+  }
+  bounceAudio.src=url;
+  bounceMode=true;
+  try{ await bounceAudio.play(); }catch(e){ toast('press ▶ again to start','info'); return; }
+  playDurationSec=isFinite(bounceAudio.duration)&&bounceAudio.duration>0?bounceAudio.duration:0;
+  setPlaying(true);
+  dbg('FREEZE playing · full quality · zero live load');
+  console.info('[PSY ANTHEM] FREEZE playback started (offline-rendered full-quality bounce)');
+  startProgressLoop();
+}
 
 // ---------- raw beep: hardware/path bisection test ----------
 function rawBeep(s){
@@ -316,6 +371,7 @@ function renderCurrent(){
   $('trackTitle').textContent=(entry.config.intent||'')+' · seed '+meta.seed;
   $('trackMeta').textContent=(meta.bars||entry.config.bars)+' bars · '+(meta.voices||entry.config.voices)+' voices · '+(meta.generationTimeMs||0)+'ms';
   $('play').disabled=false;
+  const lpEn=$('livePlay'); if(lpEn) lpEn.disabled=false;
   const q=meta.artisticQuality!==undefined?meta.artisticQuality:(meta.memorabilityScore!==undefined?meta.memorabilityScore:null);
   $('qualityBadge').textContent = q!==null? (q+'/100') : (meta.quality||'—');
   updateNavButtons();
@@ -521,6 +577,8 @@ function stopPlayback(){
   if(synth) synth.stop();
   setPlaying(false);
   setProgress(0);
+  if(bounceAudio){ try{ bounceAudio.pause(); }catch(e){ /* ignore */ } }
+  bounceMode=false;
   const mediaIds=['bouncePlayer','wavPlayer','pureWavPlayer'];
   for(const id of mediaIds){ const el=$(id); if(el){ try{ el.pause(); }catch(e){ /* ignore */ } } }
   if(synth && synth._mediaBridgeEl){ try{ synth._mediaBridgeEl.pause(); }catch(e){ /* ignore */ } }
@@ -531,7 +589,9 @@ function startProgressLoop(){
     if(!isPlaying) return;
     const el=performance.now();
     const ctxT=synth&&synth.ctx?synth.ctx.currentTime:0;
-    const pos=Math.max(0,ctxT-playStartCtxTime);
+    let pos;
+    if(bounceMode && bounceAudio){ pos=bounceAudio.currentTime; if(isFinite(bounceAudio.duration)&&bounceAudio.duration>0) playDurationSec=bounceAudio.duration; }
+    else { pos=Math.max(0,ctxT-playStartCtxTime); }
     const frac=playDurationSec>0?Math.min(1,pos/playDurationSec):0;
     // Canvas playhead every frame; DOM writes every 5th frame (weak CPUs).
     if((progFrame++%5)===0){ setProgress(frac); }
@@ -847,7 +907,8 @@ function init(){
   buildPresetSelects();
   $('generate').addEventListener('click',generate);
   $('random').addEventListener('click',()=>{ $('seed').value=String(Math.floor(Math.random()*2147483647)); generate(); });
-  $('play').addEventListener('click',play);
+  $('play').addEventListener('click',playBounce);
+  const lp=$('livePlay'); if(lp) lp.addEventListener('click',play);
   $('stop').addEventListener('click',stopPlayback);
   const pw=$('playWav'); if(pw) pw.addEventListener('click',playViaWav);
   const bp=$('bridgePlay'); if(bp) bp.addEventListener('click',playViaBridge);
@@ -893,7 +954,7 @@ function init(){
   window.addEventListener('keydown',(ev)=>{
     const tag=ev.target&&ev.target.tagName;
     if(tag==='INPUT'||tag==='SELECT'||tag==='TEXTAREA') return;
-    if(ev.code==='Space'){ ev.preventDefault(); play(); }
+    if(ev.code==='Space'){ ev.preventDefault(); playBounce(); }
     else if(ev.key==='g'||ev.key==='G'){ generate(); }
   });
   window.addEventListener('resize',()=>{ const e=currentEntry(); if(e)renderRoll(e.out,e.config,0); });
