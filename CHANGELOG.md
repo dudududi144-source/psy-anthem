@@ -1,5 +1,21 @@
 # Changelog
 
+## 6.2.0 - Generate never blocks again
+
+Field report: "asks for Generate but won't let me generate." Diagnosis: the
+full-quality offline render could hang for minutes on a weak machine while
+holding the busy flag, leaving the Generate button permanently disabled.
+
+- Fast path first: generation renders an instant pure-JS WAV (~0.1-0.3s),
+  so the player is ready immediately and the button frees at once.
+- The full-quality offline render now runs in the background with a 20s
+  timeout; if it finishes, the player upgrades to HQ audio automatically
+  (only when not mid-playback). It can never block or lock the UI.
+- Status line reports every stage: Generating / Preparing / Ready /
+  HQ upgraded / errors.
+
+
+
 ## 6.1.0 - Deployment fix + visible diagnostics
 
 - pages.yml: web/midi-lite.mjs was missing from the deployed site (explicit

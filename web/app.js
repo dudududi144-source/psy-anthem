@@ -1,23 +1,23 @@
-// PSY ANTHEM — clean build v6.1
-// One playback path only (the proven one — see MEMORY.md):
-//   generate -> render WAV (offline full-quality, pure-JS fallback)
-//   -> visible <audio controls> player.
-// No live WebAudio playback. No test beeps. No experimental modes.
+// PSY ANTHEM — clean build v6.2
+// Playback model (MEMORY.md): the button must NEVER be blocked.
+//   1) generate -> instant pure-JS WAV render (fast, guaranteed) -> player
+//   2) full-quality offline render runs in the background with a timeout;
+//      if it finishes, the player upgrades to HQ audio. Never blocking.
 import { createAnthemEngine, AnthemIntent, EnergyCurve } from './engine.mjs';
 import { PsySynthBrowser, audioBufferToWav } from './synth.js';
 import { PRESETS, DEFAULT_VOICE_PRESETS } from './presets.js';
 
 const $ = (id) => document.getElementById(id);
-console.info('[PSY ANTHEM] clean build v6.1 loaded');
+console.info('[PSY ANTHEM] clean build v6.2 loaded');
 
 // ---------- state ----------
 let synth = null;
-let anthem = null;   // AnthemOutput
+let anthem = null;
 let anthemCfg = null;
+let anthemKey = '';
 let wavUrl = null;
 let busy = false;
 
-// ---------- offline synth (rendering only) ----------
 function ensureSynth() {
   if (synth) return synth;
   const AC = window.AudioContext || window.webkitAudioContext;
@@ -25,7 +25,7 @@ function ensureSynth() {
   return synth;
 }
 
-// ---------- pure-JS WAV synth (zero WebAudio - guaranteed fallback) ----------
+// ---------- pure-JS WAV synth (zero WebAudio - guaranteed) ----------
 function floatToWav16(data, sr) {
   const n = data.length;
   const ab = new ArrayBuffer(44 + n * 2);
@@ -90,40 +90,8 @@ function readConfig() {
     bpm: 140,
   };
 }
-
-// ---------- render (offline full quality, pure-JS fallback) ----------
-function toUrl(bytes) {
-  if (wavUrl) { try { URL.revokeObjectURL(wavUrl); } catch (e) { /* ignore */ } }
-  wavUrl = URL.createObjectURL(new Blob([bytes], { type: 'audio/wav' }));
-  return wavUrl;
-}
-let lastRenderInfo = '';
-async function renderWav(events, bpm) {
-  // 1) full-quality offline render
-  try {
-    const s = ensureSynth();
-    const buffer = await s.renderOffline(events, bpm, 0);
-    if (buffer) {
-      const bytes = await audioBufferToWav(buffer);
-      if (bytes) {
-        lastRenderInfo = 'HQ render · ' + Math.round(buffer.duration) + 's';
-        console.info('[PSY ANTHEM] render OK (full quality):', Math.round(buffer.duration) + 's');
-        return toUrl(bytes);
-      }
-    }
-    console.warn('[PSY ANTHEM] offline render returned nothing — using fallback');
-  } catch (e) {
-    console.warn('[PSY ANTHEM] offline render failed — using fallback:', e && e.message ? e.message : e);
-  }
-  // 2) guaranteed pure-JS fallback
-  const bytes = eventsToWav(events, bpm);
-  if (bytes) {
-    lastRenderInfo = 'fallback render · ' + Math.round(bytes.length / 88200) + 's';
-    console.info('[PSY ANTHEM] render OK (pure-JS fallback)');
-    return toUrl(bytes);
-  }
-  lastRenderInfo = 'render failed';
-  return null;
+function cfgKey(cfg) {
+  return cfg.seed + ':' + cfg.bars + ':' + cfg.intent + ':' + cfg.energyCurve + ':' + cfg.scale.root;
 }
 
 // ---------- status ----------
@@ -132,7 +100,41 @@ function setStatus(msg) {
   if (el) el.textContent = msg;
 }
 
-// ---------- generate + render ----------
+// ---------- URL helper ----------
+function toUrl(bytes) {
+  if (wavUrl) { try { URL.revokeObjectURL(wavUrl); } catch (e) { /* ignore */ } }
+  wavUrl = URL.createObjectURL(new Blob([bytes], { type: 'audio/wav' }));
+  return wavUrl;
+}
+
+// ---------- background HQ upgrade (never blocks, with timeout) ----------
+function withTimeout(promise, ms) {
+  return Promise.race([promise, new Promise((resolve) => setTimeout(() => resolve(null), ms))]);
+}
+async function upgradeToHQ(events, bpm, key) {
+  try {
+    const s = ensureSynth();
+    const buffer = await withTimeout(s.renderOffline(events, bpm, 0), 20000);
+    if (!buffer) { console.info('[PSY ANTHEM] HQ render skipped (timeout/unsupported) — keeping basic audio'); return; }
+    if (anthemKey !== key) return; // user moved on
+    const bytes = await audioBufferToWav(buffer);
+    if (!bytes || anthemKey !== key) return;
+    const el = $('player');
+    const newUrl = toUrl(bytes);
+    if (el.paused || el.currentTime < 0.25) {
+      el.src = newUrl;
+      el.load();
+      setStatus('Ready — HQ audio (' + Math.round(buffer.duration) + 's) · press play ▶');
+      console.info('[PSY ANTHEM] player upgraded to HQ render:', Math.round(buffer.duration) + 's');
+    } else {
+      console.info('[PSY ANTHEM] HQ render done during playback — kept for next generation');
+    }
+  } catch (e) {
+    console.warn('[PSY ANTHEM] HQ upgrade failed (basic audio stays):', e && e.message ? e.message : e);
+  }
+}
+
+// ---------- generate (fast path - never blocks on rendering) ----------
 async function generate() {
   if (busy) return;
   busy = true;
@@ -141,21 +143,25 @@ async function generate() {
   try {
     const cfg = readConfig();
     setStatus('Generating…');
+    await new Promise((r) => setTimeout(r, 0));
     const out = createAnthemEngine(cfg).generate();
     if (!out) { setStatus('Generation failed — try another seed'); return; }
     anthem = out;
     anthemCfg = cfg;
+    anthemKey = cfgKey(cfg);
     renderRoll(out, cfg);
     renderStats(out);
-    setStatus('Rendering audio… (this can take a few seconds)');
-    await new Promise((r) => setTimeout(r, 30)); // let the status paint
-    const url = await renderWav(out.events, cfg.bpm);
-    if (!url) { setStatus('Audio render failed — try again'); return; }
+    setStatus('Preparing audio…');
+    await new Promise((r) => setTimeout(r, 0));
+    const quick = eventsToWav(out.events, cfg.bpm);
+    if (!quick) { setStatus('Audio preparation failed'); return; }
+    const url = toUrl(quick);
     const player = $('player');
     player.src = url;
     player.load();
-    setStatus('Ready (' + lastRenderInfo + ') — press play ▶');
-    console.info('[PSY ANTHEM] player ready:', url.slice(0, 40));
+    setStatus('Ready — press play ▶ (HQ version upgrading in background…)');
+    console.info('[PSY ANTHEM] basic audio ready:', out.events.length, 'events');
+    upgradeToHQ(out.events, cfg.bpm, anthemKey); // fire & forget
   } catch (e) {
     const msg = e && e.message ? e.message : String(e);
     setStatus('Error: ' + msg);
@@ -173,7 +179,7 @@ function play() {
   player.play().then(() => setStatus('Playing…')).catch(() => setStatus('Press ▶ on the player below'));
 }
 
-// ---------- piano roll (simple, cached draw) ----------
+// ---------- piano roll ----------
 const VOICE_COLORS = ['#ff2ec4', '#2ee6ff', '#a06bff', '#ffb02e'];
 function renderRoll(out, cfg) {
   const cv = $('roll');
