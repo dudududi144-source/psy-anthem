@@ -18,8 +18,10 @@ class MockParam {
 class MockNode {
   kind: string;
   outputs: unknown[] = [];
+  disconnected = 0;
   constructor(kind: string) { this.kind = kind; }
   connect(target: unknown): unknown { this.outputs.push(target); return target; }
+  disconnect(): void { this.disconnected++; }
 }
 
 export class MockOscillator extends MockNode {

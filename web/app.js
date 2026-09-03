@@ -1,5 +1,22 @@
 // PSY ANTHEM - web/app.js (demo v2: generation + playback + downloads)
 import { createAnthemEngine, AnthemIntent, EnergyCurve } from './engine.mjs';
+import { createStateStore } from './state.js';
+
+// ---------- shell state: single source of truth for status/error ----------
+// Listeners can subscribe instead of polling the DOM; global error boundaries
+// funnel uncaught failures into the same store so the user always sees them.
+export const appState = createStateStore({ status: 'ready', error: null });
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('error', (ev) => {
+    appState.set({ error: ev && ev.message ? String(ev.message) : 'unknown error' });
+  });
+  window.addEventListener('unhandledrejection', (ev) => {
+    const reason = ev && ev.reason;
+    const text = reason && reason.message ? String(reason.message) : String(reason || 'unknown error');
+    appState.set({ error: text });
+  });
+}
 import { PsySynthBrowser, midiToFreq } from './synth.js';
 import { PRESETS, PRESET_CATEGORIES, DEFAULT_VOICE_PRESETS } from './presets.js';
 
@@ -685,11 +702,13 @@ function pausePlayback() {
 
 // ---------- errors ----------
 function showError(msg) {
+  appState.set({ error: msg, status: 'error' });
   const el = document.getElementById('err');
   el.textContent = msg;
   el.style.display = 'block';
 }
 function hideError() {
+  appState.set({ error: null, status: 'ready' });
   document.getElementById('err').style.display = 'none';
 }
 

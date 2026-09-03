@@ -676,6 +676,8 @@ export class PsySynthBrowser {
 
     // --- ADSR voice gain
     const voiceGain = ctx.createGain();
+    // Per-note graph roots, detached when the note ends (see _armVoiceCleanup).
+    const noteGraph = [voiceGain];
     const g = voiceGain.gain;
     g.setValueAtTime(0, startTime);
     g.linearRampToValueAtTime(velocity, startTime + attack);
@@ -693,20 +695,20 @@ export class PsySynthBrowser {
     const shimmer = fx.shimmer || 0;
     const totalReverb = Math.min(1, reverbSend + shimmer * 0.5);
     if (totalReverb > 0 && this.reverbLevel > 0) {
-      const rg = ctx.createGain();
+      const rg = ctx.createGain(); noteGraph.push(rg);
       rg.gain.value = totalReverb * this.reverbLevel * velocity;
       voiceGain.connect(rg);
       rg.connect(this.reverbIn);
     }
     if (delaySend > 0 && this.delayLevel > 0) {
-      const dg = ctx.createGain();
+      const dg = ctx.createGain(); noteGraph.push(dg);
       dg.gain.value = delaySend * this.delayLevel * velocity;
       voiceGain.connect(dg);
       dg.connect(this.delayIn);
     }
     const chorusSend = fx.chorusSend !== undefined ? fx.chorusSend : (fx.chorus || 0);
     if (chorusSend > 0) {
-      const cg = ctx.createGain();
+      const cg = ctx.createGain(); noteGraph.push(cg);
       cg.gain.value = chorusSend * 0.8 * velocity;
       voiceGain.connect(cg);
       cg.connect(this.chorusIn);
@@ -733,6 +735,42 @@ export class PsySynthBrowser {
     }
 
     for (const n of techNodes) this.activeNodes.push(n);
+
+    // --- voice lifecycle: release JS references and detach the per-note
+    // graph when the note ends. Full-ahead scheduling of long pieces (32+
+    // bars x 4 voices) would otherwise accumulate thousands of reachable
+    // nodes and keep memory growing for the whole playback.
+    this._armVoiceCleanup(techNodes, noteGraph);
+  }
+
+  // Counter-based cleanup: every scheduled source removes itself from
+  // activeNodes on end; once all sources of a note have ended, the per-note
+  // graph is disconnected so the whole subgraph becomes collectable. The
+  // counter makes the finish order irrelevant (granular grains, LFOs...).
+  // Hosts without onended support (mocks) still get full cleanup via stop().
+  _armVoiceCleanup(sources, noteGraph) {
+    const unique = [];
+    for (const s of sources) {
+      if (s && typeof s.stop === 'function' && unique.indexOf(s) === -1) unique.push(s);
+    }
+    if (unique.length === 0) return;
+    let pending = unique.length;
+    const detachGraph = () => {
+      for (const node of noteGraph) {
+        try { if (node && typeof node.disconnect === 'function') node.disconnect(); } catch (e) { /* already detached */ }
+      }
+    };
+    for (const src of unique) {
+      try {
+        src.onended = () => {
+          const idx = this.activeNodes.indexOf(src);
+          if (idx >= 0) this.activeNodes.splice(idx, 1);
+          try { if (typeof src.disconnect === 'function') src.disconnect(); } catch (e) { /* already detached */ }
+          pending -= 1;
+          if (pending <= 0) detachGraph();
+        };
+      } catch (e) { /* host without writable onended - stop() still clears */ }
+    }
   }
 
   _scheduleNote(note, startTime) {

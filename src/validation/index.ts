@@ -5,3 +5,6 @@ export { analyzeHarmony, detectCadences } from './harmonic-analysis';
 export type { HarmonicAnalysisReport, CadenceFinding, CadenceType } from './harmonic-analysis';
 export { analyzeVoiceLeadingFromEvents, calculateAdvancedQualityScore } from './advanced-theory';
 export type { VoiceLeadingQuality, AdvancedQualityReport, ComponentScores, QualityGrade } from './advanced-theory';
+
+export { parseConfig, safeParseConfig, ANTHEM_CONFIG_LIMITS } from './config-schema';
+export type { SchemaIssue, SchemaError, ConfigParseResult } from './config-schema';

@@ -1,6 +1,6 @@
 {
   "name": "psy-anthem",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "PSY ANTHEM - Melodic composition engine for the PSY family. Pure WHAT layer. Constraint-based. Deterministic. Anthem-grade.",
   "type": "module",
   "main": "dist/psy-anthem.mjs",

@@ -1,6 +1,5 @@
 // PSY ANTHEM - engine.ts
 import { EXPRESSION_CONFIG, VALIDATION_THRESHOLDS } from './constants';
-import { EnergyCurve } from './types';
 import type {
   AnthemConfig, AnthemOutput, GenerationMetadata, GenerationQuality,
   HarmonicAnalysis, InternalNoteEvent, MotifDNA, MusicalEvent, NoteData,
@@ -18,6 +17,7 @@ import { theoryLint } from './solver/validator';
 import { scalePitchClasses, snapToScale } from './harmony/intervals';
 import { motifCoverage } from './solver/objective';
 import { validateArtisticQuality } from './quality/artistic-validator';
+import { parseConfig } from './validation/config-schema';
 
 export interface AnthemEngine {
   generate(): AnthemOutput | null;
@@ -28,27 +28,11 @@ function nowMs(): number {
   return Date.now();
 }
 
-function validateConfig(config: AnthemConfig): void {
-  if (config.bars < 8 || config.bars > 128) {
-    throw new RangeError('bars must be 8-128, got ' + config.bars);
-  }
-  if (config.voices < 1 || config.voices > 4) {
-    throw new RangeError('voices must be 1-4, got ' + config.voices);
-  }
-  if (config.targetRange.min < 0 || config.targetRange.max > 127) {
-    throw new RangeError('targetRange must be within MIDI 0-127');
-  }
-  if (config.targetRange.min >= config.targetRange.max) {
-    throw new RangeError('targetRange.min must be < targetRange.max');
-  }
-  if (config.energyCurve === EnergyCurve.CUSTOM) {
-    if (!config.customCurve || config.customCurve.length === 0) {
-      throw new TypeError('customCurve is required when energyCurve is CUSTOM');
-    }
-  }
-  if (config.scale.root < 0 || config.scale.root > 11) {
-    throw new RangeError('scale.root must be 0-11, got ' + config.scale.root);
-  }
+function validateConfig(config: unknown): AnthemConfig {
+  // Strict schema validation with zod-compatible semantics (zero runtime
+  // dependencies - protects the 30KB bundle gate). Range-only violations
+  // throw RangeError; type/shape/enum/refine violations throw TypeError.
+  return parseConfig(config);
 }
 
 function clampDuration(d: number): number {
@@ -107,8 +91,8 @@ function smoothLeadVoice(events: InternalNoteEvent[], pcs: number[], lo: number,
 
 
 export function createAnthemEngine(config: AnthemConfig): AnthemEngine {
-  validateConfig(config);
-  const frozen: AnthemConfig = config.bpm !== undefined ? { ...config } : { ...config, bpm: 140 };
+  const validated = validateConfig(config);
+  const frozen: AnthemConfig = validated.bpm !== undefined ? { ...validated } : { ...validated, bpm: 140 };
 
   return {
     getConfig(): Readonly<AnthemConfig> {

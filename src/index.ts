@@ -1,4 +1,7 @@
 // PSY ANTHEM - index.ts (public API)
+export { parseConfig, safeParseConfig, ANTHEM_CONFIG_LIMITS } from './validation/config-schema';
+export type { SchemaIssue, SchemaError, ConfigParseResult } from './validation/config-schema';
+
 export { createAnthemEngine } from './engine';
 export type { AnthemEngine } from './engine';
 

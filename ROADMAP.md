@@ -57,3 +57,13 @@ Every phase ends green. No phase starts until the previous phase is fully valida
   (lead pitch-class remap + chord-root transposition) without mutating the composition
 - psyboss: enableRealtimeGeneration / disableRealtimeGeneration / forceEvolution
 - Examples 19-20 + 24 new evolution tests
+
+
+## Phase 14 - Hardening (maintenance)
+
+- Strict config schema validation (zero-dep, zod-compatible semantics) in
+  src/validation/config-schema.ts, wired into createAnthemEngine.
+- Voice lifecycle cleanup in web/synth.js (onended release + per-note graph
+  detach) for long full-ahead plays.
+- Minimal state store (web/state.js) + global error boundaries in the web
+  shell.
