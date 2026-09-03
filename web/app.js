@@ -1,4 +1,4 @@
-// PSY ANTHEM - web/app.js  (Hyperstage UI v3.1)
+// PSY ANTHEM - web/app.js  (Hyperstage UI v3.2)
 // Presentation layer over the WHAT engine (engine.mjs) and HOW synth (synth.js).
 import { createAnthemEngine, AnthemIntent, EnergyCurve } from './engine.mjs';
 import { PsySynthBrowser, midiToFreq } from './synth.js';
@@ -112,6 +112,9 @@ function ensureSynth(){
   synth = new PsySynthBrowser(new (window.AudioContext||window.webkitAudioContext)(), { PRESETS, defaults: DEFAULT_VOICE_PRESETS });
   synth.onFinish = ()=>{ setPlaying(false); };
   applyMacros(); applyTrackVolumes();
+  if(synth.ctx && synth.ctx.state==='suspended'){
+    synth.ctx.resume().catch(()=>{ /* needs a user gesture - will retry on PLAY */ });
+  }
   return synth;
 }
 function applyMacros(){
@@ -356,8 +359,18 @@ async function play(opts){
   const fromBeat=(fromBar-1)*4;
   try {
     const dur=await s.playEvents(entry.out.events, entry.config.bpm||140, fromBeat);
-    playDurationSec=dur||0; playStartCtxTime=s.ctx.currentTime;
+    if(s.ctx && s.ctx.state!=='running'){
+      try{ await s.ctx.resume(); }catch(e2){ /* still blocked */ }
+    }
+    if(s.ctx && s.ctx.state!=='running'){
+      appState.set({status:'error'});
+      toast('🔇 audio blocked by the browser — click 🔊 once, then PLAY again','error');
+      console.warn('psy-anthem: AudioContext state is', s.ctx.state, '- autoplay policy blocked it');
+      return;
+    }
+    playDurationSec=dur||0; playStartCtxTime=s._t0||s.ctx.currentTime;
     setPlaying(true);
+    toast('▶ playing '+Math.round(dur||0)+'s ('+entry.out.events.length+' events)','ok');
   } catch(e){
     appState.set({error:'Playback failed: '+(e&&e.message?e.message:String(e))});
     toast('Playback failed','error');
@@ -458,7 +471,13 @@ function init(){
   $('random').addEventListener('click',()=>{ $('seed').value=String(Math.floor(Math.random()*2147483647)); generate(); });
   $('play').addEventListener('click',play);
   $('stop').addEventListener('click',stopPlayback);
-  $('testSound').addEventListener('click',()=>{ const s=ensureSynth(); s.testSound(); });
+  $('testSound').addEventListener('click',async ()=>{
+    const s=ensureSynth();
+    try{ if(s.ctx.state==='suspended') await s.ctx.resume(); }catch(e){ /* blocked */ }
+    try{ await s.testSound(); }catch(e){ /* ignore */ }
+    if(s.ctx.state==='running') toast('🔊 audio unlocked','ok');
+    else toast('🔇 still blocked — click anywhere on the page, then 🔊 again','error');
+  });
   $('prev').addEventListener('click',()=>navigate(-1));
   $('next').addEventListener('click',()=>navigate(1));
   $('progressBar').addEventListener('change',seek);
@@ -482,6 +501,9 @@ function init(){
     else if(ev.key==='g'||ev.key==='G'){ generate(); }
   });
   window.addEventListener('resize',()=>{ const e=currentEntry(); if(e)renderRoll(e.out,e.config); });
+  document.addEventListener('pointerdown',()=>{
+    try{ ensureSynth(); }catch(e){ /* lazy creation failed - PLAY will retry */ }
+  },{ once:true });
   startViz();
   setStatusReady();
 }
