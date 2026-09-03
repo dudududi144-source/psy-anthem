@@ -1,5 +1,25 @@
 # Changelog
 
+## 4.1.0 - Bridge & Bounce (differential-diagnosis playback paths)
+
+Evidence from the user's console: pure <audio> beep audible (confirmed 5x),
+AudioContext running, 38/176 notes window-scheduled - yet silence. The break
+is therefore between the AudioContext's processed output and the speakers
+(sink routing or an extension hijacking it), not in scheduling.
+
+Four independent playback paths now isolate the broken layer:
+- ▶ PLAY: WebAudio graph -> ctx.destination (direct)
+- 🔀 BRIDGE: WebAudio graph -> MediaStreamDestination -> <audio> element
+  (live sound through the provably-working media pipeline); also forces
+  ctx.setSinkId('default') where supported
+- 🧪 BOUNCE: full-engine offline render (OfflineAudioContext) -> WAV ->
+  <audio> element (full quality, zero live-sink dependence)
+- ◉ WAV PLAY: pure-JS synthesis -> WAV -> <audio> (zero WebAudio)
+
+Whatever plays identifies the fault; BRIDGE/BOUNCE are also the workarounds.
+
+
+
 ## 4.0.0 - Titan scheduler (scale up, never down)
 
 - synth: lookahead window scheduler - the full song graph is materialized in

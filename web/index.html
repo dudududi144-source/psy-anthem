@@ -6,11 +6,11 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>PSY ANTHEM · Hyperstage v4.0</title>
+<title>PSY ANTHEM · Hyperstage v4.1</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/space-grotesk@5.0.0/500.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/space-grotesk@5.0.0/700.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/jetbrains-mono@5.0.0/400.css">
-<link rel="stylesheet" href="./styles.css?v=50">
+<link rel="stylesheet" href="./styles.css?v=51">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🎛%3C/text%3E%3C/svg%3E">
 </head>
 <body>
@@ -40,11 +40,11 @@
   <div class="status-chip">
     <span id="statusLed" class="led led-ready"></span>
     <span id="statusText">ready</span>
-    <span class="ver-badge">Hyperstage v4.0</span>
+    <span class="ver-badge">Hyperstage v4.1</span>
   </div>
 </header>
 
-<div id="debugStrip" class="debug-strip">Hyperstage v4.0 · booting…</div>
+<div id="debugStrip" class="debug-strip">Hyperstage v4.1 · booting…</div>
 
 <div id="audioCheckBanner" class="ac-banner" hidden>
   <div id="audioCheckMsg" class="ac-msg">🔊 שני צפצופים נשלחו (660+880 הרץ) — שמעת אותם?</div>
@@ -115,6 +115,8 @@
       <button id="testSound" class="btn ghost" title="speaker check">🔊</button>
       <button id="audioCheckTop" class="btn ghost" title="audio check">🩺</button>
       <button id="playWav" class="btn ghost" title="render + play via WAV (fallback path)">◉ WAV PLAY</button>
+      <button id="bridgePlay" class="btn ghost" title="live playback through a media element (bypasses the audio sink)">🔀 BRIDGE</button>
+      <button id="bounce" class="btn ghost" title="offline full-quality bounce played through a media element">🧪 BOUNCE</button>
       <label class="inline">
         <span class="lbl">from bar</span>
         <select id="playFrom" class="small"></select>
@@ -195,6 +197,6 @@
   <a href="https://github.com/dudududi144-source/psy-anthem">github</a>
 </footer>
 
-<script type="module" src="./app.js?v=50"></script>
+<script type="module" src="./app.js?v=51"></script>
 </body>
 </html>

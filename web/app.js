@@ -1,11 +1,11 @@
-// PSY ANTHEM - web/app.js  (Hyperstage UI v4.0)
+// PSY ANTHEM - web/app.js  (Hyperstage UI v4.1)
 // Presentation layer over the WHAT engine (engine.mjs) and HOW synth (synth.js).
 import { createAnthemEngine, AnthemIntent, EnergyCurve } from './engine.mjs';
-import { PsySynthBrowser, midiToFreq } from './synth.js';
+import { PsySynthBrowser, midiToFreq, audioBufferToWav } from './synth.js';
 import { PRESETS, PRESET_CATEGORIES, DEFAULT_VOICE_PRESETS } from './presets.js';
 import { createStateStore } from './state.js';
 
-console.info('[PSY ANTHEM] Hyperstage v4.0 loaded - app.js module OK');
+console.info('[PSY ANTHEM] Hyperstage v4.1 loaded - app.js module OK');
 
 // ---------- shell state store + global error boundaries ----------
 export const appState = createStateStore({ status: 'ready', error: null, playing: false });
@@ -104,7 +104,7 @@ const dbgState={audio:'—',last:'boot'};
 function dbg(msg){
   dbgState.last=msg;
   const el=$('debugStrip');
-  if(el) el.textContent='Hyperstage v4.0 · audio: '+dbgState.audio+' · last: '+msg;
+  if(el) el.textContent='Hyperstage v4.1 · audio: '+dbgState.audio+' · last: '+msg;
 }
 
 // ---------- toast / status ----------
@@ -453,6 +453,7 @@ async function play(opts){
   if(isPlaying && !restart){ stopPlayback(); return; }
   if(isPlaying){ stopPlayback(); }
   try{ if(s.ctx.state==='suspended') await s.ctx.resume(); }catch(e){ /* blocked */ }
+  try{ if(typeof s.ctx.setSinkId==='function'){ await s.ctx.setSinkId('default'); } }catch(e){ /* unsupported */ }
   const fromBar=parseInt($('playFrom').value,10)||1;
   const fromBeat=(fromBar-1)*4;
   dbg('scheduling '+entry.out.events.length+' events…');
@@ -541,6 +542,94 @@ function startViz(){
     }
   };
   loop();
+}
+
+// ---------- MEDIA BRIDGE: live WebAudio graph -> MediaStream -> <audio> ----------
+// Differential-diagnosis path #3: if the AudioContext processes audio but the
+// machine's sink/routing (or an extension hijacking it) never delivers it to
+// the speakers, the same processed signal still reaches them through a plain
+// media element - which this browser provably plays (diagnosis beep works).
+function ensureMediaBridge(s){
+  if(s._mediaBridgeEl) return s._mediaBridgeEl;
+  try{
+    if(typeof s.ctx.createMediaStreamDestination!=='function') return null;
+    const dest=s.ctx.createMediaStreamDestination();
+    s.compressor.connect(dest);
+    const el=new Audio();
+    el.srcObject=dest.stream;
+    el.volume=1.0;
+    s._mediaBridgeEl=el;
+    return el;
+  }catch(e){ return null; }
+}
+async function playViaBridge(){
+  const entry=currentEntry();
+  if(!entry){ toast('Generate an anthem first','info'); return; }
+  const s=ensureSynth();
+  if(isPlaying){ stopPlayback(); }
+  try{ if(s.ctx.state==='suspended') await s.ctx.resume(); }catch(e){ /* blocked */ }
+  try{ if(typeof s.ctx.setSinkId==='function'){ await s.ctx.setSinkId('default'); } }catch(e){ /* unsupported */ }
+  const el=ensureMediaBridge(s);
+  if(el){ try{ await el.play(); }catch(e){ /* user will press play on it */ } }
+  if(!el){ toast('Media bridge unsupported here','error'); return; }
+  const fromBar=parseInt($('playFrom').value,10)||1;
+  const fromBeat=(fromBar-1)*4;
+  dbg('BRIDGE PLAY · live graph -> MediaStream -> <audio>');
+  await new Promise((res)=>setTimeout(res,0));
+  try{
+    const dur=await s.playEvents(entry.out.events, entry.config.bpm||140, fromBeat);
+    playDurationSec=dur||0; playStartCtxTime=s._t0||s.ctx.currentTime;
+    setPlaying(true);
+    dbgState.audio=String(s.ctx.state)+'+bridge';
+    dbg('BRIDGE ok · '+entry.out.events.length+' events · ctx='+s.ctx.state+' via <audio> element');
+    console.info('[PSY ANTHEM] BRIDGE playback started: WebAudio graph -> MediaStream -> <audio> element');
+    toast('▶ playing through the media bridge','ok');
+    startProgressLoop();
+  }catch(e){
+    appState.set({error:'Bridge playback failed: '+(e&&e.message?e.message:String(e))});
+    toast('Bridge playback failed','error');
+  }
+}
+
+// ---------- BOUNCE: offline full-quality render -> WAV -> <audio> ----------
+// Differential-diagnosis path #4: renders the ENTIRE anthem with the full
+// engine (all presets/FX) in an OfflineAudioContext and plays the resulting
+// WAV through a media element - completely independent of the live sink.
+async function renderBounce(){
+  const entry=currentEntry();
+  if(!entry){ toast('Generate an anthem first','info'); return; }
+  const s=ensureSynth();
+  dbg('BOUNCE: offline rendering full song…');
+  toast('🧪 offline bounce — rendering the full anthem…','info');
+  let buffer=null;
+  try{ buffer=await s.renderOffline(entry.out.events, entry.config.bpm||140, 0); }catch(e){ buffer=null; }
+  if(!buffer){
+    appState.set({error:'Offline render failed'});
+    dbg('BOUNCE failed: offline render returned nothing');
+    console.warn('[PSY ANTHEM] BOUNCE: OfflineAudioContext render failed');
+    toast('offline render failed in this browser','error');
+    return;
+  }
+  let bytes=null;
+  try{ bytes=audioBufferToWav(buffer); }catch(e){ bytes=null; }
+  if(!bytes){ toast('WAV encoding failed','error'); return; }
+  const url=URL.createObjectURL(new Blob([bytes],{type:'audio/wav'}));
+  let wa=$('bouncePlayer');
+  if(!wa){
+    wa=document.createElement('audio');
+    wa.id='bouncePlayer'; wa.controls=true; wa.className='wav-player';
+    const wrap=$('wavWrap'); if(wrap) wrap.appendChild(wa);
+  }
+  wa.src=url;
+  try{
+    await wa.play();
+    dbg('BOUNCE playing via <audio> (full engine quality)');
+    console.info('[PSY ANTHEM] BOUNCE: full-quality offline render playing via <audio> element,', Math.round(buffer.duration)+'s');
+    toast('▶ full-quality bounce playing','ok');
+  }catch(e){
+    dbg('BOUNCE ready — press play on the audio player');
+    toast('לחץ הפעלה בנגן שהופיע','info');
+  }
 }
 
 // ---------- pure-JS WAV engine: ZERO WebAudio involvement ----------
@@ -712,6 +801,8 @@ function init(){
   $('play').addEventListener('click',play);
   $('stop').addEventListener('click',stopPlayback);
   const pw=$('playWav'); if(pw) pw.addEventListener('click',playViaWav);
+  const bp=$('bridgePlay'); if(bp) bp.addEventListener('click',playViaBridge);
+  const bo=$('bounce'); if(bo) bo.addEventListener('click',renderBounce);
   const dy=$('diagYes'); if(dy) dy.addEventListener('click',()=>diagAnswer(true));
   const dn=$('diagNo'); if(dn) dn.addEventListener('click',()=>diagAnswer(false));
   document.addEventListener('pointerdown',firstTouchDiagnosis,{ once:true });
