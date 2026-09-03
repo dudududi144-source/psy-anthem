@@ -1,5 +1,17 @@
 # Changelog
 
+## 6.1.0 - Deployment fix + visible diagnostics
+
+- pages.yml: web/midi-lite.mjs was missing from the deployed site (explicit
+  copy list) - added. This is why parts of v6.0 silently failed.
+- app.js: every stage now reports visibly and to the console
+  ([PSY ANTHEM] load / render HQ or fallback / player ready / errors).
+  The status line shows which render path succeeded and the audio duration,
+  so a broken stage is readable on the page without devtools.
+- index.html: no-cache meta + v6.1 cache busters.
+
+
+
 ## 6.0.0 - Clean rebuild (single proven playback path)
 
 Full reset of the web UI after the experimental layers (v3.1-v5.5) were

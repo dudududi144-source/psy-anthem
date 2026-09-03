@@ -1,4 +1,4 @@
-// PSY ANTHEM — clean build v6.0
+// PSY ANTHEM — clean build v6.1
 // One playback path only (the proven one — see MEMORY.md):
 //   generate -> render WAV (offline full-quality, pure-JS fallback)
 //   -> visible <audio controls> player.
@@ -8,7 +8,7 @@ import { PsySynthBrowser, audioBufferToWav } from './synth.js';
 import { PRESETS, DEFAULT_VOICE_PRESETS } from './presets.js';
 
 const $ = (id) => document.getElementById(id);
-console.info('[PSY ANTHEM] clean build v6.0 loaded');
+console.info('[PSY ANTHEM] clean build v6.1 loaded');
 
 // ---------- state ----------
 let synth = null;
@@ -97,6 +97,7 @@ function toUrl(bytes) {
   wavUrl = URL.createObjectURL(new Blob([bytes], { type: 'audio/wav' }));
   return wavUrl;
 }
+let lastRenderInfo = '';
 async function renderWav(events, bpm) {
   // 1) full-quality offline render
   try {
@@ -104,12 +105,25 @@ async function renderWav(events, bpm) {
     const buffer = await s.renderOffline(events, bpm, 0);
     if (buffer) {
       const bytes = await audioBufferToWav(buffer);
-      if (bytes) return toUrl(bytes);
+      if (bytes) {
+        lastRenderInfo = 'HQ render · ' + Math.round(buffer.duration) + 's';
+        console.info('[PSY ANTHEM] render OK (full quality):', Math.round(buffer.duration) + 's');
+        return toUrl(bytes);
+      }
     }
-  } catch (e) { /* fall through to the guaranteed path */ }
+    console.warn('[PSY ANTHEM] offline render returned nothing — using fallback');
+  } catch (e) {
+    console.warn('[PSY ANTHEM] offline render failed — using fallback:', e && e.message ? e.message : e);
+  }
   // 2) guaranteed pure-JS fallback
   const bytes = eventsToWav(events, bpm);
-  return bytes ? toUrl(bytes) : null;
+  if (bytes) {
+    lastRenderInfo = 'fallback render · ' + Math.round(bytes.length / 88200) + 's';
+    console.info('[PSY ANTHEM] render OK (pure-JS fallback)');
+    return toUrl(bytes);
+  }
+  lastRenderInfo = 'render failed';
+  return null;
 }
 
 // ---------- status ----------
@@ -140,9 +154,12 @@ async function generate() {
     const player = $('player');
     player.src = url;
     player.load();
-    setStatus('Ready — press play ▶');
+    setStatus('Ready (' + lastRenderInfo + ') — press play ▶');
+    console.info('[PSY ANTHEM] player ready:', url.slice(0, 40));
   } catch (e) {
-    setStatus('Error: ' + (e && e.message ? e.message : String(e)));
+    const msg = e && e.message ? e.message : String(e);
+    setStatus('Error: ' + msg);
+    console.error('[PSY ANTHEM] generate error:', e);
   } finally {
     busy = false;
     if (btn) btn.disabled = false;
@@ -266,6 +283,12 @@ function buildControls() {
 }
 
 // ---------- init ----------
-buildControls();
-setStatus('Loading…');
-generate();
+try {
+  buildControls();
+  setStatus('Loading…');
+  generate();
+} catch (e) {
+  const el = $('status');
+  if (el) el.textContent = 'Startup error: ' + (e && e.message ? e.message : String(e));
+  console.error('[PSY ANTHEM] startup error:', e);
+}
