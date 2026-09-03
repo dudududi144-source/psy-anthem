@@ -1,11 +1,11 @@
-// PSY ANTHEM - web/app.js  (Hyperstage UI v3.11)
+// PSY ANTHEM - web/app.js  (Hyperstage UI v4.0)
 // Presentation layer over the WHAT engine (engine.mjs) and HOW synth (synth.js).
 import { createAnthemEngine, AnthemIntent, EnergyCurve } from './engine.mjs';
 import { PsySynthBrowser, midiToFreq } from './synth.js';
 import { PRESETS, PRESET_CATEGORIES, DEFAULT_VOICE_PRESETS } from './presets.js';
 import { createStateStore } from './state.js';
 
-console.info('[PSY ANTHEM] Hyperstage v3.11 loaded - app.js module OK');
+console.info('[PSY ANTHEM] Hyperstage v4.0 loaded - app.js module OK');
 
 // ---------- shell state store + global error boundaries ----------
 export const appState = createStateStore({ status: 'ready', error: null, playing: false });
@@ -48,6 +48,9 @@ const $ = (id) => document.getElementById(id);
 
 // ---------- runtime state ----------
 const history = [];
+let rollLayer=null;
+let rollLayerKey='';
+let lastSchedStrip=-1;
 let historyIndex = -1;
 let synth = null;
 let isPlaying = false;
@@ -101,7 +104,7 @@ const dbgState={audio:'—',last:'boot'};
 function dbg(msg){
   dbgState.last=msg;
   const el=$('debugStrip');
-  if(el) el.textContent='Hyperstage v3.11 · audio: '+dbgState.audio+' · last: '+msg;
+  if(el) el.textContent='Hyperstage v4.0 · audio: '+dbgState.audio+' · last: '+msg;
 }
 
 // ---------- toast / status ----------
@@ -270,7 +273,7 @@ function renderCurrent(){
   const entry=currentEntry(); if(!entry) return;
   stopPlayback();
   applyConfigToControls(entry.config);
-  renderRoll(entry.out,entry.config);
+  renderRoll(entry.out,entry.config,0);
   renderStats(entry.out,entry.config);
   renderPlayFrom(entry.config);
   renderInsights(entry.out);
@@ -306,13 +309,8 @@ function rr(g,x,y,w,h,r){
 }
 
 // ---------- piano roll ----------
-function renderRoll(out, cfg){
-  const cv=$('roll'); if(!cv) return;
-  const dpr=window.devicePixelRatio||1;
-  const rect=cv.getBoundingClientRect();
-  cv.width=Math.floor(rect.width*dpr); cv.height=Math.floor(rect.height*dpr);
-  const g=cv.getContext('2d'); g.setTransform(dpr,0,0,dpr,0,0);
-  const W=rect.width,H=rect.height;
+function paintRollLayer(layer,out,cfg,W,H,dpr){
+  const g=layer.getContext('2d'); g.setTransform(dpr,0,0,dpr,0,0);
   g.clearRect(0,0,W,H);
   const bg=g.createLinearGradient(0,0,0,H); bg.addColorStop(0,'#0b0f1e'); bg.addColorStop(1,'#070a14');
   g.fillStyle=bg; g.fillRect(0,0,W,H);
@@ -336,6 +334,34 @@ function renderRoll(out, cfg){
     g.globalAlpha=1;
   }
 }
+function renderRoll(out, cfg, progress){
+  const cv=$('roll'); if(!cv) return;
+  const dpr=window.devicePixelRatio||1;
+  const rect=cv.getBoundingClientRect();
+  const W=Math.max(50,Math.floor(rect.width)), H=Math.max(50,Math.floor(rect.height));
+  if(cv.width!==Math.floor(W*dpr)||cv.height!==Math.floor(H*dpr)){ cv.width=Math.floor(W*dpr); cv.height=Math.floor(H*dpr); }
+  const g=cv.getContext('2d'); g.setTransform(dpr,0,0,dpr,0,0);
+  const key=historyIndex+':'+W+'x'+H;
+  if(rollLayerKey!==key){
+    if(!rollLayer) rollLayer=document.createElement('canvas');
+    rollLayer.width=Math.floor(W*dpr); rollLayer.height=Math.floor(H*dpr);
+    paintRollLayer(rollLayer,out,cfg,W,H,dpr);
+    rollLayerKey=key;
+  }
+  g.clearRect(0,0,W,H);
+  g.drawImage(rollLayer,0,0,W,H);
+  if(progress!==undefined && progress>0){
+    const x=progress*W;
+    const grad=g.createLinearGradient(x-30,0,x,0);
+    grad.addColorStop(0,'rgba(46,230,255,0)');
+    grad.addColorStop(1,'rgba(46,230,255,0.16)');
+    g.fillStyle=grad;
+    g.fillRect(x-30,0,30,H);
+    g.fillStyle='#2ee6ff';
+    g.fillRect(x-1,0,2,H);
+  }
+}
+
 function rollHit(mx,my,out,cfg){
   const cv=$('roll'); const rect=cv.getBoundingClientRect();
   const W=rect.width,H=rect.height; const beats=Math.max(1,cfg.bars*4);
@@ -465,12 +491,18 @@ function startProgressLoop(){
     const pos=Math.max(0,ctxT-playStartCtxTime);
     const frac=playDurationSec>0?Math.min(1,pos/playDurationSec):0;
     setProgress(frac);
+    if(synth && synth.totalNotes>0){
+      const sn=synth.scheduledNotes;
+      if(sn!==lastSchedStrip){ lastSchedStrip=sn; dbg('playing '+Math.round(frac*100)+'% · window sched '+sn+'/'+synth.totalNotes); }
+    }
     progressRaf=requestAnimationFrame(step);
   };
   progressRaf=requestAnimationFrame(step);
 }
 function stopProgressLoop(){ if(progressRaf)cancelAnimationFrame(progressRaf); progressRaf=0; }
 function setProgress(frac){
+  const entry=currentEntry();
+  if(entry) renderRoll(entry.out, entry.config, frac);
   const bar=$('progressBar'); const fill=$('progressFill');
   if(bar) bar.value=String(Math.round(frac*1000)/10);
   if(fill) fill.style.width=(frac*100).toFixed(2)+'%';
@@ -724,7 +756,7 @@ function init(){
     if(ev.code==='Space'){ ev.preventDefault(); play(); }
     else if(ev.key==='g'||ev.key==='G'){ generate(); }
   });
-  window.addEventListener('resize',()=>{ const e=currentEntry(); if(e)renderRoll(e.out,e.config); });
+  window.addEventListener('resize',()=>{ const e=currentEntry(); if(e)renderRoll(e.out,e.config,0); });
   startViz();
   setStatusReady();
   setTimeout(()=>{ try{ ensureSynth(); }catch(e){ /* warm-up only */ } }, 1200);

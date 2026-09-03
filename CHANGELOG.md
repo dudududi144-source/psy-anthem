@@ -1,5 +1,24 @@
 # Changelog
 
+## 4.0.0 - Titan scheduler (scale up, never down)
+
+- synth: lookahead window scheduler - the full song graph is materialized in
+  a moving 6-second window (250ms ticks, 16-note first-fill chunks) instead
+  of one blocking burst of 1000+ oscillators at PLAY. The live audio graph
+  stays bounded for any song length while every voice, preset and FX of the
+  full engine remains untouched (nothing reduced, nothing removed).
+- synth: sample-accurate absolute timestamps against t0 (+0.35s lead);
+  pendingNotes/scheduledNotes/totalNotes telemetry; console reports for
+  window fill and completion.
+- web: piano roll cached to an offscreen layer; per-frame playback drawing
+  is now a blit + playhead (kills 50ms+ rAF tasks on weak machines); debug
+  strip shows live window-scheduling progress during playback.
+- tests: new scheduler suite (window fill, clock-advance completion, stop
+  cancellation); verify-playback pumps the mock clock to prove every note is
+  scheduled by the lookahead.
+
+
+
 ## 0.3.0 - Hyperstage UI v3.1
 
 - fix(pages): deploy state.js so the demo shell loads (the 404 that crashed

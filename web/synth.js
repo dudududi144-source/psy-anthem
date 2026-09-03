@@ -795,6 +795,14 @@ export class PsySynthBrowser {
   // Play a full AnthemOutput. fromBeat lets the scrubber start mid-piece.
   // Async: awaits the AudioContext unlock (autoplay policy) before scheduling.
   // Robust: validates events up front and isolates per-note scheduling errors.
+  // Lookahead window scheduling (full-quality, bounded live graph):
+  // the whole song is known up front, but its node graph is materialized in a
+  // moving window (SCHED_WINDOW_SEC ahead, ticked every SCHED_TICK_MS).
+  // This keeps the live audio graph bounded regardless of song length and
+  // spreads node creation over time instead of one blocking burst at PLAY -
+  // weak CPUs keep up, the audio thread never starves, and nothing is
+  // simplified or removed: every voice/FX of the full engine still sounds.
+  // Timing stays sample-accurate (absolute Web Audio timestamps against _t0).
   async playEvents(events, bpm = 140, fromBeat = 0) {
     this.stop();
     if (this.ctx.state === 'suspended') {
@@ -810,20 +818,28 @@ export class PsySynthBrowser {
     this.setTempo(bpm);
     const plan = scheduleEvents(valid, bpm, fromBeat);
 
-    // ---- Full upfront scheduling ----
-    // For a composition engine every note is known ahead of time, so we schedule
-    // them all up front. Web Audio is designed for this and it avoids the
-    // setInterval-throttling gaps that lookahead scheduling introduced.
     this._plan = plan.notes;
-    this._t0 = this.ctx.currentTime + 0.06;
+    this._planIndex = 0;
     this._scheduledCount = 0;
-    for (const note of plan.notes) {
-      try {
-        this._scheduleNote(note, this._t0 + Math.max(0, note.startAt));
-        this._scheduledCount++;
-      } catch (err) {
-        console.warn('psy-anthem: failed to schedule one note:', err);
-      }
+    this._t0 = this.ctx.currentTime + 0.35;
+
+    // First window fill: chunked so the very first batch never blocks the
+    // main/audio threads for hundreds of ms on slow machines.
+    const wallStart = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+    let inWindow = this._scheduleWindow(true);
+    while (inWindow.pendingInChunk > 0) {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      inWindow = this._scheduleWindow(true);
+    }
+    const wallEnd = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+    this.lastScheduleMs = Math.round(wallEnd - wallStart);
+    console.info('psy-anthem: window fill ' + this._scheduledCount + '/' + plan.notes.length +
+      ' notes in ' + this.lastScheduleMs + 'ms (lookahead ' + PsySynthBrowser.SCHED_WINDOW_SEC + 's @ ' + PsySynthBrowser.SCHED_TICK_MS + 'ms)');
+
+    // Lookahead tick keeps the window filled until the plan is exhausted.
+    if (this._planIndex < this._plan.length) {
+      this._schedTimer = setInterval(() => this._scheduleWindow(false), PsySynthBrowser.SCHED_TICK_MS);
+      if (this._schedTimer && typeof this._schedTimer.unref === 'function') this._schedTimer.unref();
     }
 
     this.lastNoteCount = plan.notes.length;
@@ -834,6 +850,49 @@ export class PsySynthBrowser {
     }
     return plan.totalSeconds;
   }
+
+  // Schedule every note whose start falls inside the lookahead window.
+  // When `chunked` is true, at most SCHED_CHUNK notes are created per call
+  // (used for the non-blocking first fill); pendingInChunk reports leftovers.
+  _scheduleWindow(chunked) {
+    if (!this._plan) return { pendingInChunk: 0 };
+    const horizon = (this.ctx.currentTime - this._t0) + PsySynthBrowser.SCHED_WINDOW_SEC;
+    let made = 0;
+    while (this._planIndex < this._plan.length) {
+      const note = this._plan[this._planIndex];
+      if (note.startAt > horizon) break;
+      if (chunked && made >= PsySynthBrowser.SCHED_CHUNK) return { pendingInChunk: this._pendingInWindow(horizon) };
+      try {
+        this._scheduleNote(note, this._t0 + Math.max(0, note.startAt));
+        this._scheduledCount++;
+      } catch (err) {
+        console.warn('psy-anthem: failed to schedule one note:', err);
+      }
+      this._planIndex++;
+      made++;
+    }
+    if (this._planIndex >= this._plan.length) {
+      if (this._schedTimer) { clearInterval(this._schedTimer); this._schedTimer = null; }
+      if (!this._schedDoneLogged) {
+        this._schedDoneLogged = true;
+        console.info('psy-anthem: all ' + this._scheduledCount + ' notes scheduled (windowed)');
+      }
+    }
+    return { pendingInChunk: 0 };
+  }
+
+  _pendingInWindow(horizon) {
+    let n = 0;
+    for (let k = this._planIndex; k < this._plan.length; k++) {
+      if (this._plan[k].startAt <= horizon) n++;
+      else break;
+    }
+    return n;
+  }
+
+  get pendingNotes() { return this._plan ? this._plan.length - this._planIndex : 0; }
+  get scheduledNotes() { return this._scheduledCount || 0; }
+  get totalNotes() { return this._plan ? this._plan.length : 0; }
 
   // Audibility check: three staggered tones (C major triad). Returns total seconds.
   async testSound() {
@@ -924,6 +983,7 @@ export class PsySynthBrowser {
     if (this._finishTimer) { clearTimeout(this._finishTimer); this._finishTimer = null; }
     this._plan = null;
     this._planIndex = 0;
+    this._schedDoneLogged = false;
     for (const node of this.activeNodes) {
       try { node.stop(); } catch (e) { /* already stopped */ }
     }
@@ -934,3 +994,8 @@ export class PsySynthBrowser {
     }
   }
 }
+
+// Lookahead scheduler tuning (full quality - bounds the LIVE graph, not the sound).
+PsySynthBrowser.SCHED_WINDOW_SEC = 6;   // schedule 6 seconds ahead
+PsySynthBrowser.SCHED_TICK_MS = 250;    // lookahead tick
+PsySynthBrowser.SCHED_CHUNK = 16;       // max notes created per first-fill chunk

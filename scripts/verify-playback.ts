@@ -33,6 +33,16 @@ async function main(): Promise<void> {
   const synth = new PsySynthBrowser(ctx as unknown as AudioContext, { PRESETS, defaults: DEFAULT_VOICE_PRESETS });
   const seconds = await synth.playEvents(out!.events, config.bpm ?? 140, 0);
 
+  // Lookahead scheduler: advance the mock clock and let the window fill the
+  // entire song before asserting full coverage.
+  let pumpGuard = 0;
+  while (synth.pendingNotes > 0 && pumpGuard < 120) {
+    ctx.currentTime += 5;
+    await new Promise((r) => setTimeout(r, 280));
+    pumpGuard++;
+  }
+  if (synth.pendingNotes > 0) fail('lookahead left ' + synth.pendingNotes + ' notes unscheduled');
+
   const oscs = ctx.oscillators();
   const noteCount = out!.events.filter((e) => e.type === 'note').length;
 
