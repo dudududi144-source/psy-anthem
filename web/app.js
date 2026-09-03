@@ -1,11 +1,11 @@
-// PSY ANTHEM - web/app.js  (Hyperstage UI v5.3)
+// PSY ANTHEM - web/app.js  (Hyperstage UI v5.4)
 // Presentation layer over the WHAT engine (engine.mjs) and HOW synth (synth.js).
 import { createAnthemEngine, AnthemIntent, EnergyCurve } from './engine.mjs';
 import { PsySynthBrowser, midiToFreq, audioBufferToWav } from './synth.js';
 import { PRESETS, PRESET_CATEGORIES, DEFAULT_VOICE_PRESETS } from './presets.js';
 import { createStateStore } from './state.js';
 
-console.info('[PSY ANTHEM] Hyperstage v5.3 loaded - app.js module OK');
+console.info('[PSY ANTHEM] Hyperstage v5.4 loaded - app.js module OK');
 
 // ---------- shell state store + global error boundaries ----------
 export const appState = createStateStore({ status: 'ready', error: null, playing: false });
@@ -135,7 +135,7 @@ const dbgState={audio:'—',last:'boot'};
 function dbg(msg){
   dbgState.last=msg;
   const el=$('debugStrip');
-  if(el) el.textContent='Hyperstage v5.3 · audio: '+dbgState.audio+' · last: '+msg;
+  if(el) el.textContent='Hyperstage v5.4 · audio: '+dbgState.audio+' · last: '+msg;
 }
 
 // ---------- toast / status ----------
@@ -185,8 +185,8 @@ async function playBounce(){
   let url=null;
   try{ url=await ensureBounce(); }catch(e){ url=null; }
   if(!url){
-    toast('bounce failed — falling back to live','error');
-    return play();
+    toast('bounce failed — falling back to zero-WebAudio playback','error');
+    return playViaWav();
   }
   if(!bounceAudio){
     bounceAudio=new Audio();
@@ -888,6 +888,54 @@ async function copyConfig(){
   try{ await navigator.clipboard.writeText(JSON.stringify(cfg,null,2)); toast('Config copied','ok'); }
   catch(err){ toast('Copy blocked by browser','error'); }
 }
+
+// ---------- foreign-script exposure ----------
+// If some external code (browser extension / injected script) crashes on this
+// page, surface its FULL source URL visibly on the page itself - so nobody
+// has to guess where a mysterious main.js comes from.
+const foreignReported = new Set();
+function reportForeignScript(src, how){
+  const key = src + '|' + how;
+  if (foreignReported.has(key)) return;
+  foreignReported.add(key);
+  console.warn('[PSY ANTHEM] foreign script on this page (' + how + '):', src);
+  const mk = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; e.textContent = text; return e; };
+  const div = mk('div', 'foreign-banner');
+  const name = (src || '').split('/').pop() || '(unknown)';
+  div.appendChild(mk('div', 'foreign-title', '⚠ סקריפט חיצוני קרס בדף הזה — הוא לא חלק מהאתר: ' + name));
+  div.appendChild(mk('div', 'foreign-url', 'מקור: ' + (src || '(לא ידוע)')));
+  const hint = (src && src.indexOf('chrome-extension://') === 0)
+    ? 'זהו תוסף דפדפן. השבת אותו כאן: chrome://extensions'
+    : 'הסקריפט הזה הוזרק לדף ואינו שייך ל-psy-anthem';
+  div.appendChild(mk('div', 'foreign-hint', hint));
+  const close = mk('button', 'foreign-close', '✕');
+  close.addEventListener('click', () => div.remove());
+  div.appendChild(close);
+  (document.body || document.documentElement).appendChild(div);
+}
+window.addEventListener('error', (ev) => {
+  const src = String((ev && ev.filename) || '');
+  if (!src) return;
+  const ours = src.indexOf('app.js') !== -1 || src.indexOf('engine.mjs') !== -1 ||
+               src.indexOf('synth.js') !== -1 || src.indexOf('presets.js') !== -1 ||
+               src.indexOf('state.js') !== -1;
+  if (!ours) reportForeignScript(src, 'error');
+}, true);
+try {
+  const scanScripts = () => {
+    const all = document.querySelectorAll('script[src]');
+    for (const s of all) {
+      const src = s.src || '';
+      if (!src || src.indexOf('blob:') === 0 || src.indexOf(location.origin) === 0) continue;
+      if (s.dataset.psySeen) continue;
+      s.dataset.psySeen = '1';
+      reportForeignScript(src, 'injected tag');
+    }
+  };
+  const mo = new MutationObserver(scanScripts);
+  mo.observe(document.documentElement, { childList: true, subtree: true });
+  scanScripts();
+} catch (e) { /* unsupported */ }
 
 // ---------- init ----------
 function buildPresetSelects(){

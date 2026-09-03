@@ -1,5 +1,23 @@
 # Changelog
 
+## 5.4.0 - Foreign-script shield + on-page source exposure
+
+The recurring main.js crash does not exist in this project (verified: web/
+loads app.js only; all 32 account repos scanned - no matching file). It is
+injected by the viewer's environment (extension). Two new defenses:
+
+- index.html: strict Content-Security-Policy (script-src 'self' blob:) -
+  blocks MAIN-world injected scripts from executing on this page while
+  allowing everything the app uses (modules, blob worker, blob/media URLs,
+  jsdelivr fonts/css).
+- app.js: any crashing/inserted external script is now exposed ON THE PAGE
+  in a red banner with its full source URL (chrome-extension://... naming
+  the exact extension), plus console warnings. No more guessing.
+- FREEZE fallback chain hardened: bounce -> zero-WebAudio WAV playback
+  (instead of the heavy live path).
+
+
+
 ## 5.3.0 - FREEZE playback (full quality, zero live load)
 
 Field report: "not playing, massive load." The full live graph is simply

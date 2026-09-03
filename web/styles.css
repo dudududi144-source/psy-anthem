@@ -324,3 +324,17 @@ input[type=range]::-moz-range-thumb{
 }
 .diag-title{font-size:18px; font-weight:700; letter-spacing:.04em; margin-bottom:12px; color:var(--cyan)}
 .diag-msg{font-size:15px; line-height:1.6; color:var(--txt); margin-bottom:18px}
+
+.foreign-banner{
+  position:fixed; left:16px; right:16px; bottom:16px; z-index:400;
+  background:rgba(40,8,16,.96); border:1px solid rgba(255,77,109,.65); border-radius:14px;
+  padding:14px 44px 14px 16px; color:#ffd7de; direction:rtl; text-align:right;
+  box-shadow:0 14px 40px rgba(0,0,0,.55); font-size:14px; line-height:1.55;
+}
+.foreign-title{font-weight:700; margin-bottom:4px}
+.foreign-url{font-family:var(--mono); font-size:12px; color:#ff9fb0; word-break:break-all; direction:ltr; text-align:left; margin-bottom:4px}
+.foreign-hint{color:#ffc9d3; font-size:13px}
+.foreign-close{
+  position:absolute; top:8px; left:8px; width:28px; height:28px; border-radius:8px;
+  border:1px solid rgba(255,255,255,.25); background:transparent; color:#fff; cursor:pointer; font-size:13px;
+}
