@@ -34,12 +34,12 @@ describe('PsySynthBrowser scheduling (phase-8 engine)', () => {
     // multi-osc presets: more oscillators than notes
     expect(ctx.oscillators().length).toBeGreaterThan(2);
 
-    // fundamentals start at t0 = currentTime(1.0) + 0.35 lead, second one +0.5s
+    // fundamentals start at t0 = currentTime(1.0) + 1.0 lead, second one +0.5s
     const f69 = Math.round(midiToFreq(69) * 100) / 100;
     const startOf = ctx.oscillators()
       .filter((o) => Math.round(o.frequency.value * 100) / 100 === f69)
       .flatMap((o) => o.starts);
-    expect(startOf.some((t) => Math.abs(t - 1.35) < 1e-6)).toBe(true);
+    expect(startOf.some((t) => Math.abs(t - 2.0) < 1e-6)).toBe(true);
   });
 
   it('master chain: masterGain -> warm -> drive shaper -> master filter -> compressor -> destination', () => {

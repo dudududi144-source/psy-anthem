@@ -1,11 +1,11 @@
-// PSY ANTHEM - web/app.js  (Hyperstage UI v4.1)
+// PSY ANTHEM - web/app.js  (Hyperstage UI v5.1)
 // Presentation layer over the WHAT engine (engine.mjs) and HOW synth (synth.js).
 import { createAnthemEngine, AnthemIntent, EnergyCurve } from './engine.mjs';
 import { PsySynthBrowser, midiToFreq, audioBufferToWav } from './synth.js';
 import { PRESETS, PRESET_CATEGORIES, DEFAULT_VOICE_PRESETS } from './presets.js';
 import { createStateStore } from './state.js';
 
-console.info('[PSY ANTHEM] Hyperstage v4.1 loaded - app.js module OK');
+console.info('[PSY ANTHEM] Hyperstage v5.1 loaded - app.js module OK');
 
 // ---------- shell state store + global error boundaries ----------
 export const appState = createStateStore({ status: 'ready', error: null, playing: false });
@@ -51,6 +51,9 @@ const history = [];
 let rollLayer=null;
 let rollLayerKey='';
 let lastSchedStrip=-1;
+let lastDropStrip=-1;
+let vizSkip=false;
+let progFrame=0;
 let historyIndex = -1;
 let synth = null;
 let isPlaying = false;
@@ -104,7 +107,7 @@ const dbgState={audio:'—',last:'boot'};
 function dbg(msg){
   dbgState.last=msg;
   const el=$('debugStrip');
-  if(el) el.textContent='Hyperstage v4.1 · audio: '+dbgState.audio+' · last: '+msg;
+  if(el) el.textContent='Hyperstage v5.1 · audio: '+dbgState.audio+' · last: '+msg;
 }
 
 // ---------- toast / status ----------
@@ -182,6 +185,14 @@ function ensureSynth(){
   synth = new PsySynthBrowser(new (window.AudioContext||window.webkitAudioContext)(), { PRESETS, defaults: DEFAULT_VOICE_PRESETS });
   synth.onFinish = ()=>{ setPlaying(false); };
   applyMacros(); applyTrackVolumes();
+  try{
+    console.info('[PSY ANTHEM] chain audit:', JSON.stringify({
+      master: synth.masterGain.gain.value,
+      tracks: synth.trackGains.map((t)=>t.gain.value),
+      cutoff: synth.masterFilter.frequency.value,
+      reverb: synth.reverbLevel, delay: synth.delayLevel
+    }));
+  }catch(e){ /* audit only */ }
   if(synth.ctx && synth.ctx.state==='suspended'){
     synth.ctx.resume().catch(()=>{ /* needs a user gesture - will retry on PLAY */ });
   }
@@ -482,7 +493,14 @@ async function play(opts){
     toast('Playback failed','error');
   }
 }
-function stopPlayback(){ if(synth) synth.stop(); setPlaying(false); setProgress(0); }
+function stopPlayback(){
+  if(synth) synth.stop();
+  setPlaying(false);
+  setProgress(0);
+  const mediaIds=['bouncePlayer','wavPlayer','pureWavPlayer'];
+  for(const id of mediaIds){ const el=$(id); if(el){ try{ el.pause(); }catch(e){ /* ignore */ } } }
+  if(synth && synth._mediaBridgeEl){ try{ synth._mediaBridgeEl.pause(); }catch(e){ /* ignore */ } }
+}
 function startProgressLoop(){
   stopProgressLoop();
   const step=()=>{
@@ -491,10 +509,16 @@ function startProgressLoop(){
     const ctxT=synth&&synth.ctx?synth.ctx.currentTime:0;
     const pos=Math.max(0,ctxT-playStartCtxTime);
     const frac=playDurationSec>0?Math.min(1,pos/playDurationSec):0;
-    setProgress(frac);
+    // Canvas playhead every frame; DOM writes every 5th frame (weak CPUs).
+    if((progFrame++%5)===0){ setProgress(frac); }
+    else { const entry=currentEntry(); if(entry) renderRoll(entry.out, entry.config, frac); }
     if(synth && synth.totalNotes>0){
       const sn=synth.scheduledNotes;
-      if(sn!==lastSchedStrip){ lastSchedStrip=sn; dbg('playing '+Math.round(frac*100)+'% · window sched '+sn+'/'+synth.totalNotes); }
+      const drops=synth.lateDropped||0;
+      if(sn!==lastSchedStrip || drops!==lastDropStrip){
+        lastSchedStrip=sn; lastDropStrip=drops;
+        dbg('playing '+Math.round(frac*100)+'% · sched '+sn+'/'+synth.totalNotes+(drops>0?' · dropped '+drops:''));
+      }
     }
     progressRaf=requestAnimationFrame(step);
   };
@@ -526,6 +550,7 @@ function startViz(){
   const cv=$('viz'); if(!cv) return;
   const loop=()=>{
     vizRaf=requestAnimationFrame(loop);
+    if(isPlaying && (vizSkip=!vizSkip)) return;
     const dpr=window.devicePixelRatio||1; const rect=cv.getBoundingClientRect();
     cv.width=Math.floor(rect.width*dpr); cv.height=Math.floor(rect.height*dpr);
     const g=cv.getContext('2d'); g.setTransform(dpr,0,0,dpr,0,0);
@@ -611,7 +636,7 @@ async function renderBounce(){
     return;
   }
   let bytes=null;
-  try{ bytes=audioBufferToWav(buffer); }catch(e){ bytes=null; }
+  try{ bytes=await audioBufferToWav(buffer); }catch(e){ bytes=null; }
   if(!bytes){ toast('WAV encoding failed','error'); return; }
   const url=URL.createObjectURL(new Blob([bytes],{type:'audio/wav'}));
   let wa=$('bouncePlayer');

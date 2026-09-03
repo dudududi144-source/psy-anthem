@@ -1,5 +1,31 @@
 # Changelog
 
+## 5.1.0 - Clean Pipeline (anti-glitch scheduling, field-tuned)
+
+Symptoms solved (from field logs): noise blasts at playback start, playback
+collapsing into crackle/silence after a few seconds, 2.1s click blocks,
+lingering background sound after STOP.
+
+- synth: lookahead window scheduler v5 - notes materialize in a moving 8s
+  window ticked from a Web Worker (setInterval fallback); first fill capped
+  at 48 notes in 12-note yielded chunks; 1.0s playback lead. The window was
+  tuned 20s -> 8s after field testing: 20s grew the live graph to ~130
+  notes and overloaded the audio thread after a few seconds on weak CPUs;
+  8s still covers the measured ~2s main-thread stalls.
+- synth: late-note policy - notes >80ms behind real time are dropped and
+  counted instead of clamped into simultaneous noise blasts (mock clocks
+  exempt). Telemetry: initial-fill timing, completion summary (played/
+  dropped/max lag), live drop warnings, lateDropped getter.
+- synth: audioBufferToWav is async/chunked (no multi-second click blocks);
+  renderToWav awaits it.
+- app: STOP pauses bounce/WAV/pure-WAV/bridge players (lingering sound);
+  chain audit logged at synth creation; playback DOM writes every 5th
+  frame; debug strip shows live sched + drops; viz half-rate while playing.
+
+Sound untouched: full engine, all voices, presets and FX.
+
+
+
 ## 4.1.0 - Bridge & Bounce (differential-diagnosis playback paths)
 
 Evidence from the user's console: pure <audio> beep audible (confirmed 5x),
