@@ -1,11 +1,11 @@
-// PSY ANTHEM - web/app.js  (Hyperstage UI v3.4)
+// PSY ANTHEM - web/app.js  (Hyperstage UI v3.5)
 // Presentation layer over the WHAT engine (engine.mjs) and HOW synth (synth.js).
 import { createAnthemEngine, AnthemIntent, EnergyCurve } from './engine.mjs';
 import { PsySynthBrowser, midiToFreq } from './synth.js';
 import { PRESETS, PRESET_CATEGORIES, DEFAULT_VOICE_PRESETS } from './presets.js';
 import { createStateStore } from './state.js';
 
-console.info('[PSY ANTHEM] Hyperstage v3.4 loaded - app.js module OK');
+console.info('[PSY ANTHEM] Hyperstage v3.5 loaded - app.js module OK');
 
 // ---------- shell state store + global error boundaries ----------
 export const appState = createStateStore({ status: 'ready', error: null, playing: false });
@@ -101,7 +101,7 @@ const dbgState={audio:'—',last:'boot'};
 function dbg(msg){
   dbgState.last=msg;
   const el=$('debugStrip');
-  if(el) el.textContent='Hyperstage v3.4 · audio: '+dbgState.audio+' · last: '+msg;
+  if(el) el.textContent='Hyperstage v3.5 · audio: '+dbgState.audio+' · last: '+msg;
 }
 
 // ---------- toast / status ----------
@@ -116,6 +116,18 @@ appState.subscribe((state)=>{
   if(txt) txt.textContent = state.status;
   if(led) led.className='led '+(state.status==='playing'?'led-play':state.status==='error'?'led-err':'led-ready');
 });
+
+// ---------- raw beep: hardware/path bisection test ----------
+function rawBeep(s){
+  const t=s.ctx.currentTime;
+  const o=s.ctx.createOscillator(); const g=s.ctx.createGain();
+  o.type='sine'; o.frequency.value=660;
+  g.gain.setValueAtTime(0.0001,t);
+  g.gain.exponentialRampToValueAtTime(0.5,t+0.02);
+  g.gain.exponentialRampToValueAtTime(0.0001,t+0.6);
+  o.connect(g); g.connect(s.ctx.destination);
+  o.start(t); o.stop(t+0.65);
+}
 
 // ---------- synth ----------
 function ensureSynth(){
@@ -369,8 +381,11 @@ async function play(opts){
   const restart=opts&&opts.restart;
   if(isPlaying && !restart){ stopPlayback(); return; }
   if(isPlaying){ stopPlayback(); }
+  try{ if(s.ctx.state==='suspended') await s.ctx.resume(); }catch(e){ /* blocked */ }
   const fromBar=parseInt($('playFrom').value,10)||1;
   const fromBeat=(fromBar-1)*4;
+  dbg('scheduling '+entry.out.events.length+' events…');
+  await new Promise((res)=>setTimeout(res,0));
   try {
     const dur=await s.playEvents(entry.out.events, entry.config.bpm||140, fromBeat);
     if(s.ctx && s.ctx.state!=='running'){
@@ -491,6 +506,7 @@ function init(){
   $('stop').addEventListener('click',stopPlayback);
   $('testSound').addEventListener('click',async ()=>{
     const btn=$('testSound');
+    rawBeep(s);
     const s=ensureSynth();
     try{ if(s.ctx.state==='suspended') await s.ctx.resume(); }catch(e){ /* blocked */ }
     try{ await s.testSound(); }catch(e){ /* ignore */ }
@@ -498,7 +514,7 @@ function init(){
     dbgState.audio=s.ctx?String(s.ctx.state):'—';
     dbg(ok?'TEST SOUND ok':'TEST SOUND blocked · ctx='+dbgState.audio);
     btn.textContent=ok?'🔊 OK':'🔇 blocked';
-    toast(ok?'🔊 audio works — press PLAY':'🔇 audio is blocked by the browser/environment',ok?'ok':'error');
+    toast(ok?'🔊 beep sent directly to your speakers — silent? check site mute / output device':'🔇 audio is blocked by the browser/environment',ok?'ok':'error');
     setTimeout(()=>{ btn.textContent='🔊'; },3000);
   });
   $('prev').addEventListener('click',()=>navigate(-1));
