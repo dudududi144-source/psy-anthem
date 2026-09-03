@@ -150,70 +150,9 @@ export function audioBufferToWav(buffer) {
 }
 
 // Short decaying white-noise burst for physical-modeling excitation.
-export function makeNoiseBurst(ctx, seconds = 0.02) {
-  const rate = ctx.sampleRate || 44100;
-  const length = Math.max(1, Math.floor(rate * seconds));
-  const buffer = ctx.createBuffer(1, length, rate);
-  const data = buffer.getChannelData(0);
-  for (let i = 0; i < length; i++) {
-    data[i] = (Math.random() * 2 - 1) * (1 - i / length);
-  }
-  return buffer;
-}
-
 // ---------- Drum engine (channel 9 = drums, GM-standard) ----------
 // Drum pitch map (GM): kick=36, snare=38, clap=39, hatClosed=42, hatOpen=46,
 // percLow=43, percHigh=50.
-
-export function scheduleKick(ctx, dest, time, vel) {
-  const osc = ctx.createOscillator();
-  osc.type = 'sine';
-  osc.frequency.setValueAtTime(160, time);
-  osc.frequency.exponentialRampToValueAtTime(45, time + 0.09);
-  const g = ctx.createGain();
-  g.gain.setValueAtTime(vel, time);
-  g.gain.exponentialRampToValueAtTime(0.001, time + 0.22);
-  osc.connect(g); g.connect(dest);
-  osc.start(time); osc.stop(time + 0.25);
-  return [osc];
-}
-
-export function scheduleHat(ctx, dest, time, vel, open) {
-  const src = ctx.createBufferSource();
-  src.buffer = makeNoiseBurst(ctx, open ? 0.25 : 0.06);
-  const hp = ctx.createBiquadFilter();
-  hp.type = 'highpass'; hp.frequency.value = open ? 7000 : 8500;
-  const g = ctx.createGain();
-  const decay = open ? 0.22 : 0.05;
-  g.gain.setValueAtTime(vel * 0.6, time);
-  g.gain.exponentialRampToValueAtTime(0.001, time + decay);
-  src.connect(hp); hp.connect(g); g.connect(dest);
-  src.start(time); src.stop(time + decay + 0.02);
-  return [src];
-}
-
-export function scheduleSnare(ctx, dest, time, vel) {
-  const nodes = [];
-  const noise = ctx.createBufferSource();
-  noise.buffer = makeNoiseBurst(ctx, 0.18);
-  const bp = ctx.createBiquadFilter();
-  bp.type = 'bandpass'; bp.frequency.value = 1800; bp.Q.value = 0.8;
-  const ng = ctx.createGain();
-  ng.gain.setValueAtTime(vel * 0.7, time);
-  ng.gain.exponentialRampToValueAtTime(0.001, time + 0.16);
-  noise.connect(bp); bp.connect(ng); ng.connect(dest);
-  noise.start(time); noise.stop(time + 0.18);
-  nodes.push(noise);
-  const tone = ctx.createOscillator();
-  tone.type = 'triangle'; tone.frequency.value = 190;
-  const tg = ctx.createGain();
-  tg.gain.setValueAtTime(vel * 0.4, time);
-  tg.gain.exponentialRampToValueAtTime(0.001, time + 0.08);
-  tone.connect(tg); tg.connect(dest);
-  tone.start(time); tone.stop(time + 0.1);
-  nodes.push(tone);
-  return nodes;
-}
 
 export function schedulePerc(ctx, dest, time, vel, pitch) {
   const osc = ctx.createOscillator();
@@ -242,6 +181,15 @@ export const FALLBACK_PRESETS = {
   },
 };
 export const FALLBACK_DEFAULTS = { 0: 'basic-lead', 1: 'basic-lead', 2: 'basic-lead', 3: 'basic-lead' };
+
+
+function makeNoiseBurst(ctx, duration) {
+  const len = Math.max(1, Math.ceil(ctx.sampleRate * duration));
+  const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+  const data = buf.getChannelData(0);
+  for (let i = 0; i < len; i++) data[i] = Math.random() * 2 - 1;
+  return buf;
+}
 
 export class PsySynthBrowser {
   // presetLibrary: { PRESETS, defaults } - injected, no static imports.
@@ -796,88 +744,13 @@ export class PsySynthBrowser {
   }
 
   _scheduleNote(note, startTime) {
-    // Channel 9 is the GM drum channel - route to the drum engine.
-    if (note.channel === 9) {
-      this._scheduleDrum(note, startTime);
-      return;
-    }
+    if (note.channel === 9) return; // skip drum channel (melody-focused)
     const presetId = this.presets[note.channel] || this.presets[0] || Object.keys(this.PRESETS)[0];
     const preset = this.PRESETS[presetId] || FALLBACK_PRESETS['basic-lead'];
     this._scheduleVoice(note, preset, startTime);
   }
 
-  _scheduleDrum(note, startTime) {
-    const vel = note.velocity;
-    if (vel <= 0.001) return; // silent note
-    const pitch = note.pitch;
-    const dest = this.masterGain;
-    if (pitch === 36) {
-      this.activeNodes.push(...scheduleKick(this.ctx, dest, startTime, vel));
-    } else if (pitch === 38 || pitch === 39) {
-      this.activeNodes.push(...scheduleSnare(this.ctx, dest, startTime, vel));
-    } else if (pitch === 42) {
-      this.activeNodes.push(...scheduleHat(this.ctx, dest, startTime, vel, false));
-    } else if (pitch === 46) {
-      this.activeNodes.push(...scheduleHat(this.ctx, dest, startTime, vel, true));
-    } else {
-      this.activeNodes.push(...schedulePerc(this.ctx, dest, startTime, vel, pitch * 8));
-    }
-  }
 
-  // ---------- transport ----------
-  isValidEvent(event) {
-    if (!event || event.type !== 'note' || !event.data) return false;
-    const p = event.data.pitch;
-    const v = event.data.velocity;
-    if (typeof p !== 'number' || p < 0 || p > 127) return false;
-    if (typeof v !== 'number' || v < 0 || v > 127) return false;
-    if (typeof event.timestamp !== 'number' || event.timestamp < 0) return false;
-    if (typeof event.duration !== 'number' || event.duration <= 0) return false;
-    return true;
-  }
-
-  // Play a full AnthemOutput. fromBeat lets the scrubber start mid-piece.
-  // Async: awaits the AudioContext unlock (autoplay policy) before scheduling.
-  // Robust: validates events up front and isolates per-note scheduling errors.
-  async playEvents(events, bpm = 140, fromBeat = 0) {
-    this.stop();
-    if (this.ctx.state === 'suspended') {
-      try { await this.ctx.resume(); } catch (e) { /* context may still be locked */ }
-    }
-
-    const valid = Array.isArray(events) ? events.filter((e) => this.isValidEvent(e)) : [];
-    if (valid.length === 0) {
-      this.lastNoteCount = 0;
-      return 0;
-    }
-
-    this.setTempo(bpm);
-    const plan = scheduleEvents(valid, bpm, fromBeat);
-
-    // ---- Full upfront scheduling ----
-    // For a composition engine every note is known ahead of time, so we schedule
-    // them all up front. Web Audio is designed for this and it avoids the
-    // setInterval-throttling gaps that lookahead scheduling introduced.
-    this._plan = plan.notes;
-    this._t0 = this.ctx.currentTime + 0.06;
-    this._scheduledCount = 0;
-    for (const note of plan.notes) {
-      try {
-        this._scheduleNote(note, this._t0 + Math.max(0, note.startAt));
-        this._scheduledCount++;
-      } catch (err) {
-        console.warn('psy-anthem: failed to schedule one note:', err);
-      }
-    }
-
-    this.lastNoteCount = plan.notes.length;
-    if (plan.totalSeconds > 0 && this.onFinish) {
-      this._finishTimer = setTimeout(() => {
-        if (this.onFinish) this.onFinish();
-      }, (plan.totalSeconds + 0.4) * 1000);
-    }
-    return plan.totalSeconds;
-  }
 
   // Audibility check: three staggered tones (C major triad). Returns total seconds.
   async testSound() {
