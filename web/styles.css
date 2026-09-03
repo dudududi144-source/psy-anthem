@@ -247,3 +247,34 @@ input[type=range]::-moz-range-thumb{
 @media(prefers-reduced-motion:reduce){
   *,*::before,*::after{animation-duration:.01ms !important; transition-duration:.01ms !important}
 }
+
+/* ---------- insights (v3.1) ---------- */
+.insights{display:grid; grid-template-columns:1fr; gap:12px; margin-top:16px}
+.ins-block{
+  background:rgba(255,255,255,.028); border:1px solid var(--stroke); border-radius:12px; padding:12px 14px;
+}
+.ins-title{
+  font-size:11px; letter-spacing:.2em; text-transform:uppercase; color:var(--dim2); margin-bottom:9px;
+  display:flex; align-items:center; gap:7px;
+}
+.ins-title::before{content:''; width:6px; height:6px; border-radius:50%; background:var(--grad); box-shadow:0 0 8px rgba(160,107,255,.8)}
+.motif-chips{display:flex; flex-wrap:wrap; gap:7px}
+.mchip{
+  padding:5px 11px; border-radius:999px; font-family:var(--mono); font-size:12.5px;
+  background:rgba(160,107,255,.1); border:1px solid rgba(160,107,255,.32); color:#d4c4ff;
+  box-shadow:0 0 12px rgba(160,107,255,.12);
+}
+.chord-strip{display:flex; gap:5px; min-height:40px; align-items:stretch}
+.chord-seg{
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px;
+  padding:6px 4px; border-radius:9px; min-width:44px;
+  background:rgba(46,230,255,.07); border:1px solid rgba(46,230,255,.25);
+}
+.chord-seg span{font-family:var(--mono); font-size:14px; font-weight:700; color:var(--cyan)}
+.chord-seg em{font-style:normal; font-size:10px; letter-spacing:.08em; text-transform:uppercase; color:var(--dim2)}
+.art-break{display:flex; flex-direction:column; gap:7px}
+.art-row{display:grid; grid-template-columns:118px 1fr 34px; gap:10px; align-items:center; font-size:12px}
+.art-k{color:var(--dim); letter-spacing:.04em; text-transform:capitalize; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.art-bar{height:7px; border-radius:999px; background:var(--bg1); border:1px solid var(--stroke); overflow:hidden}
+.art-fill{height:100%; border-radius:999px; background:var(--grad); box-shadow:0 0 10px rgba(255,46,196,.5)}
+.art-v{font-family:var(--mono); font-size:12px; color:var(--txt); text-align:right}

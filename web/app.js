@@ -1,4 +1,4 @@
-// PSY ANTHEM - web/app.js  (Hyperstage UI)
+// PSY ANTHEM - web/app.js  (Hyperstage UI v3.1)
 // Presentation layer over the WHAT engine (engine.mjs) and HOW synth (synth.js).
 import { createAnthemEngine, AnthemIntent, EnergyCurve } from './engine.mjs';
 import { PsySynthBrowser, midiToFreq } from './synth.js';
@@ -172,17 +172,18 @@ function applyConfigToControls(cfg){
 
 // ---------- generation ----------
 function generate(){
-  appState.set({error:null});
+  appState.set({error:null, status:'generating'});
   const cfg=readConfig();
   let out=null;
   try { out=createAnthemEngine(cfg).generate(); }
-  catch(e){ appState.set({error:'Config error: '+(e&&e.message?e.message:String(e))}); toast('Config error','error'); return; }
-  if(!out){ appState.set({error:'Solver failed for this config. Try another seed.'}); toast('Solver failed','error'); return; }
+  catch(e){ appState.set({error:'Config error: '+(e&&e.message?e.message:String(e)), status:'error'}); toast('Config error','error'); return; }
+  if(!out){ appState.set({error:'Solver failed for this config. Try another seed.', status:'error'}); toast('Solver failed','error'); return; }
   history.push({config:cfg,out}); if(history.length>10)history.shift();
   historyIndex=history.length-1;
   renderCurrent();
   const meta=out.metadata||{};
   toast('Anthem generated · seed '+cfg.seed+' · '+(meta.generationTimeMs||0)+'ms','ok');
+  appState.set({status:'ready'});
 }
 function navigate(delta){
   const next=historyIndex+delta;
@@ -198,7 +199,7 @@ function renderCurrent(){
   renderRoll(entry.out,entry.config);
   renderStats(entry.out,entry.config);
   renderPlayFrom(entry.config);
-  renderPresets(entry.out);
+  renderInsights(entry.out);
   const meta=entry.out.metadata||{};
   $('trackTitle').textContent=(entry.config.intent||'')+' · seed '+meta.seed;
   $('trackMeta').textContent=(meta.bars||entry.config.bars)+' bars · '+(meta.voices||entry.config.voices)+' voices · '+(meta.generationTimeMs||0)+'ms';
@@ -216,6 +217,18 @@ function renderPlayFrom(cfg){
   const sel=$('playFrom'); const prev=parseInt(sel.value,10)||1; sel.innerHTML='';
   for(let b=1;b<=cfg.bars;b++){ const o=document.createElement('option'); o.value=String(b); o.textContent=String(b); sel.appendChild(o); }
   sel.value=String(Math.min(prev,cfg.bars));
+}
+
+function rr(g,x,y,w,h,r){
+  if(typeof g.roundRect==='function'){ g.beginPath(); g.roundRect(x,y,w,h,r); return; }
+  const q=Math.min(r,w/2,h/2);
+  g.beginPath();
+  g.moveTo(x+q,y);
+  g.arcTo(x+w,y,x+w,y+h,q);
+  g.arcTo(x+w,y+h,x,y+h,q);
+  g.arcTo(x,y+h,x,y,q);
+  g.arcTo(x,y,x+w,y,q);
+  g.closePath();
 }
 
 // ---------- piano roll ----------
@@ -245,7 +258,7 @@ function renderRoll(out, cfg){
     const h=Math.max(2.5,rowH-1.5);
     g.fillStyle=VOICE_COLORS[n.channel%4];
     g.globalAlpha=0.35+(n.data.velocity/127)*0.6;
-    g.beginPath(); g.roundRect(x,y,w,h,2.5); g.fill();
+    rr(g,x,y,w,h,2.5); g.fill();
     g.globalAlpha=1;
   }
 }
@@ -273,24 +286,72 @@ function renderStats(out,cfg){
     ['quality',meta.quality||'—'],
   ];
   $('stats').innerHTML=items.map((it)=>'<div class="stat"><span class="k">'+it[0]+'</span><span class="v">'+it[1]+'</span></div>').join('');
+  $('infoPanel').innerHTML='<div class="info-line">intent <b>'+(meta.intent||'—')+'</b> · scale <b>'+(cfg.scale.mode||'—')+' '+NOTE_NAMES[((cfg.scale.root%12)+12)%12]+'</b>'+(cfg.density?' · density <b>'+cfg.density+'</b>':'')+(cfg.harmonyComplexity?' · harmony <b>'+cfg.harmonyComplexity+'</b>':'')+'</div>';
 }
-function renderPresets(out){
-  const meta=out.metadata||{};
-  $('infoPanel').innerHTML='<div class="info-line">intent: <b>'+(meta.intent||'—')+'</b></div>';
+function renderInsights(out){
+  const motif=$('motif');
+  if(motif){
+    motif.innerHTML='';
+    const dna=out.motifDNA;
+    if(dna&&dna.coreNotes){
+      for(let i=0;i<dna.coreNotes.length;i++){
+        const c=document.createElement('span');
+        c.className='mchip';
+        c.textContent=pitchName(dna.coreNotes[i])+' · '+(dna.coreRhythm[i]||0)+'b';
+        motif.appendChild(c);
+      }
+    }
+  }
+  const chordsEl=$('chords');
+  if(chordsEl){
+    chordsEl.innerHTML='';
+    const ha=out.harmonicAnalysis;
+    if(ha&&ha.chords&&ha.chords.length){
+      for(const c of ha.chords){
+        const d=document.createElement('div');
+        d.className='chord-seg';
+        d.style.flexGrow=String(Math.max(0.5,c.durationBars||1));
+        d.innerHTML='<span>'+NOTE_NAMES[((c.root%12)+12)%12]+'</span><em>'+c.quality+'</em>';
+        chordsEl.appendChild(d);
+      }
+    }
+  }
+  const ab=$('artBreak');
+  if(ab){
+    ab.innerHTML='';
+    const meta=out.metadata||{};
+    const bd=meta.artisticBreakdown;
+    if(bd){
+      for(const k of Object.keys(bd)){
+        const v=bd[k];
+        const row=document.createElement('div');
+        row.className='art-row';
+        const w=Math.max(0,Math.min(100,v));
+        row.innerHTML='<span class="art-k">'+k+'</span><div class="art-bar"><div class="art-fill" style="width:'+w+'%"></div></div><span class="art-v">'+v+'</span>';
+        ab.appendChild(row);
+      }
+    }
+  }
 }
 
 // ---------- transport ----------
 function setPlaying(on){
-  isPlaying=on; appState.set({playing:on});
+  isPlaying=on;
+  const statusNow=appState.get('status');
+  if(on) appState.set({playing:true, status:'playing'});
+  else if(statusNow==='playing') appState.set({playing:false, status:'ready'});
+  else appState.set({playing:false});
   $('play').textContent=on?'⏹ STOP':'▶ PLAY';
   $('play').classList.toggle('playing',on);
   if(on) startProgressLoop(); else stopProgressLoop();
 }
-async function play(){
+async function play(opts){
   const entry=currentEntry();
   if(!entry){ toast('Generate an anthem first','info'); return; }
   const s=ensureSynth();
-  if(isPlaying){ stopPlayback(); return; }
+  const restart=opts&&opts.restart;
+  if(isPlaying && !restart){ stopPlayback(); return; }
+  if(isPlaying){ stopPlayback(); }
   const fromBar=parseInt($('playFrom').value,10)||1;
   const fromBeat=(fromBar-1)*4;
   try {
@@ -326,12 +387,12 @@ function setProgress(frac){
 }
 function fmtT(s){ if(!isFinite(s))s=0; const m=Math.floor(s/60); const r=s-m*60; return m+':'+(r<10?'0':'')+r.toFixed(1); }
 function seek(){
-  const entry=currentEntry(); if(!entry||!isPlaying) return;
+  const entry=currentEntry(); if(!entry) return;
   const frac=parseFloat($('progressBar').value)/100;
   const beat=frac*(entry.config.bars*4);
   const bar=Math.max(1,Math.floor(beat/4)+1);
   $('playFrom').value=String(bar);
-  play();
+  if(isPlaying) play({restart:true});
 }
 
 // ---------- visualizer ----------
@@ -352,7 +413,7 @@ function startViz(){
       const hue=(i/bars)*280+180;
       g.fillStyle='hsla('+hue+',90%,62%,0.85)';
       const x=(i/bars)*W; const bw=W/bars-2;
-      g.beginPath(); g.roundRect(x,H-h,bw,h,2); g.fill();
+      rr(g,x,H-h,bw,h,2); g.fill();
     }
   };
   loop();

@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.3.0 - Hyperstage UI v3.1
+
+- fix(pages): deploy state.js so the demo shell loads (the 404 that crashed
+  the page with 'Cannot convert undefined or null to object').
+- feat(web): Hyperstage redesign - neon glass UI, animated aurora backdrop,
+  live visualizer, canvas piano roll with click-audition, transport with
+  seek-to-bar, take history, keyboard shortcuts, toasts via appState.
+- feat(web): insights panels on the Stage - Motif DNA chips, Harmonic
+  Journey strip (root + quality, duration-proportional), Artistic Breakdown
+  meters.
+- fix(web): seeking during playback restarts from the target bar instead of
+  stopping; status LED tracks playing / generating / error states.
+- fix(web): roundRect fallback for older browsers; safer canvas sizing.
+
+
+
 ## 0.2.0 - Phase 14 (hardening)
 
 - feat(validation): strict AnthemConfig schema validation with
