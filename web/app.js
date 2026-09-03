@@ -1,11 +1,11 @@
-// PSY ANTHEM - web/app.js  (Hyperstage UI v3.8)
+// PSY ANTHEM - web/app.js  (Hyperstage UI v3.9)
 // Presentation layer over the WHAT engine (engine.mjs) and HOW synth (synth.js).
 import { createAnthemEngine, AnthemIntent, EnergyCurve } from './engine.mjs';
 import { PsySynthBrowser, midiToFreq } from './synth.js';
 import { PRESETS, PRESET_CATEGORIES, DEFAULT_VOICE_PRESETS } from './presets.js';
 import { createStateStore } from './state.js';
 
-console.info('[PSY ANTHEM] Hyperstage v3.8 loaded - app.js module OK');
+console.info('[PSY ANTHEM] Hyperstage v3.9 loaded - app.js module OK');
 
 // ---------- shell state store + global error boundaries ----------
 export const appState = createStateStore({ status: 'ready', error: null, playing: false });
@@ -101,7 +101,7 @@ const dbgState={audio:'—',last:'boot'};
 function dbg(msg){
   dbgState.last=msg;
   const el=$('debugStrip');
-  if(el) el.textContent='Hyperstage v3.8 · audio: '+dbgState.audio+' · last: '+msg;
+  if(el) el.textContent='Hyperstage v3.9 · audio: '+dbgState.audio+' · last: '+msg;
 }
 
 // ---------- toast / status ----------
@@ -593,6 +593,7 @@ function init(){
   window.addEventListener('resize',()=>{ const e=currentEntry(); if(e)renderRoll(e.out,e.config); });
   startViz();
   setStatusReady();
+  setTimeout(()=>{ try{ ensureSynth(); }catch(e){ /* warm-up only */ } }, 1200);
   try{
     generate();
     dbg('anthem ready · press ▶ PLAY');
