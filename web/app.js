@@ -1,11 +1,11 @@
-// PSY ANTHEM - web/app.js  (Hyperstage UI v5.4)
+// PSY ANTHEM - web/app.js  (Hyperstage UI v5.5)
 // Presentation layer over the WHAT engine (engine.mjs) and HOW synth (synth.js).
 import { createAnthemEngine, AnthemIntent, EnergyCurve } from './engine.mjs';
 import { PsySynthBrowser, midiToFreq, audioBufferToWav } from './synth.js';
 import { PRESETS, PRESET_CATEGORIES, DEFAULT_VOICE_PRESETS } from './presets.js';
 import { createStateStore } from './state.js';
 
-console.info('[PSY ANTHEM] Hyperstage v5.4 loaded - app.js module OK');
+console.info('[PSY ANTHEM] Hyperstage v5.5 loaded - app.js module OK');
 
 // ---------- shell state store + global error boundaries ----------
 export const appState = createStateStore({ status: 'ready', error: null, playing: false });
@@ -82,6 +82,7 @@ let bounceAudio=null;
 let bounceUrl=null;
 let bounceKey='';
 let bounceMode=false;
+let bouncePromise=null;
 let historyIndex = -1;
 let synth = null;
 let isPlaying = false;
@@ -135,7 +136,7 @@ const dbgState={audio:'—',last:'boot'};
 function dbg(msg){
   dbgState.last=msg;
   const el=$('debugStrip');
-  if(el) el.textContent='Hyperstage v5.4 · audio: '+dbgState.audio+' · last: '+msg;
+  if(el) el.textContent='Hyperstage v5.5 · audio: '+dbgState.audio+' · last: '+msg;
 }
 
 // ---------- toast / status ----------
@@ -151,54 +152,86 @@ appState.subscribe((state)=>{
   if(led) led.className='led '+(state.status==='playing'?'led-play':state.status==='error'?'led-err':'led-ready');
 });
 
-// ---------- FREEZE playback: full-quality offline bounce -> <audio> ----------
-// The DAW "freeze/consolidate" pattern: render the entire anthem with the
-// FULL engine (every voice, preset and FX - nothing reduced) in an
-// OfflineAudioContext, then play the result through a media element.
-// Zero live WebAudio load during playback, so weak machines play smoothly.
+// ---------- FREEZE playback v2: pre-rendered full-quality bounce ----------
+// The DAW "freeze/consolidate" pattern, made bulletproof:
+//  - the bounce starts rendering IMMEDIATELY after each generation (before
+//    the user presses PLAY), so PLAY is instant and inside the user gesture;
+//  - playback goes through a VISIBLE <audio controls> element (the proven
+//    media path on this machine), never relying on live WebAudio;
+//  - if autoplay of the element is denied, the player stays visible so the
+//    user can press its own play button;
+//  - fallback chain: freeze bounce -> zero-WebAudio pure-JS WAV playback.
 function takeKey(){
   const e=currentEntry();
   return e ? historyIndex+':'+e.config.seed+':'+e.config.bars+':'+e.config.intent : '';
 }
-async function ensureBounce(){
+function getBouncePlayer(){
+  if(bounceAudio) return bounceAudio;
+  bounceAudio=document.createElement('audio');
+  bounceAudio.id='freezePlayer';
+  bounceAudio.controls=true;
+  bounceAudio.className='wav-player';
+  bounceAudio.addEventListener('ended',()=>{ if(bounceMode){ setPlaying(false); setProgress(0); } });
+  const wrap=$('wavWrap'); if(wrap) wrap.appendChild(bounceAudio);
+  return bounceAudio;
+}
+async function renderBounceNow(){
   const entry=currentEntry();
   if(!entry) return null;
-  const key=takeKey();
-  if(bounceUrl && bounceKey===key) return bounceUrl;
   const s=ensureSynth();
   dbg('FREEZE: rendering full-quality bounce…');
-  const buffer=await s.renderOffline(entry.out.events, entry.config.bpm||140, 0);
-  if(!buffer) return null;
-  const bytes=await audioBufferToWav(buffer);
+  console.info('[PSY ANTHEM] FREEZE render started');
+  let buffer=null;
+  try{ buffer=await s.renderOffline(entry.out.events, entry.config.bpm||140, 0); }catch(e){ buffer=null; }
+  if(!buffer){
+    dbg('FREEZE failed: offline render returned nothing');
+    console.warn('[PSY ANTHEM] FREEZE render failed (no buffer)');
+    return null;
+  }
+  let bytes=null;
+  try{ bytes=await audioBufferToWav(buffer); }catch(e){ bytes=null; }
+  if(!bytes){
+    dbg('FREEZE failed: WAV encoding error');
+    return null;
+  }
   if(bounceUrl){ try{ URL.revokeObjectURL(bounceUrl); }catch(e){ /* ignore */ } }
   bounceUrl=URL.createObjectURL(new Blob([bytes],{type:'audio/wav'}));
-  bounceKey=key;
-  dbg('FREEZE ready · '+Math.round(buffer.duration)+'s full-quality');
-  console.info('[PSY ANTHEM] FREEZE bounce rendered:', Math.round(buffer.duration)+'s');
+  dbg('FREEZE ready · '+Math.round(buffer.duration)+'s · press ▶ PLAY');
+  console.info('[PSY ANTHEM] FREEZE bounce ready:', Math.round(buffer.duration)+'s');
   return bounceUrl;
+}
+function ensureBounce(){
+  const key=takeKey();
+  if(bounceUrl && bounceKey===key) return Promise.resolve(bounceUrl);
+  if(bouncePromise && bounceKey===key) return bouncePromise;
+  bounceKey=key;
+  bouncePromise=renderBounceNow().catch(()=>null);
+  return bouncePromise;
 }
 async function playBounce(){
   const entry=currentEntry();
   if(!entry){ toast('Generate an anthem first','info'); return; }
   if(isPlaying){ stopPlayback(); return; }
-  toast('◉ rendering full-quality bounce…','info');
+  dbg('FREEZE: preparing playback…');
   let url=null;
   try{ url=await ensureBounce(); }catch(e){ url=null; }
   if(!url){
-    toast('bounce failed — falling back to zero-WebAudio playback','error');
+    toast('bounce failed — zero-WebAudio fallback','error');
     return playViaWav();
   }
-  if(!bounceAudio){
-    bounceAudio=new Audio();
-    bounceAudio.addEventListener('ended',()=>{ if(bounceMode){ setPlaying(false); setProgress(0); } });
-  }
-  bounceAudio.src=url;
+  const el=getBouncePlayer();
+  el.src=url;
   bounceMode=true;
-  try{ await bounceAudio.play(); }catch(e){ toast('press ▶ again to start','info'); return; }
-  playDurationSec=isFinite(bounceAudio.duration)&&bounceAudio.duration>0?bounceAudio.duration:0;
+  try{ await el.play(); }
+  catch(e){
+    dbg('FREEZE ready — press ▶ on the player below');
+    toast('לחץ הפעלה בנגן שהופיע למטה','info');
+    return;
+  }
+  playDurationSec=isFinite(el.duration)&&el.duration>0?el.duration:0;
   setPlaying(true);
   dbg('FREEZE playing · full quality · zero live load');
-  console.info('[PSY ANTHEM] FREEZE playback started (offline-rendered full-quality bounce)');
+  console.info('[PSY ANTHEM] FREEZE playback started');
   startProgressLoop();
 }
 
@@ -348,6 +381,8 @@ function generate(){
   renderCurrent();
   const meta=out.metadata||{};
   dbg('generated · '+out.events.length+' events · seed '+cfg.seed);
+  bouncePromise=null;
+  ensureBounce();
   console.info('[PSY ANTHEM] generated', out.events.length, 'events, seed', cfg.seed);
   toast('Anthem generated · seed '+cfg.seed+' · '+(meta.generationTimeMs||0)+'ms','ok');
   appState.set({status:'ready'});
@@ -704,42 +739,7 @@ async function playViaBridge(){
 // Differential-diagnosis path #4: renders the ENTIRE anthem with the full
 // engine (all presets/FX) in an OfflineAudioContext and plays the resulting
 // WAV through a media element - completely independent of the live sink.
-async function renderBounce(){
-  const entry=currentEntry();
-  if(!entry){ toast('Generate an anthem first','info'); return; }
-  const s=ensureSynth();
-  dbg('BOUNCE: offline rendering full song…');
-  toast('🧪 offline bounce — rendering the full anthem…','info');
-  let buffer=null;
-  try{ buffer=await s.renderOffline(entry.out.events, entry.config.bpm||140, 0); }catch(e){ buffer=null; }
-  if(!buffer){
-    appState.set({error:'Offline render failed'});
-    dbg('BOUNCE failed: offline render returned nothing');
-    console.warn('[PSY ANTHEM] BOUNCE: OfflineAudioContext render failed');
-    toast('offline render failed in this browser','error');
-    return;
-  }
-  let bytes=null;
-  try{ bytes=await audioBufferToWav(buffer); }catch(e){ bytes=null; }
-  if(!bytes){ toast('WAV encoding failed','error'); return; }
-  const url=URL.createObjectURL(new Blob([bytes],{type:'audio/wav'}));
-  let wa=$('bouncePlayer');
-  if(!wa){
-    wa=document.createElement('audio');
-    wa.id='bouncePlayer'; wa.controls=true; wa.className='wav-player';
-    const wrap=$('wavWrap'); if(wrap) wrap.appendChild(wa);
-  }
-  wa.src=url;
-  try{
-    await wa.play();
-    dbg('BOUNCE playing via <audio> (full engine quality)');
-    console.info('[PSY ANTHEM] BOUNCE: full-quality offline render playing via <audio> element,', Math.round(buffer.duration)+'s');
-    toast('▶ full-quality bounce playing','ok');
-  }catch(e){
-    dbg('BOUNCE ready — press play on the audio player');
-    toast('לחץ הפעלה בנגן שהופיע','info');
-  }
-}
+async function renderBounce(){ return playBounce(); }
 
 // ---------- pure-JS WAV engine: ZERO WebAudio involvement ----------
 function floatToWav16(data,sr){

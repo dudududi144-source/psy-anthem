@@ -1,5 +1,23 @@
 # Changelog
 
+## 5.5.0 - Bulletproof FREEZE: pre-render + visible player
+
+Post-extension-removal field report: still no playback. Diagnosis of the
+FREEZE path: rendering happened AFTER the PLAY click on very slow machines,
+so the user-gesture expired before <audio>.play() ran (autoplay denied) and
+the hidden player gave no way to start it.
+
+- The bounce now pre-renders IMMEDIATELY after each generation, in the
+  background with live status in the debug strip; PLAY becomes instant and
+  always inside the gesture.
+- FREEZE plays through a VISIBLE <audio controls> player (the media path
+  proven audible on the user's machine); if autoplay is still denied, the
+  user can press the player's own play button.
+- BOUNCE button is now an alias of FREEZE playback; fallback chain
+  freeze -> zero-WebAudio WAV stays intact.
+
+
+
 ## 5.4.0 - Foreign-script shield + on-page source exposure
 
 The recurring main.js crash does not exist in this project (verified: web/
