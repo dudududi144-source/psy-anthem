@@ -1,11 +1,11 @@
-// PSY ANTHEM - web/app.js  (Hyperstage UI v3.10)
+// PSY ANTHEM - web/app.js  (Hyperstage UI v3.11)
 // Presentation layer over the WHAT engine (engine.mjs) and HOW synth (synth.js).
 import { createAnthemEngine, AnthemIntent, EnergyCurve } from './engine.mjs';
 import { PsySynthBrowser, midiToFreq } from './synth.js';
 import { PRESETS, PRESET_CATEGORIES, DEFAULT_VOICE_PRESETS } from './presets.js';
 import { createStateStore } from './state.js';
 
-console.info('[PSY ANTHEM] Hyperstage v3.10 loaded - app.js module OK');
+console.info('[PSY ANTHEM] Hyperstage v3.11 loaded - app.js module OK');
 
 // ---------- shell state store + global error boundaries ----------
 export const appState = createStateStore({ status: 'ready', error: null, playing: false });
@@ -101,7 +101,7 @@ const dbgState={audio:'—',last:'boot'};
 function dbg(msg){
   dbgState.last=msg;
   const el=$('debugStrip');
-  if(el) el.textContent='Hyperstage v3.10 · audio: '+dbgState.audio+' · last: '+msg;
+  if(el) el.textContent='Hyperstage v3.11 · audio: '+dbgState.audio+' · last: '+msg;
 }
 
 // ---------- toast / status ----------
@@ -511,16 +511,112 @@ function startViz(){
   loop();
 }
 
+// ---------- pure-JS WAV engine: ZERO WebAudio involvement ----------
+function floatToWav16(data,sr){
+  const n=data.length;
+  const ab=new ArrayBuffer(44+n*2);
+  const dv=new DataView(ab);
+  const ws=(o,s)=>{ for(let i=0;i<s.length;i++) dv.setUint8(o+i,s.charCodeAt(i)); };
+  ws(0,'RIFF'); dv.setUint32(4,36+n*2,true); ws(8,'WAVE'); ws(12,'fmt ');
+  dv.setUint32(16,16,true); dv.setUint16(20,1,true); dv.setUint16(22,1,true);
+  dv.setUint32(24,sr,true); dv.setUint32(28,sr*2,true); dv.setUint16(32,2,true); dv.setUint16(34,16,true);
+  ws(36,'data'); dv.setUint32(40,n*2,true);
+  let o=44;
+  for(let i=0;i<n;i++){
+    const s=Math.max(-1,Math.min(1,data[i]));
+    dv.setInt16(o, s<0?s*0x8000:s*0x7FFF, true);
+    o+=2;
+  }
+  return new Uint8Array(ab);
+}
+function eventsToWav(events,bpm){
+  const sr=44100;
+  const spb=60/Math.max(1,bpm);
+  let endSec=0;
+  const notes=[];
+  for(const e of events){
+    if(e.type!=='note') continue;
+    const start=e.timestamp*spb;
+    const dur=Math.max(0.05,e.duration*spb);
+    notes.push({start:start,dur:dur,freq:440*Math.pow(2,(e.data.pitch-69)/12),vel:(e.data.velocity||100)/127});
+    if(start+dur>endSec) endSec=start+dur;
+  }
+  if(notes.length===0) return null;
+  const total=Math.ceil((endSec+0.5)*sr);
+  const buf=new Float32Array(total);
+  for(const n of notes){
+    const s0=Math.floor(n.start*sr);
+    const len=Math.floor(n.dur*sr);
+    const amp=0.22*n.vel;
+    const a=0.008, r=Math.min(0.06,n.dur*0.4);
+    for(let i=0;i<len && s0+i<total;i++){
+      const t=i/sr;
+      let env;
+      if(t<a) env=t/a;
+      else if(t>n.dur-r) env=Math.max(0,(n.dur-t)/r);
+      else env=1;
+      const w=2*Math.PI*n.freq*t;
+      buf[s0+i]+=(Math.sin(w)*0.7+Math.sin(2*w)*0.2+Math.sin(3*w)*0.1)*env*amp;
+    }
+  }
+  for(let i=0;i<total;i++) buf[i]=Math.tanh(buf[i]*1.4)*0.9;
+  return floatToWav16(buf,sr);
+}
+function pureBeepWavUrl(){
+  const sr=44100, dur=0.5;
+  const n=Math.floor(sr*dur);
+  const data=new Float32Array(n);
+  for(let i=0;i<n;i++){
+    const t=i/sr;
+    const env=Math.min(1,t/0.01)*Math.max(0,Math.min(1,(dur-t)/0.12));
+    data[i]=Math.sin(2*Math.PI*880*t)*0.6*env;
+  }
+  const bytes=floatToWav16(data,sr);
+  return URL.createObjectURL(new Blob([bytes],{type:'audio/wav'}));
+}
+
+// ---------- first-click audio diagnosis (zero WebAudio) ----------
+let firstTouchDone=false;
+function firstTouchDiagnosis(){
+  if(firstTouchDone) return;
+  firstTouchDone=true;
+  try{
+    const url=pureBeepWavUrl();
+    const a=new Audio(url);
+    a.volume=1.0;
+    a.play().then(()=>{
+      dbg('diagnosis beep playing via <audio> (zero WebAudio)');
+      console.info('[PSY ANTHEM] diagnosis beep playing via <audio> (zero WebAudio)');
+    }).catch(()=>{
+      dbg('diagnosis beep blocked by autoplay');
+      console.warn('[PSY ANTHEM] diagnosis beep blocked by autoplay policy');
+    });
+    const o=$('diagOverlay'); if(o) o.hidden=false;
+  }catch(e){
+    dbg('diagnosis failed: '+(e&&e.message?e.message:String(e)));
+  }
+}
+function diagAnswer(yes){
+  const msg=$('diagMsg'); const o=$('diagOverlay');
+  if(yes){
+    dbg('DIAG: user HEARD the pure beep');
+    console.info('[PSY ANTHEM] DIAG: user heard the pure beep - media path OK');
+    if(msg) msg.textContent='✅ מצוין! השמע של הדפדפן עובד. עכשיו לחץ ▶ PLAY (או ◉ WAV PLAY לגיבוי) ותשמע את האנתייםם';
+    setTimeout(()=>{ if(o) o.hidden=true; },6000);
+  }else{
+    dbg('DIAG: silence even from plain <audio> - OS/system level');
+    console.warn('[PSY ANTHEM] DIAG: silence even from a plain <audio> element - OS mute / wrong output device / system block (not the site code)');
+    if(msg) msg.textContent='❌ אם גם צפצוף פשוט לא נשמע — ההשתקה היא ברמת המחשב: בדוק מיקסר עוצמה של מערכת ההפעלה, התקן יציאה (רמקולים/אוזניות), או נסה חלון פרטי / דפדפן אחר';
+  }
+}
+
 // ---------- WAV fallback playback: offline render -> <audio> element ----------
 async function playViaWav(){
   const entry=currentEntry();
   if(!entry){ toast('Generate an anthem first','info'); return; }
-  const s=ensureSynth();
-  dbg('rendering WAV offline…');
-  toast('◉ rendering WAV offline…','info');
-  let bytes=null;
-  try{ bytes=await s.renderToWav(entry.out.events, entry.config.bpm||140, 0); }
-  catch(e){ bytes=null; }
+  dbg('pure WAV render (zero WebAudio)…');
+  toast('◉ rendering pure WAV…','info');
+  const bytes=eventsToWav(entry.out.events, entry.config.bpm||140);
   if(!bytes){ appState.set({error:'WAV render failed'}); toast('WAV render failed','error'); return; }
   const blob=new Blob([bytes],{type:'audio/wav'});
   const url=URL.createObjectURL(blob);
@@ -534,9 +630,9 @@ async function playViaWav(){
   wa.onended=()=>{ dbg('WAV playback finished'); };
   try{
     await wa.play();
-    dbg('WAV playback started via <audio> element');
-    console.info('[PSY ANTHEM] WAV playback started via <audio> element (independent path)');
-    toast('▶ playing via WAV — independent audio path','ok');
+    dbg('WAV playback started via <audio> element (zero WebAudio)');
+    console.info('[PSY ANTHEM] WAV playback started via <audio> element (zero WebAudio)');
+    toast('▶ playing via WAV — zero WebAudio','ok');
   }catch(e){
     dbg('WAV autoplay blocked — press play on the audio player');
     toast('לחץ על כפתור הנגינה בנגן שהופיע','info');
@@ -549,12 +645,13 @@ function doDownloadMidi(){ const e=currentEntry(); if(!e)return; downloadBlob(mi
 function doDownloadJson(){ const e=currentEntry(); if(!e)return; downloadBlob(new TextEncoder().encode(JSON.stringify(e.out,null,2)),'psy-anthem-seed'+e.config.seed+'.json','application/json'); toast('JSON exported','ok'); }
 async function doDownloadWav(){
   const e=currentEntry(); if(!e)return; const s=ensureSynth();
-  toast('Rendering WAV offline…','info');
-  try{
-    const bytes=await s.renderToWav(e.out.events,e.config.bpm||140,0);
-    if(bytes){ downloadBlob(bytes,'psy-anthem-seed'+e.config.seed+'.wav','audio/wav'); toast('WAV exported','ok'); }
-    else { toast('WAV render not supported here','error'); }
-  }catch(err){ toast('WAV render failed','error'); }
+  toast('Rendering WAV…','info');
+  let bytes=null;
+  try{ bytes=await s.renderToWav(e.out.events,e.config.bpm||140,0); }catch(err){ bytes=null; }
+  if(!bytes) bytes=eventsToWav(e.out.events, e.config.bpm||140);
+  if(!bytes){ toast('WAV render failed','error'); return; }
+  downloadBlob(bytes,'psy-anthem-seed'+e.config.seed+'.wav','audio/wav');
+  toast('WAV exported','ok');
 }
 async function copyConfig(){
   const e=currentEntry(); const cfg=e?e.config:readConfig();
@@ -583,6 +680,9 @@ function init(){
   $('play').addEventListener('click',play);
   $('stop').addEventListener('click',stopPlayback);
   const pw=$('playWav'); if(pw) pw.addEventListener('click',playViaWav);
+  const dy=$('diagYes'); if(dy) dy.addEventListener('click',()=>diagAnswer(true));
+  const dn=$('diagNo'); if(dn) dn.addEventListener('click',()=>diagAnswer(false));
+  document.addEventListener('pointerdown',firstTouchDiagnosis,{ once:true });
   const act=$('audioCheckTop'); if(act) act.addEventListener('click',audioCheckFlow);
   const acBtn=$('audioCheck');
   if(acBtn) acBtn.addEventListener('click',audioCheckFlow);

@@ -6,14 +6,24 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>PSY ANTHEM · Hyperstage v3.10</title>
+<title>PSY ANTHEM · Hyperstage v3.11</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/space-grotesk@5.0.0/500.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/space-grotesk@5.0.0/700.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/jetbrains-mono@5.0.0/400.css">
-<link rel="stylesheet" href="./styles.css?v=40">
+<link rel="stylesheet" href="./styles.css?v=41">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🎛%3C/text%3E%3C/svg%3E">
 </head>
 <body>
+<div id="diagOverlay" class="diag-overlay" hidden>
+  <div class="diag-card">
+    <div class="diag-title">🔊 בדיקת שמע חד-פעמית</div>
+    <div id="diagMsg" class="diag-msg">ניגנו עכשיו צפצוף קצר דרך נגן מדיה פשוט (ללא שום קוד שמע של האתר). שמעת אותו?</div>
+    <div class="ac-actions">
+      <button id="diagYes" class="ac-btn yes">✅ כן, שמעתי</button>
+      <button id="diagNo" class="ac-btn no">❌ לא שמעתי כלום</button>
+    </div>
+  </div>
+</div>
 <div class="bg" aria-hidden="true">
   <div class="orb orb-a"></div><div class="orb orb-b"></div><div class="orb orb-c"></div>
   <div class="grid-overlay"></div>
@@ -30,11 +40,11 @@
   <div class="status-chip">
     <span id="statusLed" class="led led-ready"></span>
     <span id="statusText">ready</span>
-    <span class="ver-badge">Hyperstage v3.10</span>
+    <span class="ver-badge">Hyperstage v3.11</span>
   </div>
 </header>
 
-<div id="debugStrip" class="debug-strip">Hyperstage v3.10 · booting…</div>
+<div id="debugStrip" class="debug-strip">Hyperstage v3.11 · booting…</div>
 
 <div id="audioCheckBanner" class="ac-banner" hidden>
   <div id="audioCheckMsg" class="ac-msg">🔊 שני צפצופים נשלחו (660+880 הרץ) — שמעת אותם?</div>
@@ -185,6 +195,6 @@
   <a href="https://github.com/dudududi144-source/psy-anthem">github</a>
 </footer>
 
-<script type="module" src="./app.js?v=40"></script>
+<script type="module" src="./app.js?v=41"></script>
 </body>
 </html>
