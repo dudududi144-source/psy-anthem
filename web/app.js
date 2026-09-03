@@ -1,14 +1,14 @@
-// PSY ANTHEM — clean build v6.2
-// Playback model (MEMORY.md): the button must NEVER be blocked.
-//   1) generate -> instant pure-JS WAV render (fast, guaranteed) -> player
-//   2) full-quality offline render runs in the background with a timeout;
-//      if it finishes, the player upgrades to HQ audio. Never blocking.
+// PSY ANTHEM — clean build v6.3
+// Playback model (MEMORY.md):
+//   generate -> standard renderer (pure-JS stereo wavetable synth, no WebAudio)
+//   -> visible <audio> player. Optional on-demand studio render (full engine
+//   via OfflineAudioContext) upgrades the player if the machine completes it.
 import { createAnthemEngine, AnthemIntent, EnergyCurve } from './engine.mjs';
 import { PsySynthBrowser, audioBufferToWav } from './synth.js';
 import { PRESETS, DEFAULT_VOICE_PRESETS } from './presets.js';
 
 const $ = (id) => document.getElementById(id);
-console.info('[PSY ANTHEM] clean build v6.2 loaded');
+console.info('[PSY ANTHEM] clean build v6.3 loaded');
 
 // ---------- state ----------
 let synth = null;
@@ -25,25 +25,72 @@ function ensureSynth() {
   return synth;
 }
 
-// ---------- pure-JS WAV synth (zero WebAudio - guaranteed) ----------
-function floatToWav16(data, sr) {
-  const n = data.length;
-  const ab = new ArrayBuffer(44 + n * 2);
+// ============================================================
+// Standard renderer: pure-JS stereo wavetable synth.
+// Zero WebAudio involvement -> guaranteed on any machine.
+// ============================================================
+const TABLE_LEN = 2048;
+function makeTable(kind) {
+  const t = new Float32Array(TABLE_LEN + 1);
+  for (let i = 0; i <= TABLE_LEN; i++) {
+    const ph = (i / TABLE_LEN) * 2 * Math.PI;
+    let v = 0;
+    if (kind === 'saw') {
+      for (let h = 1; h <= 24; h++) v += Math.sin(h * ph) / h; // band-limited saw
+      v *= 0.55;
+    } else if (kind === 'pad') {
+      v = Math.sin(ph) + Math.sin(2 * ph) * 0.35 + Math.sin(3 * ph) * 0.15 + Math.sin(4 * ph) * 0.08;
+      v *= 0.5;
+    } else {
+      v = Math.sin(ph);
+    }
+    t[i] = v;
+  }
+  return t;
+}
+let TABLE_SAW = null, TABLE_PAD = null, TABLE_SINE = null;
+function ensureTables() {
+  if (!TABLE_SAW) TABLE_SAW = makeTable('saw');
+  if (!TABLE_PAD) TABLE_PAD = makeTable('pad');
+  if (!TABLE_SINE) TABLE_SINE = makeTable('sine');
+}
+function tableAt(table, phase) {
+  const i0 = phase | 0;
+  const f = phase - i0;
+  return table[i0] * (1 - f) + table[i0 + 1] * f;
+}
+
+// Per-channel voice recipes (psy-trance roles).
+const VOICE_RECIPES = {
+  0: { table: 'saw', unison: 3, detune: 0.0045, attack: 0.006, decay: 0.08, sustain: 0.75, release: 0.18, amp: 0.34, pan: 0.0, cutoff: 5200, kind: 'adsr' },
+  1: { table: 'pad', unison: 2, detune: 0.0025, attack: 0.5, decay: 0.3, sustain: 0.85, release: 1.4, amp: 0.17, pan: -0.3, cutoff: 3800, kind: 'adsr' },
+  2: { table: 'saw', unison: 1, detune: 0.0, attack: 0.002, decay: 0.16, sustain: 0.0, release: 0.1, amp: 0.3, pan: 0.3, cutoff: 4200, kind: 'pluck' },
+  3: { table: 'sine', unison: 1, detune: 0.0, attack: 0.004, decay: 0.05, sustain: 0.8, release: 0.08, amp: 0.5, pan: 0.0, cutoff: 8000, kind: 'bass' },
+};
+
+function stereoToWav16(channels, sr) {
+  const ch = channels.length;
+  const n = channels[0].length;
+  const ab = new ArrayBuffer(44 + n * 2 * ch);
   const dv = new DataView(ab);
   const ws = (o, s) => { for (let i = 0; i < s.length; i++) dv.setUint8(o + i, s.charCodeAt(i)); };
-  ws(0, 'RIFF'); dv.setUint32(4, 36 + n * 2, true); ws(8, 'WAVE'); ws(12, 'fmt ');
-  dv.setUint32(16, 16, true); dv.setUint16(20, 1, true); dv.setUint16(22, 1, true);
-  dv.setUint32(24, sr, true); dv.setUint32(28, sr * 2, true); dv.setUint16(32, 2, true); dv.setUint16(34, 16, true);
-  ws(36, 'data'); dv.setUint32(40, n * 2, true);
+  ws(0, 'RIFF'); dv.setUint32(4, 36 + n * 2 * ch, true); ws(8, 'WAVE'); ws(12, 'fmt ');
+  dv.setUint32(16, 16, true); dv.setUint16(20, 1, true); dv.setUint16(22, ch, true);
+  dv.setUint32(24, sr, true); dv.setUint32(28, sr * 2 * ch, true); dv.setUint16(32, 2 * ch, true); dv.setUint16(34, 16, true);
+  ws(36, 'data'); dv.setUint32(40, n * 2 * ch, true);
   let o = 44;
   for (let i = 0; i < n; i++) {
-    const s = Math.max(-1, Math.min(1, data[i]));
-    dv.setInt16(o, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
-    o += 2;
+    for (let c = 0; c < ch; c++) {
+      const s = Math.max(-1, Math.min(1, channels[c][i]));
+      dv.setInt16(o, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+      o += 2;
+    }
   }
   return new Uint8Array(ab);
 }
-function eventsToWav(events, bpm) {
+
+function renderAnthemWav(events, bpm) {
+  ensureTables();
   const sr = 44100;
   const spb = 60 / Math.max(1, bpm);
   let endSec = 0;
@@ -52,29 +99,85 @@ function eventsToWav(events, bpm) {
     if (e.type !== 'note') continue;
     const start = e.timestamp * spb;
     const dur = Math.max(0.05, e.duration * spb);
-    notes.push({ start: start, dur: dur, freq: 440 * Math.pow(2, (e.data.pitch - 69) / 12), vel: (e.data.velocity || 100) / 127 });
+    notes.push({ start: start, dur: dur, freq: 440 * Math.pow(2, (e.data.pitch - 69) / 12), vel: (e.data.velocity || 100) / 127, ch: e.channel % 4 });
     if (start + dur > endSec) endSec = start + dur;
   }
   if (notes.length === 0) return null;
-  const total = Math.ceil((endSec + 0.5) * sr);
-  const buf = new Float32Array(total);
+  const total = Math.ceil((endSec + 2.0) * sr); // tail for release + delay
+  const L = new Float32Array(total);
+  const R = new Float32Array(total);
+
   for (const n of notes) {
+    const rec = VOICE_RECIPES[n.ch] || VOICE_RECIPES[0];
+    const table = rec.table === 'saw' ? TABLE_SAW : (rec.table === 'pad' ? TABLE_PAD : TABLE_SINE);
     const s0 = Math.floor(n.start * sr);
     const len = Math.floor(n.dur * sr);
-    const amp = 0.25 * n.vel;
-    const a = 0.008, r = Math.min(0.06, n.dur * 0.4);
-    for (let i = 0; i < len && s0 + i < total; i++) {
-      const t = i / sr;
-      let env;
-      if (t < a) env = t / a;
-      else if (t > n.dur - r) env = Math.max(0, (n.dur - t) / r);
-      else env = 1;
-      const w = 2 * Math.PI * n.freq * t;
-      buf[s0 + i] += (Math.sin(w) * 0.7 + Math.sin(2 * w) * 0.2 + Math.sin(3 * w) * 0.1) * env * amp;
+    const relLen = Math.floor(rec.release * sr);
+    const amp = rec.amp * (0.5 + 0.5 * n.vel);
+    const panL = Math.cos((rec.pan + 1) * Math.PI / 4);
+    const panR = Math.sin((rec.pan + 1) * Math.PI / 4);
+    const aLp = 1 - Math.exp(-2 * Math.PI * rec.cutoff / sr);
+
+    for (let u = 0; u < rec.unison; u++) {
+      const det = rec.unison > 1 ? (u / (rec.unison - 1) - 0.5) * 2 * rec.detune : 0;
+      const inc = (n.freq * (1 + det)) * TABLE_LEN / sr;
+      let phase = (u * 0.37 * TABLE_LEN) % TABLE_LEN;
+      let lp = 0;
+      const span = rec.kind === 'pluck' ? len : len + relLen;
+      for (let i = 0; i < span && s0 + i < total; i++) {
+        const t = i / sr;
+        let env;
+        if (rec.kind === 'pluck') {
+          env = t < rec.attack ? t / rec.attack : Math.exp(-(t - rec.attack) / rec.decay);
+        } else if (i < len) {
+          if (t < rec.attack) env = t / rec.attack;
+          else if (t < rec.attack + rec.decay) env = 1 - (1 - rec.sustain) * ((t - rec.attack) / rec.decay);
+          else env = rec.sustain;
+        } else {
+          const tr = (i - len) / sr;
+          env = rec.sustain * Math.max(0, 1 - tr / rec.release);
+        }
+        if (env <= 0.001) { phase += inc; if (phase >= TABLE_LEN) phase -= TABLE_LEN; continue; }
+        const v = tableAt(table, phase) * env * amp / rec.unison;
+        phase += inc;
+        if (phase >= TABLE_LEN) phase -= TABLE_LEN;
+        lp += aLp * (v - lp);
+        const o = s0 + i;
+        L[o] += lp * panL;
+        R[o] += lp * panR;
+      }
     }
   }
-  for (let i = 0; i < total; i++) buf[i] = Math.tanh(buf[i] * 1.4) * 0.9;
-  return floatToWav16(buf, sr);
+
+  // Tempo-synced cross-feedback delay (dotted 8th) for space/width.
+  const dSamples = Math.max(1, Math.floor(0.75 * spb * sr));
+  const bufL = new Float32Array(dSamples), bufR = new Float32Array(dSamples);
+  const fb = 0.32, wet = 0.22;
+  let w = 0;
+  for (let i = 0; i < total; i++) {
+    const inL = L[i], inR = R[i];
+    const outL = bufL[w], outR = bufR[w];
+    bufL[w] = inL + outL * fb;
+    bufR[w] = inR + outR * fb;
+    w = (w + 1) % dSamples;
+    L[i] = inL + outR * wet;
+    R[i] = inR + outL * wet;
+  }
+
+  // Normalize to a safe peak, then soft-clip for glue.
+  let peak = 0.0001;
+  for (let i = 0; i < total; i++) {
+    const al = Math.abs(L[i]), ar = Math.abs(R[i]);
+    if (al > peak) peak = al;
+    if (ar > peak) peak = ar;
+  }
+  const g = 0.88 / peak;
+  for (let i = 0; i < total; i++) {
+    L[i] = Math.tanh(L[i] * g * 1.15);
+    R[i] = Math.tanh(R[i] * g * 1.15);
+  }
+
+  return stereoToWav16([L, R], sr);
 }
 
 // ---------- config ----------
@@ -107,34 +210,11 @@ function toUrl(bytes) {
   return wavUrl;
 }
 
-// ---------- background HQ upgrade (never blocks, with timeout) ----------
 function withTimeout(promise, ms) {
   return Promise.race([promise, new Promise((resolve) => setTimeout(() => resolve(null), ms))]);
 }
-async function upgradeToHQ(events, bpm, key) {
-  try {
-    const s = ensureSynth();
-    const buffer = await withTimeout(s.renderOffline(events, bpm, 0), 20000);
-    if (!buffer) { console.info('[PSY ANTHEM] HQ render skipped (timeout/unsupported) — keeping basic audio'); return; }
-    if (anthemKey !== key) return; // user moved on
-    const bytes = await audioBufferToWav(buffer);
-    if (!bytes || anthemKey !== key) return;
-    const el = $('player');
-    const newUrl = toUrl(bytes);
-    if (el.paused || el.currentTime < 0.25) {
-      el.src = newUrl;
-      el.load();
-      setStatus('Ready — HQ audio (' + Math.round(buffer.duration) + 's) · press play ▶');
-      console.info('[PSY ANTHEM] player upgraded to HQ render:', Math.round(buffer.duration) + 's');
-    } else {
-      console.info('[PSY ANTHEM] HQ render done during playback — kept for next generation');
-    }
-  } catch (e) {
-    console.warn('[PSY ANTHEM] HQ upgrade failed (basic audio stays):', e && e.message ? e.message : e);
-  }
-}
 
-// ---------- generate (fast path - never blocks on rendering) ----------
+// ---------- generate (fast, never blocks) ----------
 async function generate() {
   if (busy) return;
   busy = true;
@@ -151,23 +231,55 @@ async function generate() {
     anthemKey = cfgKey(cfg);
     renderRoll(out, cfg);
     renderStats(out);
-    setStatus('Preparing audio…');
+    setStatus('Rendering audio…');
     await new Promise((r) => setTimeout(r, 0));
-    const quick = eventsToWav(out.events, cfg.bpm);
-    if (!quick) { setStatus('Audio preparation failed'); return; }
-    const url = toUrl(quick);
+    const bytes = renderAnthemWav(out.events, cfg.bpm);
+    if (!bytes) { setStatus('Audio render failed'); return; }
+    const url = toUrl(bytes);
     const player = $('player');
     player.src = url;
     player.load();
-    setStatus('Ready — press play ▶ (HQ version upgrading in background…)');
-    console.info('[PSY ANTHEM] basic audio ready:', out.events.length, 'events');
-    upgradeToHQ(out.events, cfg.bpm, anthemKey); // fire & forget
+    setStatus('Ready — press play ▶  (✨ Studio Render = full-engine version)');
+    console.info('[PSY ANTHEM] standard stereo render ready:', out.events.length, 'events');
   } catch (e) {
     const msg = e && e.message ? e.message : String(e);
     setStatus('Error: ' + msg);
     console.error('[PSY ANTHEM] generate error:', e);
   } finally {
     busy = false;
+    if (btn) btn.disabled = false;
+  }
+}
+
+// ---------- studio render (full engine, on demand) ----------
+async function hqRenderNow() {
+  if (!anthem) { setStatus('Generate first'); return; }
+  const btn = $('hqRender');
+  if (btn) btn.disabled = true;
+  const key = anthemKey;
+  setStatus('Studio render running… (full engine — can take a while on this machine)');
+  try {
+    const s = ensureSynth();
+    const buffer = await withTimeout(s.renderOffline(anthem.events, anthemCfg.bpm, 0), 120000);
+    if (!buffer) { setStatus('Studio render unavailable here — standard audio stays'); return; }
+    if (anthemKey !== key) { setStatus('Song changed — press ✨ again'); return; }
+    const bytes = await audioBufferToWav(buffer);
+    if (!bytes) { setStatus('Studio render encoding failed'); return; }
+    const el = $('player');
+    const wasPlaying = !el.paused;
+    const t = el.currentTime || 0;
+    el.src = toUrl(bytes);
+    el.load();
+    if (wasPlaying && t > 0.25) {
+      el.currentTime = Math.min(t, el.duration || t);
+      el.play().catch(() => {});
+    }
+    setStatus('Ready — STUDIO render (' + Math.round(buffer.duration) + 's) · press play ▶');
+    console.info('[PSY ANTHEM] studio render complete:', Math.round(buffer.duration) + 's');
+  } catch (e) {
+    setStatus('Studio render failed — standard audio stays');
+    console.warn('[PSY ANTHEM] studio render failed:', e);
+  } finally {
     if (btn) btn.disabled = false;
   }
 }
@@ -278,6 +390,7 @@ function buildControls() {
   $('generate').addEventListener('click', generate);
   $('play').addEventListener('click', play);
   $('random').addEventListener('click', () => { $('seed').value = String(Math.floor(Math.random() * 2147483647)); generate(); });
+  $('hqRender').addEventListener('click', hqRenderNow);
   $('dlWav').addEventListener('click', downloadWav);
   $('dlMidi').addEventListener('click', downloadMidi);
   window.addEventListener('keydown', (ev) => {

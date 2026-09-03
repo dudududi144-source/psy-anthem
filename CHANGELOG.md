@@ -1,5 +1,26 @@
 # Changelog
 
+## 6.3.0 - Real synth sound (no more game-boy)
+
+Field report: playback works but sounds like a toy (the old pure-JS
+fallback was sine blips). The studio path (OfflineAudioContext) never
+completed on the weak machine within the timeout.
+
+- Standard renderer rewritten as a proper stereo wavetable synth in pure JS
+  (still zero WebAudio, so it is guaranteed to work):
+  - band-limited saw tables; lead = 3-voice detuned unison, harmony = soft
+    pad stack with slow attack, counter = filtered pluck, bass = driven sine
+  - per-channel ADSR/pluck envelopes, one-pole lowpass per voice,
+    stereo panning per channel
+  - tempo-synced cross-feedback delay (dotted 8th) + normalize + soft clip
+  - renders in ~0.5-2s, stereo 16-bit WAV.
+- Studio Render (full engine: supersaw/FM/granular/physical presets, reverb
+  and all FX) moved to an explicit ✨ button with a 120s budget; upgrades the
+  player when it completes. No background CPU is wasted on machines where it
+  cannot finish.
+
+
+
 ## 6.2.0 - Generate never blocks again
 
 Field report: "asks for Generate but won't let me generate." Diagnosis: the

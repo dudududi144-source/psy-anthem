@@ -8,15 +8,17 @@ On the target machine, audio is ONLY reliably audible through an `<audio>`
 media element. Live WebAudio (`AudioContext -> destination`) overloads and
 dies. **Never route playback through live WebAudio on this machine.**
 
-## Playback architecture that actually works
+## Playback architecture that actually works (v6.3+)
 1. `createAnthemEngine(config).generate()` -> MusicalEvent[] (fast, works).
-2. Render to WAV:
-   - first try `PsySynthBrowser.renderOffline` (OfflineAudioContext, full
-     quality with all presets/FX);
-   - if that fails, fall back to the pure-JS WAV synth (zero WebAudio,
-     guaranteed to work).
+2. Standard renderer (pure-JS stereo wavetable synth, zero WebAudio):
+   detuned unison lead / pad stack / filtered pluck / driven bass,
+   ADSR envelopes, per-voice lowpass, stereo pans, tempo-synced delay,
+   normalize + soft clip. Fast (~0.5-2s) and guaranteed on any machine.
 3. WAV -> Blob URL -> visible `<audio controls>` element -> `play()`.
    The media-element path is the one proven audible on this machine.
+4. Studio Render (✨ button): full engine via OfflineAudioContext with a
+   120s budget; upgrades the player when it completes. Keep it explicit -
+   on weak machines it may not finish and must never block the UI.
 
 ## Facts learned the hard way
 - Pure `<audio>` beep: HEARD repeatedly => media path is fine.
