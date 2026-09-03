@@ -1,5 +1,20 @@
 # Changelog
 
+## 5.2.0 - Origin-hygiene guard
+
+Investigation result: main.js does not exist anywhere in psy-anthem (web/
+holds only app.js, engine.mjs, synth.js, presets.js, state.js; index.html
+loads app.js?v=57 only). The recurring main.js/content.js/polyfill.js
+errors match browser-extension content scripts, or stale service workers
+from other Pages apps on the shared dudududi144-source.github.io origin.
+
+- app.js: on load, unregisters every service worker whose scope covers this
+  page (psy-anthem intentionally uses none) and clears psy-anthem-named
+  caches, so no foreign/stale SW can intercept or serve broken bytes here.
+  Other projects' path-scoped workers are untouched.
+
+
+
 ## 5.1.0 - Clean Pipeline (anti-glitch scheduling, field-tuned)
 
 Symptoms solved (from field logs): noise blasts at playback start, playback

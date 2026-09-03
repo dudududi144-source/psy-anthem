@@ -1,11 +1,11 @@
-// PSY ANTHEM - web/app.js  (Hyperstage UI v5.1)
+// PSY ANTHEM - web/app.js  (Hyperstage UI v5.2)
 // Presentation layer over the WHAT engine (engine.mjs) and HOW synth (synth.js).
 import { createAnthemEngine, AnthemIntent, EnergyCurve } from './engine.mjs';
 import { PsySynthBrowser, midiToFreq, audioBufferToWav } from './synth.js';
 import { PRESETS, PRESET_CATEGORIES, DEFAULT_VOICE_PRESETS } from './presets.js';
 import { createStateStore } from './state.js';
 
-console.info('[PSY ANTHEM] Hyperstage v5.1 loaded - app.js module OK');
+console.info('[PSY ANTHEM] Hyperstage v5.2 loaded - app.js module OK');
 
 // ---------- shell state store + global error boundaries ----------
 export const appState = createStateStore({ status: 'ready', error: null, playing: false });
@@ -18,6 +18,30 @@ if (typeof window !== 'undefined') {
     appState.set({ error: reason && reason.message ? String(reason.message) : String(reason || 'unknown error') });
   });
 }
+
+// ---------- defensive: this app uses NO service workers ----------
+// All dudududi144-source Pages sites share one origin (dudududi144-source
+// .github.io). If any foreign/leftover service worker claims THIS page's
+// path it can intercept our requests and serve stale/broken bytes. Remove
+// every registration whose scope covers this URL (getRegistrations only
+// returns those) and drop their caches for a clean, network-fresh load.
+try {
+  if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
+    navigator.serviceWorker.getRegistrations().then((regs) => {
+      if (!regs || regs.length === 0) return;
+      const names = regs.map((r) => (r.scope || '?'));
+      Promise.all(regs.map((r) => r.unregister())).then(() => {
+        console.warn('[PSY ANTHEM] removed ' + regs.length +
+          ' foreign service worker(s) covering this page:', names.join(', '));
+        if (typeof caches !== 'undefined' && caches.keys) {
+          caches.keys().then((keys) => {
+            keys.forEach((k) => { if (String(k).indexOf('psy-anthem') === -1) return; caches.delete(k); });
+          }).catch(() => {});
+        }
+      });
+    }).catch(() => { /* unsupported */ });
+  }
+} catch (e) { /* unsupported */ }
 
 // ---------- constants ----------
 const NOTE_NAMES = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
@@ -107,7 +131,7 @@ const dbgState={audio:'—',last:'boot'};
 function dbg(msg){
   dbgState.last=msg;
   const el=$('debugStrip');
-  if(el) el.textContent='Hyperstage v5.1 · audio: '+dbgState.audio+' · last: '+msg;
+  if(el) el.textContent='Hyperstage v5.2 · audio: '+dbgState.audio+' · last: '+msg;
 }
 
 // ---------- toast / status ----------
