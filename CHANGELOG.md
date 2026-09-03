@@ -1,5 +1,28 @@
 # Changelog
 
+## 6.0.0 - Clean rebuild (single proven playback path)
+
+Full reset of the web UI after the experimental layers (v3.1-v5.5) were
+scrapped per user directive. Everything documented in MEMORY.md.
+
+Removed: test beeps, audio-check dialogs, diagnosis overlays, foreign-script
+banners, FREEZE/BRIDGE/BOUNCE/LIVE/WAV-PLAY mode soup, visualizer, insight
+panels - all of it.
+
+New (clean build):
+- One playback path, the proven one: generate -> WAV render -> visible
+  <audio controls> player. Rendering tries the full-quality OfflineAudioContext
+  engine first and falls back to the zero-WebAudio pure-JS synth, so audio
+  always comes out.
+- Rendering starts immediately after generation (in-page status shows
+  progress), so the player is ready by the time the user presses play.
+- Simple UI: seed/intent/energy/root/bars + Generate/Random, Play button,
+  player, piano roll, stats, WAV/MIDI download.
+- MEMORY.md added: field knowledge + do/don't rules + restore points.
+- Restore point: tag `backup-before-v6` (= v5.5 experimental build).
+
+
+
 ## 5.5.0 - Bulletproof FREEZE: pre-render + visible player
 
 Post-extension-removal field report: still no playback. Diagnosis of the

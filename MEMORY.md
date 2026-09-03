@@ -1,0 +1,48 @@
+# PSY ANTHEM — MEMORY (field knowledge)
+
+Read this before touching playback. It is the accumulated, hard-won knowledge
+from many rounds of live debugging on the target machine.
+
+## The one rule that matters
+On the target machine, audio is ONLY reliably audible through an `<audio>`
+media element. Live WebAudio (`AudioContext -> destination`) overloads and
+dies. **Never route playback through live WebAudio on this machine.**
+
+## Playback architecture that actually works
+1. `createAnthemEngine(config).generate()` -> MusicalEvent[] (fast, works).
+2. Render to WAV:
+   - first try `PsySynthBrowser.renderOffline` (OfflineAudioContext, full
+     quality with all presets/FX);
+   - if that fails, fall back to the pure-JS WAV synth (zero WebAudio,
+     guaranteed to work).
+3. WAV -> Blob URL -> visible `<audio controls>` element -> `play()`.
+   The media-element path is the one proven audible on this machine.
+
+## Facts learned the hard way
+- Pure `<audio>` beep: HEARD repeatedly => media path is fine.
+- Live WebAudio full graph: crackles then dies => audio-thread overload.
+- `main.js` / `content.js` / `polyfill.js` console errors: a browser
+  EXTENSION, not this project. Confirmed via ID
+  `gldgimochijdaacphemijjkhbaicmodp`. Resolved by removing the extension.
+- The machine is very weak/loaded: click handlers measured 500ms-2.1s.
+  Always chunk heavy work; never block the main thread for >50ms.
+
+## What NOT to do (these broke it before)
+- Do NOT build the whole live audio graph up front (1000+ nodes => overload).
+- Do NOT render AFTER the play click on a slow machine: the user gesture
+  expires, autoplay is denied, and a hidden player gives no manual start.
+  Always pre-render right after generation.
+- Do NOT use hidden `<audio>` elements. Keep the player visible so the user
+  can always press play manually.
+- Do NOT layer experimental playback modes (FREEZE/BRIDGE/BOUNCE/LIVE/WAV).
+  One proven path only.
+
+## Restore points
+- tag `backup-before-v6` = last experimental build (v5.5, commit 4363453).
+- v6.0 = clean single-path playback build (this one).
+
+## Files
+- web/engine.mjs  WHAT layer (composition engine), bundled from src/.
+- web/synth.js    HOW layer (PsySynthBrowser, incl. renderOffline).
+- web/presets.js  15 voice presets.
+- web/app.js      UI + playback orchestration (keep it simple).

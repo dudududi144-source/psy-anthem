@@ -2,203 +2,53 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self' blob: data: https://cdn.jsdelivr.net; script-src 'self' blob:; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; font-src 'self' data: https://cdn.jsdelivr.net; img-src 'self' data: blob:; media-src 'self' blob: data:; worker-src 'self' blob:; connect-src 'self' blob: data:;">
-<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<meta http-equiv="Pragma" content="no-cache">
-<meta http-equiv="Expires" content="0">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>PSY ANTHEM · Hyperstage v5.5</title>
+<title>PSY ANTHEM</title>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' blob: data: https://cdn.jsdelivr.net; script-src 'self' blob:; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; font-src 'self' data: https://cdn.jsdelivr.net; img-src 'self' data: blob:; media-src 'self' blob: data:; worker-src 'self' blob:; connect-src 'self' blob: data:;">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/space-grotesk@5.0.0/500.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/space-grotesk@5.0.0/700.css">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/jetbrains-mono@5.0.0/400.css">
 <link rel="stylesheet" href="./styles.css?v=60">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🎛%3C/text%3E%3C/svg%3E">
+<link rel="icon" href="data:,">
 </head>
 <body>
-<div id="diagOverlay" class="diag-overlay" hidden>
-  <div class="diag-card">
-    <div class="diag-title">🔊 בדיקת שמע חד-פעמית</div>
-    <div id="diagMsg" class="diag-msg">ניגנו עכשיו צפצוף קצר דרך נגן מדיה פשוט (ללא שום קוד שמע של האתר). שמעת אותו?</div>
-    <div class="ac-actions">
-      <button id="diagYes" class="ac-btn yes">✅ כן, שמעתי</button>
-      <button id="diagNo" class="ac-btn no">❌ לא שמעתי כלום</button>
-    </div>
-  </div>
-</div>
-<div class="bg" aria-hidden="true">
-  <div class="orb orb-a"></div><div class="orb orb-b"></div><div class="orb orb-c"></div>
-  <div class="grid-overlay"></div>
-</div>
-
-<header class="top">
-  <div class="brand">
-    <span class="brand-mark">✦</span>
-    <div class="brand-text">
-      <h1>PSY&nbsp;ANTHEM</h1>
-      <p>deterministic composition engine · seed in → anthem out</p>
-    </div>
-  </div>
-  <div class="status-chip">
-    <span id="statusLed" class="led led-ready"></span>
-    <span id="statusText">ready</span>
-    <span class="ver-badge">Hyperstage v5.5</span>
-  </div>
+<header>
+  <h1>PSY ANTHEM</h1>
+  <span class="tag">clean build · v6.0</span>
 </header>
 
-<div id="debugStrip" class="debug-strip">Hyperstage v5.5 · booting…</div>
-
-<div id="audioCheckBanner" class="ac-banner" hidden>
-  <div id="audioCheckMsg" class="ac-msg">🔊 שני צפצופים נשלחו (660+880 הרץ) — שמעת אותם?</div>
-  <div class="ac-actions">
-    <button id="audioCheckYes" class="ac-btn yes">✅ כן, שמעתי</button>
-    <button id="audioCheckNo" class="ac-btn no">❌ לא שמעתי כלום</button>
-  </div>
-</div>
-
-<main class="layout">
-
-  <!-- ============ LEFT: control deck ============ -->
-  <section class="card deck">
-    <div class="card-title"><span class="dot"></span>Composition DNA</div>
-
-    <div class="seed-row">
-      <label class="field grow">
-        <span class="lbl">seed</span>
-        <input id="seed" type="number" value="42">
-      </label>
-      <button id="random" class="btn icon" title="random seed + generate">🎲</button>
+<main>
+  <section class="card controls">
+    <div class="row">
+      <label class="field"><span>seed</span><input id="seed" type="number" value="42"></label>
+      <label class="field"><span>intent</span><select id="intent"></select></label>
+      <label class="field"><span>energy</span><select id="curve"></select></label>
+      <label class="field"><span>root</span><select id="root"></select></label>
+      <label class="field"><span>bars</span><select id="bars"></select></label>
     </div>
-
-    <div class="grid2">
-      <label class="field"><span class="lbl">intent</span><select id="intent"></select></label>
-      <label class="field"><span class="lbl">energy curve</span><select id="curve"></select></label>
-      <label class="field"><span class="lbl">scale root</span><select id="root"></select></label>
-      <label class="field"><span class="lbl">mode</span><select id="mode"></select></label>
-      <label class="field"><span class="lbl">density</span><select id="density"></select></label>
-      <label class="field"><span class="lbl">harmony</span><select id="harmony"></select></label>
-      <label class="field"><span class="lbl">voices</span>
-        <select id="voices"><option value="1">1</option><option value="2">2</option><option value="3" selected>3</option><option value="4">4</option></select>
-      </label>
-      <label class="field"><span class="lbl">bars</span>
-        <select id="bars"><option value="8">8</option><option value="16" selected>16</option><option value="24">24</option><option value="32">32</option><option value="48">48</option><option value="64">64</option></select>
-      </label>
-    </div>
-
-    <div class="checks">
-      <label class="check"><input type="checkbox" id="loopMode"><span>loop mode</span></label>
-      <label class="check"><input type="checkbox" id="callResponse"><span>call &amp; response</span></label>
-    </div>
-
-    <button id="generate" class="btn primary big">⚡ GENERATE ANTHEM</button>
-
-    <div class="nav-row">
-      <button id="prev" class="btn icon" title="previous take">◀</button>
-      <span id="histLabel" class="hist">0/0</span>
-      <button id="next" class="btn icon" title="next take">▶</button>
+    <div class="row actions">
+      <button id="generate" class="primary">⚡ Generate</button>
+      <button id="random" class="ghost">🎲 Random</button>
     </div>
   </section>
 
-  <!-- ============ CENTER: stage ============ -->
-  <section class="card stage">
-    <div class="card-title"><span class="dot"></span>Stage</div>
+  <section class="card playerbox">
+    <button id="play" class="bigplay">▶ Play</button>
+    <div id="status" class="status">Loading…</div>
+    <audio id="player" controls preload="auto"></audio>
+  </section>
 
-    <div class="now-playing">
-      <div class="np-text">
-        <div id="trackTitle" class="np-title">— generate to begin —</div>
-        <div id="trackMeta" class="np-meta">configure DNA, then hit generate</div>
-      </div>
-      <div id="qualityBadge" class="quality">—</div>
-    </div>
-
-    <div class="transport">
-      <button id="play" class="btn play" disabled>▶ PLAY</button>
-      <button id="stop" class="btn ghost">■</button>
-      <button id="livePlay" class="btn ghost" title="live WebAudio playback (heavier)">▶ LIVE</button>
-      <button id="testSound" class="btn ghost" title="speaker check">🔊</button>
-      <button id="audioCheckTop" class="btn ghost" title="audio check">🩺</button>
-      <button id="playWav" class="btn ghost" title="render + play via WAV (fallback path)">◉ WAV PLAY</button>
-      <button id="bridgePlay" class="btn ghost" title="live playback through a media element (bypasses the audio sink)">🔀 BRIDGE</button>
-      <button id="bounce" class="btn ghost" title="offline full-quality bounce played through a media element">🧪 BOUNCE</button>
-      <label class="inline">
-        <span class="lbl">from bar</span>
-        <select id="playFrom" class="small"></select>
-      </label>
-      <span id="posLabel" class="pos mono">0:00.0 / 0:00.0</span>
-    </div>
-
-    <div id="wavWrap" class="wav-wrap"></div>
-
-    <div class="progress-wrap">
-      <div class="progress-track"><div id="progressFill" class="progress-fill"></div></div>
-      <input id="progressBar" type="range" min="0" max="100" value="0" step="0.1" class="progress-input">
-    </div>
-
-    <canvas id="viz" class="viz"></canvas>
-    <canvas id="roll" class="roll"></canvas>
-    <div class="hint">▶ PLAY renders full quality offline, then plays smoothly (zero live load) · ▶ LIVE = real-time WebAudio · space = play/stop · g = generate</div>
-
+  <section class="card">
+    <canvas id="roll" width="900" height="280"></canvas>
     <div id="stats" class="stats"></div>
-    <div id="infoPanel" class="info"></div>
-
-    <div class="insights">
-      <div class="ins-block">
-        <div class="ins-title">Motif DNA</div>
-        <div id="motif" class="motif-chips"></div>
-      </div>
-      <div class="ins-block">
-        <div class="ins-title">Harmonic Journey</div>
-        <div id="chords" class="chord-strip"></div>
-      </div>
-      <div class="ins-block">
-        <div class="ins-title">Artistic Breakdown</div>
-        <div id="artBreak" class="art-break"></div>
-      </div>
-    </div>
   </section>
 
-  <!-- ============ RIGHT: sound lab ============ -->
-  <section class="card lab">
-    <div class="card-title"><span class="dot"></span>Sound Lab</div>
-
-    <div class="sub-title">voice presets</div>
-    <div class="preset-list">
-      <label class="prow"><span class="pname" style="--vc:#ff2ec4">Lead</span><select id="preset-lead"></select></label>
-      <label class="prow"><span class="pname" style="--vc:#2ee6ff">Harmony</span><select id="preset-harmony"></select></label>
-      <label class="prow"><span class="pname" style="--vc:#a06bff">Counter</span><select id="preset-counter"></select></label>
-      <label class="prow"><span class="pname" style="--vc:#ffb02e">Bass</span><select id="preset-bass"></select></label>
-    </div>
-
-    <div class="sub-title">master</div>
-    <label class="srow"><span>cutoff</span><input id="masterCutoff" type="range" min="200" max="8000" value="8000"></label>
-    <label class="srow"><span>reverb</span><input id="reverbSend" type="range" min="0" max="100" value="30"></label>
-    <label class="srow"><span>delay</span><input id="delaySend" type="range" min="0" max="100" value="20"></label>
-    <label class="srow"><span>drive</span><input id="masterDrive" type="range" min="0" max="100" value="10"></label>
-
-    <div class="sub-title">mixer</div>
-    <label class="srow"><span style="--vc:#ff2ec4">lead</span><input id="trackVol0" type="range" min="0" max="100" value="100"></label>
-    <label class="srow"><span style="--vc:#2ee6ff">harmony</span><input id="trackVol1" type="range" min="0" max="100" value="100"></label>
-    <label class="srow"><span style="--vc:#a06bff">counter</span><input id="trackVol2" type="range" min="0" max="100" value="100"></label>
-    <label class="srow"><span style="--vc:#ffb02e">bass</span><input id="trackVol3" type="range" min="0" max="100" value="100"></label>
-
-    <div class="sub-title">export</div>
-    <div class="export-grid">
-      <button id="downloadWav" class="btn ghost">◉ WAV</button>
-      <button id="downloadMidi" class="btn ghost">♪ MIDI</button>
-      <button id="downloadJson" class="btn ghost">{} JSON</button>
-      <button id="copyConfig" class="btn ghost">⧉ config</button>
-      <button id="audioCheck" class="btn check-btn">🩺 AUDIO CHECK</button>
-    </div>
+  <section class="card exports">
+    <button id="dlWav" class="ghost">⬇ WAV</button>
+    <button id="dlMidi" class="ghost">⬇ MIDI</button>
   </section>
 </main>
 
-<div id="toast" class="toast" role="status"></div>
-<div id="err" class="err" style="display:none"></div>
-
-<footer class="foot">
-  PSY ANTHEM · pure WHAT-layer generator · playback is the HOW layer ·
-  <a href="https://github.com/dudududi144-source/psy-anthem">github</a>
-</footer>
-
+<footer>PSY ANTHEM · deterministic anthem engine · same seed = same anthem</footer>
 <script type="module" src="./app.js?v=60"></script>
 </body>
 </html>
