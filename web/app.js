@@ -1,9 +1,11 @@
-// PSY ANTHEM - web/app.js  (Hyperstage UI v3.2)
+// PSY ANTHEM - web/app.js  (Hyperstage UI v3.3)
 // Presentation layer over the WHAT engine (engine.mjs) and HOW synth (synth.js).
 import { createAnthemEngine, AnthemIntent, EnergyCurve } from './engine.mjs';
 import { PsySynthBrowser, midiToFreq } from './synth.js';
 import { PRESETS, PRESET_CATEGORIES, DEFAULT_VOICE_PRESETS } from './presets.js';
 import { createStateStore } from './state.js';
+
+console.info('[PSY ANTHEM] Hyperstage v3.3 loaded - app.js module OK');
 
 // ---------- shell state store + global error boundaries ----------
 export const appState = createStateStore({ status: 'ready', error: null, playing: false });
@@ -31,6 +33,7 @@ const INTENTS = [
   { id: AnthemIntent.EMOTIONAL_BREAKDOWN, icon: '💔', name: 'Emotional', desc: 'melodic breakdown core' },
   { id: AnthemIntent.FOREST,          icon: '🌲', name: 'Forest', desc: 'organic, earthy textures' },
   { id: AnthemIntent.FULL_ON,         icon: '🔥', name: 'Full-On', desc: 'driving peak energy' },
+  { id: AnthemIntent.EMOTIONAL_LEAD,  icon: '🎻', name: 'Emotional Lead', desc: 'singing lead lines' },
 ];
 const CURVES = [
   { id: EnergyCurve.FLAT,       name: 'Flat',       d: 'M2 12 L38 12' },
