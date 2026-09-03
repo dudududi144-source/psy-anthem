@@ -161,9 +161,21 @@ export function makeNoiseBurst(ctx, seconds = 0.02) {
   return buffer;
 }
 
-// ---------- Drum engine (channel 9 = drums, GM-standard) ----------
-// Drum pitch map (GM): kick=36, snare=38, clap=39, hatClosed=42, hatOpen=46,
-// percLow=43, percHigh=50.
+// Minimal fallback preset used when no preset library is injected.
+export const FALLBACK_PRESETS = {
+  'basic-lead': {
+    name: 'Basic Lead',
+    technique: 'Subtractive',
+    oscillators: [
+      { type: 'sawtooth', detune: -12, gain: 0.33 },
+      { type: 'sawtooth', detune: 0, gain: 0.34 },
+      { type: 'sawtooth', detune: 12, gain: 0.33 },
+    ],
+    filter: { type: 'lowpass', cutoff: 3000, resonance: 4, envelope: { amount: 1200, decay: 0.2 } },
+    envelope: { attack: 0.01, decay: 0.12, sustain: 0.6, release: 0.2 },
+    fx: { distortion: 0.1, delaySend: 0.2, reverbSend: 0.2 },
+  },
+};
 
 
 
