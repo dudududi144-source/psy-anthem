@@ -3,125 +3,154 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>PSY ANTHEM - Composition Engine Demo</title>
+<title>PSY ANTHEM · Hyperstage</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/space-grotesk@5.0.0/500.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/space-grotesk@5.0.0/700.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/jetbrains-mono@5.0.0/400.css">
 <link rel="stylesheet" href="./styles.css">
-<link rel="icon" href="data:,">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🎛%3C/text%3E%3C/svg%3E">
 </head>
 <body>
-<div class="wrap">
-  <header>
-    <h1>PSY ANTHEM</h1>
-    <div class="tag">DETERMINISTIC COMPOSITION ENGINE - WHAT LAYER - SEED IN, ANTHEM OUT - NOW WITH BROWSER PLAYBACK</div>
-  </header>
-
-  <div class="card">
-    <div class="controls">
-      <div><label>Seed</label><input id="seed" type="number" value="42"></div>
-      <div><label>Intent</label><select id="intent"></select></div>
-      <div><label>Energy Curve</label><select id="curve"></select></div>
-      <div><label>Scale Root</label><select id="root"></select></div>
-      <div><label>Mode</label><select id="mode"></select></div>
-      <div><label>Voices</label>
-        <select id="voices">
-          <option value="1">1</option><option value="2">2</option>
-          <option value="3" selected>3</option><option value="4">4</option>
-        </select></div>
-      <div><label>Bars</label>
-        <select id="bars">
-          <option value="8">8</option><option value="16" selected>16</option>
-          <option value="24">24</option><option value="32">32</option>
-          <option value="48">48</option><option value="64">64</option>
-        </select></div>
-      <div><label>Density</label><select id="density"></select></div>
-      <div><label>Harmony</label><select id="harmony"></select></div>
-      <div class="checkwrap"><label>Options</label>
-        <label class="check"><input type="checkbox" id="loopMode"> Loop mode</label>
-        <label class="check"><input type="checkbox" id="callResponse"> Call &amp; response</label>
-      </div>
-    </div>
-    <div class="btnrow">
-      <button id="generate">GENERATE ANTHEM</button>
-      <button id="random" class="ghost">RANDOM SEED</button>
-      <button id="play" class="accent">PLAY</button>
-      <button id="pause" class="ghost">PAUSE</button>
-      <button id="stop" class="ghost">STOP</button>
-      <label class="inline-label" for="playFrom">from</label>
-      <select id="playFrom" class="inline-select"></select>
-      <button id="prev" class="ghost" title="previous generation">PREV</button>
-      <button id="next" class="ghost" title="next generation">NEXT</button>
-      <span id="posLabel" class="pos"></span>
-    </div>
-    <div class="btnrow">
-      <button id="testSound" class="accent" title="play 3 quick notes to verify your speakers">TEST SOUND</button>
-      <div id="playStatus" class="status"></div>
-    </div>
-    <div class="btnrow">
-      <button id="copyConfig" class="ghost">COPY CONFIG</button>
-      <button id="downloadMidi" class="ghost">DOWNLOAD MIDI</button>
-      <button id="downloadWav" class="ghost">DOWNLOAD WAV</button>
-      <button id="downloadJson" class="ghost">DOWNLOAD JSON</button>
-    </div>
-    <div class="err" id="err"></div>
-    <div class="stats" id="stats"></div>
-    <div class="info" id="infoPanel"></div>
-  </div>
-
-  <div class="card">
-    <h2>Voice Presets</h2>
-    <div class="preset-grid">
-      <div class="preset-row"><label>Lead</label><select id="preset-lead"></select></div>
-      <div class="preset-row"><label>Harmony</label><select id="preset-harmony"></select></div>
-      <div class="preset-row"><label>Counter</label><select id="preset-counter"></select></div>
-      <div class="preset-row"><label>Bass</label><select id="preset-bass"></select></div>
-    </div>
-  </div>
-
-  <div class="card">
-    <h2>Global Controls</h2>
-    <div class="preset-grid">
-      <div class="control-row"><label>Master Cutoff</label><input id="masterCutoff" type="range" min="200" max="8000" value="8000"></div>
-      <div class="control-row"><label>Reverb Send</label><input id="reverbSend" type="range" min="0" max="100" value="30"></div>
-      <div class="control-row"><label>Delay Send</label><input id="delaySend" type="range" min="0" max="100" value="20"></div>
-      <div class="control-row"><label>Master Drive</label><input id="masterDrive" type="range" min="0" max="100" value="10"></div>
-    </div>
-  </div>
-
-  <div class="card">
-    <h2>Voice Mixer</h2>
-    <div class="preset-grid">
-      <div class="control-row"><label>Lead Vol</label><input id="trackVol0" type="range" min="0" max="100" value="100"></div>
-      <div class="control-row"><label>Harmony Vol</label><input id="trackVol1" type="range" min="0" max="100" value="100"></div>
-      <div class="control-row"><label>Counter Vol</label><input id="trackVol2" type="range" min="0" max="100" value="100"></div>
-      <div class="control-row"><label>Bass Vol</label><input id="trackVol3" type="range" min="0" max="100" value="100"></div>
-    </div>
-  </div>
-
-  <div class="card">
-    <h2>Playback</h2>
-    <input id="progressBar" type="range" min="0" max="100" value="0" step="0.1" style="width:100%">
-    <div class="status" id="progressLabel">ready</div>
-  </div>
-
-  <div class="card">
-    <h2>Piano Roll (click a note to audition it)</h2>
-    <div id="roll"></div>
-    <div class="legend" id="legend"></div>
-  </div>
-
-  <div class="card"><h2>Tension Curve</h2><div id="tension"></div></div>
-  <div class="card"><h2>Harmonic Progression</h2><div id="chords"></div></div>
-  <div class="card"><h2>Motif DNA</h2><div class="motif-notes" id="motif"></div></div>
-
-  <div class="card">
-    <h2>Artistic Quality</h2>
-    <div id="artisticPanel"></div>
-  </div>
-
-  <footer>
-    PSY ANTHEM v0.2.0 - pure WHAT-layer generator; playback is a presentation layer (like a DAW) -
-    <a href="https://github.com/dudududi144-source/psy-anthem">github.com/dudududi144-source/psy-anthem</a>
-  </footer>
+<div class="bg" aria-hidden="true">
+  <div class="orb orb-a"></div><div class="orb orb-b"></div><div class="orb orb-c"></div>
+  <div class="grid-overlay"></div>
 </div>
+
+<header class="top">
+  <div class="brand">
+    <span class="brand-mark">✦</span>
+    <div class="brand-text">
+      <h1>PSY&nbsp;ANTHEM</h1>
+      <p>deterministic composition engine · seed in → anthem out</p>
+    </div>
+  </div>
+  <div class="status-chip">
+    <span id="statusLed" class="led led-ready"></span>
+    <span id="statusText">ready</span>
+  </div>
+</header>
+
+<main class="layout">
+
+  <!-- ============ LEFT: control deck ============ -->
+  <section class="card deck">
+    <div class="card-title"><span class="dot"></span>Composition DNA</div>
+
+    <div class="seed-row">
+      <label class="field grow">
+        <span class="lbl">seed</span>
+        <input id="seed" type="number" value="42">
+      </label>
+      <button id="random" class="btn icon" title="random seed + generate">🎲</button>
+    </div>
+
+    <div class="grid2">
+      <label class="field"><span class="lbl">intent</span><select id="intent"></select></label>
+      <label class="field"><span class="lbl">energy curve</span><select id="curve"></select></label>
+      <label class="field"><span class="lbl">scale root</span><select id="root"></select></label>
+      <label class="field"><span class="lbl">mode</span><select id="mode"></select></label>
+      <label class="field"><span class="lbl">density</span><select id="density"></select></label>
+      <label class="field"><span class="lbl">harmony</span><select id="harmony"></select></label>
+      <label class="field"><span class="lbl">voices</span>
+        <select id="voices"><option value="1">1</option><option value="2">2</option><option value="3" selected>3</option><option value="4">4</option></select>
+      </label>
+      <label class="field"><span class="lbl">bars</span>
+        <select id="bars"><option value="8">8</option><option value="16" selected>16</option><option value="24">24</option><option value="32">32</option><option value="48">48</option><option value="64">64</option></select>
+      </label>
+    </div>
+
+    <div class="checks">
+      <label class="check"><input type="checkbox" id="loopMode"><span>loop mode</span></label>
+      <label class="check"><input type="checkbox" id="callResponse"><span>call &amp; response</span></label>
+    </div>
+
+    <button id="generate" class="btn primary big">⚡ GENERATE ANTHEM</button>
+
+    <div class="nav-row">
+      <button id="prev" class="btn icon" title="previous take">◀</button>
+      <span id="histLabel" class="hist">0/0</span>
+      <button id="next" class="btn icon" title="next take">▶</button>
+    </div>
+  </section>
+
+  <!-- ============ CENTER: stage ============ -->
+  <section class="card stage">
+    <div class="card-title"><span class="dot"></span>Stage</div>
+
+    <div class="now-playing">
+      <div class="np-text">
+        <div id="trackTitle" class="np-title">— generate to begin —</div>
+        <div id="trackMeta" class="np-meta">configure DNA, then hit generate</div>
+      </div>
+      <div id="qualityBadge" class="quality">—</div>
+    </div>
+
+    <div class="transport">
+      <button id="play" class="btn play" disabled>▶ PLAY</button>
+      <button id="stop" class="btn ghost">■</button>
+      <button id="testSound" class="btn ghost" title="speaker check">🔊</button>
+      <label class="inline">
+        <span class="lbl">from bar</span>
+        <select id="playFrom" class="small"></select>
+      </label>
+      <span id="posLabel" class="pos mono">0:00.0 / 0:00.0</span>
+    </div>
+
+    <div class="progress-wrap">
+      <div class="progress-track"><div id="progressFill" class="progress-fill"></div></div>
+      <input id="progressBar" type="range" min="0" max="100" value="0" step="0.1" class="progress-input">
+    </div>
+
+    <canvas id="viz" class="viz"></canvas>
+    <canvas id="roll" class="roll"></canvas>
+    <div class="hint">click a note to audition it · space = play/stop · g = generate</div>
+
+    <div id="stats" class="stats"></div>
+    <div id="infoPanel" class="info"></div>
+  </section>
+
+  <!-- ============ RIGHT: sound lab ============ -->
+  <section class="card lab">
+    <div class="card-title"><span class="dot"></span>Sound Lab</div>
+
+    <div class="sub-title">voice presets</div>
+    <div class="preset-list">
+      <label class="prow"><span class="pname" style="--vc:#ff2ec4">Lead</span><select id="preset-lead"></select></label>
+      <label class="prow"><span class="pname" style="--vc:#2ee6ff">Harmony</span><select id="preset-harmony"></select></label>
+      <label class="prow"><span class="pname" style="--vc:#a06bff">Counter</span><select id="preset-counter"></select></label>
+      <label class="prow"><span class="pname" style="--vc:#ffb02e">Bass</span><select id="preset-bass"></select></label>
+    </div>
+
+    <div class="sub-title">master</div>
+    <label class="srow"><span>cutoff</span><input id="masterCutoff" type="range" min="200" max="8000" value="8000"></label>
+    <label class="srow"><span>reverb</span><input id="reverbSend" type="range" min="0" max="100" value="30"></label>
+    <label class="srow"><span>delay</span><input id="delaySend" type="range" min="0" max="100" value="20"></label>
+    <label class="srow"><span>drive</span><input id="masterDrive" type="range" min="0" max="100" value="10"></label>
+
+    <div class="sub-title">mixer</div>
+    <label class="srow"><span style="--vc:#ff2ec4">lead</span><input id="trackVol0" type="range" min="0" max="100" value="100"></label>
+    <label class="srow"><span style="--vc:#2ee6ff">harmony</span><input id="trackVol1" type="range" min="0" max="100" value="100"></label>
+    <label class="srow"><span style="--vc:#a06bff">counter</span><input id="trackVol2" type="range" min="0" max="100" value="100"></label>
+    <label class="srow"><span style="--vc:#ffb02e">bass</span><input id="trackVol3" type="range" min="0" max="100" value="100"></label>
+
+    <div class="sub-title">export</div>
+    <div class="export-grid">
+      <button id="downloadWav" class="btn ghost">◉ WAV</button>
+      <button id="downloadMidi" class="btn ghost">♪ MIDI</button>
+      <button id="downloadJson" class="btn ghost">{} JSON</button>
+      <button id="copyConfig" class="btn ghost">⧉ config</button>
+    </div>
+  </section>
+</main>
+
+<div id="toast" class="toast" role="status"></div>
+<div id="err" class="err" style="display:none"></div>
+
+<footer class="foot">
+  PSY ANTHEM · pure WHAT-layer generator · playback is the HOW layer ·
+  <a href="https://github.com/dudududi144-source/psy-anthem">github</a>
+</footer>
+
 <script type="module" src="./app.js"></script>
 </body>
 </html>

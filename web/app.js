@@ -1,748 +1,428 @@
-// PSY ANTHEM - web/app.js (demo v2: generation + playback + downloads)
+// PSY ANTHEM - web/app.js  (Hyperstage UI)
+// Presentation layer over the WHAT engine (engine.mjs) and HOW synth (synth.js).
 import { createAnthemEngine, AnthemIntent, EnergyCurve } from './engine.mjs';
+import { PsySynthBrowser, midiToFreq } from './synth.js';
+import { PRESETS, PRESET_CATEGORIES, DEFAULT_VOICE_PRESETS } from './presets.js';
 import { createStateStore } from './state.js';
 
-// ---------- shell state: single source of truth for status/error ----------
-// Listeners can subscribe instead of polling the DOM; global error boundaries
-// funnel uncaught failures into the same store so the user always sees them.
-export const appState = createStateStore({ status: 'ready', error: null });
-
+// ---------- shell state store + global error boundaries ----------
+export const appState = createStateStore({ status: 'ready', error: null, playing: false });
 if (typeof window !== 'undefined') {
   window.addEventListener('error', (ev) => {
     appState.set({ error: ev && ev.message ? String(ev.message) : 'unknown error' });
   });
   window.addEventListener('unhandledrejection', (ev) => {
     const reason = ev && ev.reason;
-    const text = reason && reason.message ? String(reason.message) : String(reason || 'unknown error');
-    appState.set({ error: text });
+    appState.set({ error: reason && reason.message ? String(reason.message) : String(reason || 'unknown error') });
   });
 }
-import { PsySynthBrowser, midiToFreq } from './synth.js';
-import { PRESETS, PRESET_CATEGORIES, DEFAULT_VOICE_PRESETS } from './presets.js';
 
-const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
-const VOICE_COLORS = ['#ff2ec4', '#2ee6ff', '#a06bff', '#ffb02e'];
-const VOICE_NAMES = ['Lead', 'Harmony', 'Counter', 'Bass'];
-const MODES = ['minor', 'major', 'dorian', 'phrygian', 'lydian', 'mixolydian', 'harmonicMinor', 'melodicMinor', 'hungarianMinor', 'doubleHarmonicMajor'];
-const MIDI_PROGRAMS = [0, 80, 24, 33];
+// ---------- constants ----------
+const NOTE_NAMES = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+const VOICE_COLORS = ['#ff2ec4','#2ee6ff','#a06bff','#ffb02e'];
+const VOICE_NAMES = ['Lead','Harmony','Counter','Bass'];
+const MODES = ['minor','major','dorian','phrygian','lydian','mixolydian','harmonicMinor','melodicMinor','hungarianMinor','doubleHarmonicMajor'];
+const MIDI_PROGRAMS = [0,80,24,33];
 const MIDI_DIVISION = 480;
-
+const INTENTS = [
+  { id: AnthemIntent.EUPHORIC_TRANCE, icon: '✨', name: 'Euphoric', desc: 'uplifting leads, bright arcs' },
+  { id: AnthemIntent.PROGRESSIVE,     icon: '🌊', name: 'Progressive', desc: 'deep rolling groove' },
+  { id: AnthemIntent.DARK_PSY,        icon: '🌑', name: 'Dark Psy', desc: 'twisted, nocturnal, fast' },
+  { id: AnthemIntent.EMOTIONAL_BREAKDOWN, icon: '💔', name: 'Emotional', desc: 'melodic breakdown core' },
+  { id: AnthemIntent.FOREST,          icon: '🌲', name: 'Forest', desc: 'organic, earthy textures' },
+  { id: AnthemIntent.FULL_ON,         icon: '🔥', name: 'Full-On', desc: 'driving peak energy' },
+];
+const CURVES = [
+  { id: EnergyCurve.FLAT,       name: 'Flat',       d: 'M2 12 L38 12' },
+  { id: EnergyCurve.ARC,        name: 'Arc',        d: 'M2 16 Q20 2 38 16' },
+  { id: EnergyCurve.BUILD_DROP, name: 'Build→Drop', d: 'M2 17 L26 6 L26 16 L38 12' },
+  { id: EnergyCurve.WAVE,       name: 'Wave',       d: 'M2 12 C8 4 14 18 20 10 C26 3 32 17 38 9' },
+  { id: EnergyCurve.CUSTOM,     name: 'Custom',     d: 'M2 14 C10 4 16 16 24 7 S36 12 38 6' },
+];
+const CUSTOM_CURVE_DEFAULT = [{position:0,energy:0.25},{position:0.35,energy:0.85},{position:0.6,energy:0.45},{position:1,energy:0.9}];
 const pitchName = (p) => NOTE_NAMES[((p % 12) + 12) % 12] + (Math.floor(p / 12) - 1);
+const $ = (id) => document.getElementById(id);
 
-// ---------- state ----------
-const history = [];      // last 10 generations: { config, out }
+// ---------- runtime state ----------
+const history = [];
 let historyIndex = -1;
 let synth = null;
 let isPlaying = false;
-let playDurationSec = 0;   // total duration of current playback (seconds)
-let playStartCtxTime = 0;  // ctx.currentTime when playback started
-let progressRaf = 0;      // requestAnimationFrame id
+let playDurationSec = 0;
+let playStartCtxTime = 0;
+let progressRaf = 0;
+let vizRaf = 0;
 
 // ---------- SMF encoder (browser port of src/export/midi.ts) ----------
-function varLen(value) {
-  const stack = [value & 0x7f];
-  let v = value >>> 7;
-  while (v > 0) {
-    stack.push((v & 0x7f) | 0x80);
-    v = v >>> 7;
-  }
-  return stack.reverse();
-}
-
-function pushU32(arr, v) { arr.push((v >>> 24) & 0xff, (v >>> 16) & 0xff, (v >>> 8) & 0xff, v & 0xff); }
-function pushU16(arr, v) { arr.push((v >>> 8) & 0xff, v & 0xff); }
-
-export function midiFromOutput(out, bpm) {
+function varLen(value){ const s=[value&0x7f]; let v=value>>>7; while(v>0){s.push((v&0x7f)|0x80); v>>>=7;} return s.reverse(); }
+function pushU32(a,v){ a.push((v>>>24)&0xff,(v>>>16)&0xff,(v>>>8)&0xff,v&0xff); }
+function pushU16(a,v){ a.push((v>>>8)&0xff,v&0xff); }
+export function midiFromOutput(out, bpm){
   const byChannel = new Map();
-  for (const e of out.events) {
-    if (e.type !== 'note') continue;
-    if (!byChannel.has(e.channel)) byChannel.set(e.channel, []);
-    byChannel.get(e.channel).push(e);
-  }
-  const channels = Array.from(byChannel.keys()).sort((a, b) => a - b);
-
-  const tracks = [];
-  for (const ch of channels) {
-    const evs = byChannel.get(ch);
-    const items = [];
-    if (ch === channels[0]) {
-      const uspq = Math.round(60000000 / Math.max(1, bpm));
-      items.push({ tick: 0, order: -2, bytes: [0xff, 0x51, 0x03, (uspq >>> 16) & 0xff, (uspq >>> 8) & 0xff, uspq & 0xff] });
-      items.push({ tick: 0, order: -1, bytes: [0xff, 0x58, 0x04, 0x04, 0x02, 0x18, 0x08] });
+  for (const e of out.events){ if(e.type!=='note')continue; if(!byChannel.has(e.channel))byChannel.set(e.channel,[]); byChannel.get(e.channel).push(e); }
+  const channels = Array.from(byChannel.keys()).sort((a,b)=>a-b);
+  const tracks=[];
+  for(const ch of channels){
+    const evs=byChannel.get(ch); const items=[];
+    if(ch===channels[0]){
+      const uspq=Math.round(60000000/Math.max(1,bpm));
+      items.push({tick:0,order:-2,bytes:[0xff,0x51,0x03,(uspq>>>16)&0xff,(uspq>>>8)&0xff,uspq&0xff]});
+      items.push({tick:0,order:-1,bytes:[0xff,0x58,0x04,0x04,0x02,0x18,0x08]});
     }
-    items.push({ tick: 0, order: 0, bytes: [0xc0 | (ch & 0x0f), MIDI_PROGRAMS[ch] ?? 0] });
-    for (const e of evs) {
-      const tickOn = Math.max(0, Math.round(e.timestamp * MIDI_DIVISION));
-      const tickOff = tickOn + Math.max(1, Math.round(e.duration * MIDI_DIVISION));
-      items.push({ tick: tickOff, order: 0, bytes: [0x80 | (ch & 0x0f), e.data.pitch & 0x7f, 0] });
-      items.push({ tick: tickOn, order: 1, bytes: [0x90 | (ch & 0x0f), e.data.pitch & 0x7f, e.data.velocity & 0x7f] });
+    items.push({tick:0,order:0,bytes:[0xc0|(ch&0x0f), MIDI_PROGRAMS[ch]!==undefined?MIDI_PROGRAMS[ch]:0]});
+    for(const e of evs){
+      const on=Math.max(0,Math.round(e.timestamp*MIDI_DIVISION));
+      const off=on+Math.max(1,Math.round(e.duration*MIDI_DIVISION));
+      items.push({tick:off,order:0,bytes:[0x80|(ch&0x0f),e.data.pitch&0x7f,0]});
+      items.push({tick:on,order:1,bytes:[0x90|(ch&0x0f),e.data.pitch&0x7f,e.data.velocity&0x7f]});
     }
-    items.sort((a, b) => a.tick - b.tick || a.order - b.order);
-    const body = [];
-    let last = 0;
-    for (const it of items) {
-      for (const b of varLen(it.tick - last)) body.push(b);
-      for (const b of it.bytes) body.push(b);
-      last = it.tick;
-    }
-    for (const b of varLen(0)) body.push(b);
-    body.push(0xff, 0x2f, 0x00);
-    const chunk = [0x4d, 0x54, 0x72, 0x6b];
-    pushU32(chunk, body.length);
-    for (const b of body) chunk.push(b);
+    items.sort((a,b)=>a.tick-b.tick||a.order-b.order);
+    const body=[]; let last=0;
+    for(const it of items){ for(const b of varLen(it.tick-last))body.push(b); for(const b of it.bytes)body.push(b); last=it.tick; }
+    for(const b of varLen(0))body.push(b); body.push(0xff,0x2f,0x00);
+    const chunk=[0x4d,0x54,0x72,0x6b]; pushU32(chunk,body.length); for(const b of body)chunk.push(b);
     tracks.push(chunk);
   }
-
-  const all = [0x4d, 0x54, 0x68, 0x64];
-  pushU32(all, 6);
-  pushU16(all, 1);
-  pushU16(all, tracks.length);
-  pushU16(all, MIDI_DIVISION);
-  for (const t of tracks) for (const b of t) all.push(b);
+  const all=[0x4d,0x54,0x68,0x64]; pushU32(all,6); pushU16(all,1); pushU16(all,tracks.length); pushU16(all,MIDI_DIVISION);
+  for(const t of tracks) for(const b of t) all.push(b);
   return Uint8Array.from(all);
 }
-
-function downloadBlob(bytes, filename, mime) {
-  const blob = new Blob([bytes], { type: mime });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 2000);
+function downloadBlob(bytes, filename, mime){
+  const blob=new Blob([bytes],{type:mime}); const url=URL.createObjectURL(blob);
+  const a=document.createElement('a'); a.href=url; a.download=filename; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),2000);
 }
 
-// ---------- controls ----------
-function fillSelect(id, values, labels) {
-  const el = document.getElementById(id);
-  el.innerHTML = '';
-  for (let i = 0; i < values.length; i++) {
-    const opt = document.createElement('option');
-    opt.value = values[i];
-    opt.textContent = labels ? labels[i] : values[i];
-    el.appendChild(opt);
-  }
+// ---------- toast / status ----------
+let toastTimer=0;
+function toast(msg, kind){
+  const t=$('toast'); if(!t)return;
+  t.textContent=msg; t.className='toast show '+(kind||'info');
+  clearTimeout(toastTimer); toastTimer=setTimeout(()=>{t.className='toast';},4200);
 }
+appState.subscribe((state)=>{
+  const led=$('statusLed'); const txt=$('statusText');
+  if(txt) txt.textContent = state.status;
+  if(led) led.className='led '+(state.status==='playing'?'led-play':state.status==='error'?'led-err':'led-ready');
+});
 
-function initControls() {
-  const intents = Object.values(AnthemIntent);
-  fillSelect('intent', intents, intents.map((s) => s.replace(/-/g, ' ')));
-  document.getElementById('intent').value = AnthemIntent.EUPHORIC_TRANCE;
-  const curves = [EnergyCurve.ARC, EnergyCurve.BUILD_DROP, EnergyCurve.WAVE, EnergyCurve.FLAT];
-  fillSelect('curve', curves);
-  document.getElementById('curve').value = EnergyCurve.ARC;
-  fillSelect('root', NOTE_NAMES.map((_, i) => String(i)), NOTE_NAMES);
-  fillSelect('mode', MODES);
-  fillSelect('density', ['sparse', 'medium', 'dense']);
-  document.getElementById('density').value = 'medium';
-  fillSelect('harmony', ['simple', 'standard', 'complex']);
-  document.getElementById('harmony').value = 'standard';
-  fillSelect('playFrom', ['0']);
-}
-
-function readConfig() {
-  const cfg = {
-    seed: parseInt(document.getElementById('seed').value, 10) || 0,
-    intent: document.getElementById('intent').value,
-    scale: {
-      root: parseInt(document.getElementById('root').value, 10) || 0,
-      mode: document.getElementById('mode').value,
-    },
-    energyCurve: document.getElementById('curve').value,
-    targetRange: { min: 48, max: 84 },
-    voices: parseInt(document.getElementById('voices').value, 10),
-    bars: parseInt(document.getElementById('bars').value, 10),
-    bpm: 140,
-    density: document.getElementById('density').value,
-    harmonyComplexity: document.getElementById('harmony').value,
-    loopMode: document.getElementById('loopMode').checked,
-    callResponse: document.getElementById('callResponse').checked,
-  };
-  if (cfg.energyCurve === EnergyCurve.CUSTOM) {
-    cfg.customCurve = [
-      { position: 0.0, energy: 0.25 }, { position: 0.2, energy: 0.9 },
-      { position: 0.5, energy: 0.3 }, { position: 0.8, energy: 1.0 },
-      { position: 1.0, energy: 0.2 },
-    ];
-  }
-  return cfg;
-}
-
-function applyConfigToControls(cfg) {
-  document.getElementById('seed').value = String(cfg.seed);
-  document.getElementById('intent').value = cfg.intent;
-  document.getElementById('root').value = String(cfg.scale.root);
-  document.getElementById('mode').value = cfg.scale.mode;
-  document.getElementById('curve').value = cfg.energyCurve;
-  document.getElementById('voices').value = String(cfg.voices);
-  document.getElementById('bars').value = String(cfg.bars);
-  document.getElementById('density').value = cfg.density ?? 'medium';
-  document.getElementById('harmony').value = cfg.harmonyComplexity ?? 'standard';
-  document.getElementById('loopMode').checked = Boolean(cfg.loopMode);
-  document.getElementById('callResponse').checked = Boolean(cfg.callResponse);
-}
-
-// ---------- generation + history ----------
-function currentEntry() {
-  return historyIndex >= 0 ? history[historyIndex] : null;
-}
-
-function generate() {
-  hideError();
-  const config = readConfig();
-  let out = null;
-  try {
-    out = createAnthemEngine(config).generate();
-  } catch (e) {
-    showError('Config error: ' + e.message);
-    return;
-  }
-  if (!out) {
-    showError('Solver failed for this config. Try another seed.');
-    return;
-  }
-  history.push({ config, out });
-  if (history.length > 10) history.shift();
-  historyIndex = history.length - 1;
-  renderCurrent();
-}
-
-function navigate(delta) {
-  const next = historyIndex + delta;
-  if (next < 0 || next >= history.length) return;
-  historyIndex = next;
-  renderCurrent();
-}
-
-function renderCurrent() {
-  const entry = currentEntry();
-  if (!entry) return;
-  stopPlayback();
-  applyConfigToControls(entry.config);
-  renderRoll(entry.out, entry.config);
-  renderTension(entry.out, entry.config);
-  renderChords(entry.out);
-  renderMotif(entry.out);
-  renderStats(entry.out, entry.config);
-  renderArtisticQuality(entry.out);
-  renderPlayFrom(entry.config);
-  updateNavButtons();
-}
-
-function renderArtisticQuality(out) {
-  const el = document.getElementById('artisticPanel');
-  if (!el) return;
-  const meta = out.metadata;
-  const score = meta.artisticQuality;
-  if (score === undefined) { el.innerHTML = ''; return; }
-  const bd = meta.artisticBreakdown || {};
-  const issues = meta.artisticIssues || [];
-  const suggestions = meta.artisticSuggestions || [];
-  const pct = (v) => Math.round((v || 0) * 100);
-
-  let html = '<div class="aq-score">' + score + '<span>/100</span></div>';
-  html += '<div class="aq-grid">';
-  html += '<div>Melodic Interest<div class="bar"><i style="width:' + pct(bd.melodicInterest) + '%"></i></div></div>';
-  html += '<div>Harmonic Richness<div class="bar"><i style="width:' + pct(bd.harmonicRichness) + '%"></i></div></div>';
-  html += '<div>Rhythmic Variety<div class="bar"><i style="width:' + pct(bd.rhythmicVariety) + '%"></i></div></div>';
-  html += '<div>Textural Depth<div class="bar"><i style="width:' + pct(bd.texturalDepth) + '%"></i></div></div>';
-  html += '<div>Emotional Arc<div class="bar"><i style="width:' + pct(bd.emotionalArc) + '%"></i></div></div>';
-  html += '</div>';
-  if (issues.length > 0) {
-    html += '<div class="aq-issues">' + issues.map((i) => '! ' + i).join('<br>') + '</div>';
-  }
-  if (suggestions.length > 0) {
-    html += '<div class="aq-suggest">' + suggestions.map((s) => '> ' + s).join('<br>') + '</div>';
-  }
-  el.innerHTML = html;
-}
-
-function updateNavButtons() {
-  document.getElementById('prev').disabled = historyIndex <= 0;
-  document.getElementById('next').disabled = historyIndex >= history.length - 1;
-  document.getElementById('posLabel').textContent = history.length === 0 ? '' : (historyIndex + 1) + '/' + history.length;
-}
-
-function renderPlayFrom(config) {
-  const sel = document.getElementById('playFrom');
-  const cur = sel.value;
-  sel.innerHTML = '';
-  for (let b = 0; b < config.bars; b += 4) {
-    const opt = document.createElement('option');
-    opt.value = String(b);
-    opt.textContent = 'bar ' + (b + 1);
-    sel.appendChild(opt);
-  }
-  if (cur && parseInt(cur, 10) < config.bars) sel.value = cur;
-}
-
-// ---------- rendering ----------
-function svgEl(name, attrs) {
-  const el = document.createElementNS('http://www.w3.org/2000/svg', name);
-  for (const k of Object.keys(attrs)) el.setAttribute(k, attrs[k]);
-  return el;
-}
-
-function renderRoll(out, config) {
-  const host = document.getElementById('roll');
-  host.innerHTML = '';
-  const events = out.events.filter((e) => e.type === 'note');
-  if (events.length === 0) { host.textContent = 'No events.'; return; }
-  let lo = 127, hi = 0;
-  for (const e of events) { const p = e.data.pitch; if (p < lo) lo = p; if (p > hi) hi = p; }
-  lo = Math.max(0, lo - 2); hi = Math.min(127, hi + 2);
-
-  const totalBeats = config.bars * 4;
-  const pxPerBeat = 26, rowH = 12;
-  const rows = hi - lo + 1;
-  const W = totalBeats * pxPerBeat + 46, H = rows * rowH + 8;
-  const svg = svgEl('svg', { viewBox: '0 0 ' + W + ' ' + H, width: W, height: H });
-
-  for (let p = lo; p <= hi; p++) {
-    const y = H - 4 - (p - lo) * rowH;
-    const isBlack = [1, 3, 6, 8, 10].includes(((p % 12) + 12) % 12);
-    if (isBlack) svg.appendChild(svgEl('rect', { x: 44, y: y - rowH, width: W - 46, height: rowH, fill: '#0d0a1a' }));
-    if (((p % 12) + 12) % 12 === 0) {
-      const t = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-      t.setAttribute('x', 6); t.setAttribute('y', y - 3);
-      t.setAttribute('fill', '#6f689c'); t.setAttribute('font-size', '9'); t.setAttribute('font-family', 'monospace');
-      t.textContent = pitchName(p);
-      svg.appendChild(t);
-      svg.appendChild(svgEl('line', { x1: 44, y1: y, x2: W, y2: y, stroke: '#241f3d', 'stroke-width': 1 }));
-    }
-  }
-  // Section markers: bar lines (strong every 4 bars)
-  for (let b = 0; b <= config.bars; b++) {
-    const x = 44 + b * 4 * pxPerBeat;
-    svg.appendChild(svgEl('line', { x1: x, y1: 0, x2: x, y2: H, stroke: b % 4 === 0 ? '#3a3163' : '#241f3d', 'stroke-width': b % 4 === 0 ? 1.4 : 1 }));
-  }
-  // Notes: color=voice, width=duration, opacity=velocity, click=audition
-  for (const e of events) {
-    const x = 44 + e.timestamp * pxPerBeat;
-    const w = Math.max(2, e.duration * pxPerBeat - 1.5);
-    const y = H - 4 - (e.data.pitch - lo) * rowH - rowH + 1.5;
-    const color = VOICE_COLORS[e.channel % 4] ?? '#ffffff';
-    const rect = svgEl('rect', { x: x, y: y, width: w, height: rowH - 3, rx: 2.5, fill: color });
-    rect.setAttribute('opacity', String(0.45 + (e.data.velocity / 127) * 0.55));
-    rect.style.cursor = 'pointer';
-    const title = document.createElementNS('http://www.w3.org/2000/svg', 'title');
-    title.textContent = pitchName(e.data.pitch) + ' | ' + VOICE_NAMES[e.channel % 4] + ' | vel ' + e.data.velocity;
-    rect.appendChild(title);
-    rect.addEventListener('click', () => auditionNote(e.data.pitch, e.data.velocity));
-    svg.appendChild(rect);
-  }
-  host.appendChild(svg);
-
-  const legend = document.getElementById('legend');
-  legend.innerHTML = '';
-  for (let v = 0; v < config.voices; v++) {
-    const s = document.createElement('span');
-    const d = document.createElement('i');
-    d.className = 'dot'; d.style.background = VOICE_COLORS[v];
-    s.appendChild(d);
-    s.appendChild(document.createTextNode(VOICE_NAMES[v] + ' (ch ' + v + ')'));
-    legend.appendChild(s);
-  }
-}
-
-function renderTension(out, config) {
-  const host = document.getElementById('tension');
-  host.innerHTML = '';
-  const curve = out.harmonicAnalysis.tensionCurve;
-  const W = 800, H = 90;
-  const svg = svgEl('svg', { viewBox: '0 0 ' + W + ' ' + H });
-  svg.appendChild(svgEl('rect', { x: 0, y: 0, width: W, height: H, fill: '#0a0815' }));
-  for (let g = 0; g <= 4; g++) {
-    const y = 6 + (H - 12) * (g / 4);
-    svg.appendChild(svgEl('line', { x1: 0, y1: y, x2: W, y2: y, stroke: '#1a1630', 'stroke-width': 1 }));
-  }
-  if (curve.length > 1) {
-    let pts = '';
-    for (let i = 0; i < curve.length; i++) {
-      const x = (i / (curve.length - 1)) * (W - 10) + 5;
-      const y = H - 8 - curve[i] * (H - 16);
-      pts += x.toFixed(1) + ',' + y.toFixed(1) + ' ';
-    }
-    svg.appendChild(svgEl('polygon', { points: '5,' + (H - 8) + ' ' + pts + (W - 5) + ',' + (H - 8), fill: 'rgba(160,107,255,0.18)' }));
-    svg.appendChild(svgEl('polyline', { points: pts, fill: 'none', stroke: '#a06bff', 'stroke-width': 2 }));
-  }
-  host.appendChild(svg);
-}
-
-function renderChords(out) {
-  const host = document.getElementById('chords');
-  host.innerHTML = '';
-  const chords = out.harmonicAnalysis.chords;
-  const totalBars = chords.reduce((s, c) => s + c.durationBars, 0) || 1;
-  const W = 800, H = 54;
-  const svg = svgEl('svg', { viewBox: '0 0 ' + W + ' ' + H });
-  let x = 4;
-  const colors = ['#ff2ec4', '#2ee6ff', '#a06bff', '#ffb02e', '#3dffa0'];
-  for (let i = 0; i < chords.length; i++) {
-    const c = chords[i];
-    const w = (c.durationBars / totalBars) * (W - 8) - 4;
-    const color = colors[i % colors.length];
-    svg.appendChild(svgEl('rect', { x: x, y: 8, width: Math.max(24, w), height: 30, rx: 6, fill: 'rgba(20,17,38,1)', stroke: color, 'stroke-width': 1.2 }));
-    const t = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-    t.setAttribute('x', String(x + Math.max(24, w) / 2)); t.setAttribute('y', '27');
-    t.setAttribute('text-anchor', 'middle'); t.setAttribute('fill', color);
-    t.setAttribute('font-size', '12'); t.setAttribute('font-weight', 'bold'); t.setAttribute('font-family', 'monospace');
-    t.textContent = NOTE_NAMES[((c.root % 12) + 12) % 12] + (c.quality === 'minor' ? 'm' : c.quality === 'dominant7' ? '7' : '');
-    svg.appendChild(t);
-    x += Math.max(24, w) + 4;
-  }
-  host.appendChild(svg);
-}
-
-function renderMotif(out) {
-  const host = document.getElementById('motif');
-  host.innerHTML = '';
-  const dna = out.motifDNA;
-  for (let i = 0; i < dna.coreNotes.length; i++) {
-    const chip = document.createElement('div');
-    chip.className = 'note-chip';
-    const p = document.createElement('div'); p.className = 'p'; p.textContent = pitchName(dna.coreNotes[i]);
-    const d = document.createElement('div'); d.className = 'd'; d.textContent = (dna.coreRhythm[i] || 0) + ' beats';
-    chip.appendChild(p); chip.appendChild(d);
-    host.appendChild(chip);
-  }
-}
-
-function renderStats(out, config) {
-  const host = document.getElementById('stats');
-  host.innerHTML = '';
-  const items = [
-    ['seed', String(out.metadata.seed), true],
-    ['intent', out.metadata.intent, false],
-    ['bars', String(out.metadata.bars), false],
-    ['voices', String(out.metadata.voices), false],
-    ['events', String(out.events.length), false],
-    ['chords', String(out.harmonicAnalysis.chords.length), false],
-    ['memorability', out.metadata.memorabilityScore + '/100', true],
-    ['quality', out.metadata.quality, out.metadata.quality === 'excellent' || out.metadata.quality === 'good'],
-    ['time', out.metadata.generationTimeMs + 'ms', false],
-  ];
-  if (config.density) items.push(['density', config.density, false]);
-  if (config.harmonyComplexity) items.push(['harmony', config.harmonyComplexity, false]);
-  if (config.loopMode) items.push(['loop', 'on', true]);
-  if (config.callResponse) items.push(['call/resp', 'on', true]);
-  for (const it of items) {
-    const chip = document.createElement('span');
-    chip.className = 'chip' + (it[2] ? ' hot' : '');
-    const key = document.createElement('b'); key.textContent = it[0] + ': ';
-    chip.appendChild(key);
-    chip.appendChild(document.createTextNode(String(it[1])));
-    host.appendChild(chip);
-  }
-
-  // Extended info panel
-  const info = document.getElementById('infoPanel');
-  info.innerHTML = '';
-  const harmonicRhythm = (out.harmonicAnalysis.chords.length / Math.max(1, out.metadata.bars)).toFixed(2);
-  const occurrences = out.motifDNA.occurrences.map((o) => 'bar ' + (o.bar + 1)).join(', ') || '-';
-  const lines = [
-    'harmonic rhythm: ' + harmonicRhythm + ' chords/bar',
-    'motif occurrences: ' + occurrences,
-    'tension peak: bar ' + (out.harmonicAnalysis.tensionCurve.indexOf(Math.max(...out.harmonicAnalysis.tensionCurve)) + 1),
-  ];
-  for (const ln of lines) {
-    const div = document.createElement('div');
-    div.textContent = ln;
-    info.appendChild(div);
-  }
-}
-
-// ---------- audio playback ----------
-function ensureSynth() {
-  if (!synth) {
-    const Ctx = window.AudioContext || window.webkitAudioContext;
-    synth = new PsySynthBrowser(new Ctx(), { PRESETS, defaults: DEFAULT_VOICE_PRESETS });
-    synth.onFinish = () => setPlaying(false);
-    applyMacros();
-  }
+// ---------- synth ----------
+function ensureSynth(){
+  if(synth) return synth;
+  synth = new PsySynthBrowser(new (window.AudioContext||window.webkitAudioContext)(), { PRESETS, defaults: DEFAULT_VOICE_PRESETS });
+  synth.onFinish = ()=>{ setPlaying(false); };
+  applyMacros(); applyTrackVolumes();
   return synth;
 }
-
-// ---------- presets & global macros ----------
-const VOICE_TO_SELECT = { 0: 'preset-lead', 1: 'preset-harmony', 2: 'preset-counter', 3: 'preset-bass' };
-
-function initPresetDropdowns() {
-  const categoryByVoice = { 0: 'lead', 1: 'harmony', 2: 'counter', 3: 'bass' };
-  for (const voiceStr of Object.keys(VOICE_TO_SELECT)) {
-    const voice = parseInt(voiceStr, 10);
-    const select = document.getElementById(VOICE_TO_SELECT[voice]);
-    if (!select) continue;
-    select.innerHTML = '';
-    const category = PRESET_CATEGORIES[categoryByVoice[voice]];
-    for (const presetId of category) {
-      const opt = document.createElement('option');
-      opt.value = presetId;
-      opt.textContent = PRESETS[presetId].name;
-      if (presetId === DEFAULT_VOICE_PRESETS[voice]) opt.selected = true;
-      select.appendChild(opt);
-    }
-  }
+function applyMacros(){
+  if(!synth) return;
+  synth.setMasterCutoff(parseFloat($('masterCutoff').value));
+  synth.setReverbSend(parseFloat($('reverbSend').value)/100);
+  synth.setDelaySend(parseFloat($('delaySend').value)/100);
+  synth.setMasterDrive(parseFloat($('masterDrive').value)/100);
+}
+function applyTrackVolumes(){
+  if(!synth) return;
+  for(let ch=0; ch<4; ch++){ const el=$('trackVol'+ch); if(el) synth.setTrackVolume(ch, parseFloat(el.value)/100); }
 }
 
-function getCurrentPresets() {
-  const out = {};
-  for (const voiceStr of Object.keys(VOICE_TO_SELECT)) {
-    const voice = parseInt(voiceStr, 10);
-    const select = document.getElementById(VOICE_TO_SELECT[voice]);
-    if (select) out[voice] = select.value;
-  }
-  return out;
+// ---------- controls <-> config ----------
+function buildBasicSelects(){
+  const intent=$('intent'); intent.innerHTML='';
+  for(const it of INTENTS){ const o=document.createElement('option'); o.value=it.id; o.textContent=it.icon+' '+it.name; intent.appendChild(o); }
+  const curve=$('curve'); curve.innerHTML='';
+  for(const c of CURVES){ const o=document.createElement('option'); o.value=c.id; o.textContent=c.name; curve.appendChild(o); }
+  const root=$('root'); root.innerHTML='';
+  for(let i=0;i<12;i++){ const o=document.createElement('option'); o.value=String(i); o.textContent=NOTE_NAMES[i]; root.appendChild(o); }
+  const mode=$('mode'); mode.innerHTML='';
+  for(const m of MODES){ const o=document.createElement('option'); o.value=m; o.textContent=m; mode.appendChild(o); }
+  const density=$('density'); density.innerHTML='';
+  for(const d of ['sparse','medium','dense']){ const o=document.createElement('option'); o.value=d; o.textContent=d; density.appendChild(o); }
+  density.value='medium';
+  const harmony=$('harmony'); harmony.innerHTML='';
+  for(const h of ['simple','standard','complex']){ const o=document.createElement('option'); o.value=h; o.textContent=h; harmony.appendChild(o); }
+  harmony.value='standard';
 }
-
-function sliderValue(id, fallback) {
-  const el = document.getElementById(id);
-  return el ? parseFloat(el.value) : fallback;
-}
-
-function applyMacros() {
-  if (!synth) return;
-  synth.setMasterCutoff(sliderValue('masterCutoff', 8000));
-  synth.setReverbSend(sliderValue('reverbSend', 30) / 100);
-  synth.setDelaySend(sliderValue('delaySend', 20) / 100);
-  synth.setMasterDrive(sliderValue('masterDrive', 10) / 100);
-  for (let ch = 0; ch < 4; ch++) {
-    synth.setTrackVolume(ch, sliderValue('trackVol' + ch, 100) / 100);
-  }
-}
-
-function setPlaying(state) {
-  isPlaying = state;
-  const btn = document.getElementById('play');
-  btn.textContent = isPlaying ? 'PLAYING...' : 'PLAY';
-  btn.disabled = isPlaying;
-}
-
-function setStatus(msg) {
-  const el = document.getElementById('playStatus');
-  if (el) el.textContent = msg;
-}
-
-async function play() {
-  const entry = currentEntry();
-  if (!entry) {
-    showError('Generate an anthem first.');
-    return;
-  }
-  try {
-    setStatus('unlocking audio...');
-    const s = ensureSynth();
-    s.setPresets(getCurrentPresets());
-    applyMacros();
-    const fromBeat = parseInt(document.getElementById('playFrom').value, 10) || 0;
-    const duration = await s.playEvents(entry.out.events, entry.config.bpm ?? 140, fromBeat);
-    if (s.ctx.state !== 'running') {
-      setStatus('AUDIO BLOCKED by the browser. Click TEST SOUND once, then PLAY again.');
-      return;
-    }
-    setPlaying(true);
-    playDurationSec = duration;
-    playStartCtxTime = s._t0 || s.ctx.currentTime;
-    startProgressLoop();
-    setStatus('playing ' + duration.toFixed(1) + 's (' + entry.out.events.length + ' events)');
-  } catch (e) {
-    setStatus('AUDIO BLOCKED by browser - click TEST SOUND to unlock');
-    showError('Playback error: ' + e.message);
-    console.error(e);
-  }
-}
-
-function stopPlayback() {
-  if (synth) synth.stop();
-  setPlaying(false);
-  stopProgressLoop();
-  const pb = document.getElementById('progressBar');
-  if (pb) pb.value = 0;
-  const pl = document.getElementById('progressLabel');
-  if (pl) pl.textContent = 'stopped';
-  setStatus('stopped');
-}
-
-// ---- playback progress ----
-function startProgressLoop() {
-  stopProgressLoop();
-  const tick = () => {
-    if (!synth || !isPlaying) return;
-    const elapsed = synth.ctx.currentTime - playStartCtxTime;
-    const pct = playDurationSec > 0 ? Math.min(100, (elapsed / playDurationSec) * 100) : 0;
-    const pb = document.getElementById('progressBar');
-    if (pb && document.activeElement !== pb) pb.value = pct.toFixed(1);
-    const pl = document.getElementById('progressLabel');
-    if (pl) pl.textContent = elapsed.toFixed(1) + 's / ' + playDurationSec.toFixed(1) + 's';
-    if (elapsed >= playDurationSec) {
-      setPlaying(false);
-      stopProgressLoop();
-      setStatus('finished');
-      return;
-    }
-    progressRaf = requestAnimationFrame(tick);
+function readConfig(){
+  const cfg={
+    seed: parseInt($('seed').value,10)||0,
+    intent: $('intent').value,
+    scale:{ root: parseInt($('root').value,10)||0, mode: $('mode').value||'minor' },
+    energyCurve: $('curve').value,
+    targetRange:{ min:48, max:84 },
+    voices: parseInt($('voices').value,10)||3,
+    bars: parseInt($('bars').value,10)||16,
+    bpm: 140,
   };
-  progressRaf = requestAnimationFrame(tick);
+  const d=$('density').value; if(d) cfg.density=d;
+  const h=$('harmony').value; if(h) cfg.harmonyComplexity=h;
+  if($('loopMode').checked) cfg.loopMode=true;
+  if($('callResponse').checked) cfg.callResponse=true;
+  if(cfg.energyCurve===EnergyCurve.CUSTOM) cfg.customCurve=CUSTOM_CURVE_DEFAULT;
+  return cfg;
+}
+function applyConfigToControls(cfg){
+  $('seed').value=cfg.seed; $('intent').value=cfg.intent; $('curve').value=cfg.energyCurve;
+  $('root').value=String(cfg.scale.root); $('mode').value=cfg.scale.mode;
+  $('voices').value=String(cfg.voices); $('bars').value=String(cfg.bars);
+  if(cfg.density) $('density').value=cfg.density;
+  if(cfg.harmonyComplexity) $('harmony').value=cfg.harmonyComplexity;
+  $('loopMode').checked=!!cfg.loopMode; $('callResponse').checked=!!cfg.callResponse;
 }
 
-function stopProgressLoop() {
-  if (progressRaf) { cancelAnimationFrame(progressRaf); progressRaf = 0; }
+// ---------- generation ----------
+function generate(){
+  appState.set({error:null});
+  const cfg=readConfig();
+  let out=null;
+  try { out=createAnthemEngine(cfg).generate(); }
+  catch(e){ appState.set({error:'Config error: '+(e&&e.message?e.message:String(e))}); toast('Config error','error'); return; }
+  if(!out){ appState.set({error:'Solver failed for this config. Try another seed.'}); toast('Solver failed','error'); return; }
+  history.push({config:cfg,out}); if(history.length>10)history.shift();
+  historyIndex=history.length-1;
+  renderCurrent();
+  const meta=out.metadata||{};
+  toast('Anthem generated · seed '+cfg.seed+' · '+(meta.generationTimeMs||0)+'ms','ok');
+}
+function navigate(delta){
+  const next=historyIndex+delta;
+  if(next<0||next>=history.length) return;
+  historyIndex=next; renderCurrent();
+}
+function currentEntry(){ return historyIndex>=0&&historyIndex<history.length?history[historyIndex]:null; }
+
+function renderCurrent(){
+  const entry=currentEntry(); if(!entry) return;
+  stopPlayback();
+  applyConfigToControls(entry.config);
+  renderRoll(entry.out,entry.config);
+  renderStats(entry.out,entry.config);
+  renderPlayFrom(entry.config);
+  renderPresets(entry.out);
+  const meta=entry.out.metadata||{};
+  $('trackTitle').textContent=(entry.config.intent||'')+' · seed '+meta.seed;
+  $('trackMeta').textContent=(meta.bars||entry.config.bars)+' bars · '+(meta.voices||entry.config.voices)+' voices · '+(meta.generationTimeMs||0)+'ms';
+  $('play').disabled=false;
+  const q=meta.artisticQuality!==undefined?meta.artisticQuality:(meta.memorabilityScore!==undefined?meta.memorabilityScore:null);
+  $('qualityBadge').textContent = q!==null? (q+'/100') : (meta.quality||'—');
+  updateNavButtons();
+}
+function updateNavButtons(){
+  $('prev').disabled = historyIndex<=0;
+  $('next').disabled = historyIndex>=history.length-1;
+  $('histLabel').textContent = history.length? (historyIndex+1)+'/'+history.length : '0/0';
+}
+function renderPlayFrom(cfg){
+  const sel=$('playFrom'); const prev=parseInt(sel.value,10)||1; sel.innerHTML='';
+  for(let b=1;b<=cfg.bars;b++){ const o=document.createElement('option'); o.value=String(b); o.textContent=String(b); sel.appendChild(o); }
+  sel.value=String(Math.min(prev,cfg.bars));
 }
 
-// Seek: restart playback from the selected progress percentage.
-function seekToProgress() {
-  const entry = currentEntry();
-  if (!entry || !synth) return;
-  const pb = document.getElementById('progressBar');
-  const pct = parseFloat(pb.value) || 0;
-  const totalBeats = entry.out.metadata.bars * 4;
-  const fromBeat = Math.floor((pct / 100) * totalBeats);
-  document.getElementById('playFrom').value = String(fromBeat);
+// ---------- piano roll ----------
+function renderRoll(out, cfg){
+  const cv=$('roll'); if(!cv) return;
+  const dpr=window.devicePixelRatio||1;
+  const rect=cv.getBoundingClientRect();
+  cv.width=Math.floor(rect.width*dpr); cv.height=Math.floor(rect.height*dpr);
+  const g=cv.getContext('2d'); g.setTransform(dpr,0,0,dpr,0,0);
+  const W=rect.width,H=rect.height;
+  g.clearRect(0,0,W,H);
+  const bg=g.createLinearGradient(0,0,0,H); bg.addColorStop(0,'#0b0f1e'); bg.addColorStop(1,'#070a14');
+  g.fillStyle=bg; g.fillRect(0,0,W,H);
+  const notes=out.events.filter(e=>e.type==='note');
+  const beats=Math.max(1,cfg.bars*4);
+  if(notes.length===0) return;
+  let minP=127,maxP=0;
+  for(const n of notes){ if(n.data.pitch<minP)minP=n.data.pitch; if(n.data.pitch>maxP)maxP=n.data.pitch; }
+  minP=Math.max(0,minP-2); maxP=Math.min(127,maxP+2);
+  const rows=maxP-minP+1, rowH=H/rows;
+  g.strokeStyle='rgba(255,255,255,0.05)'; g.lineWidth=1;
+  for(let b=0;b<=cfg.bars;b++){ const x=(b*4/beats)*W; g.beginPath(); g.moveTo(x,0); g.lineTo(x,H); g.stroke(); }
+  for(const n of notes){
+    const x=(n.timestamp/beats)*W;
+    const w=Math.max(3,(n.duration/beats)*W-1.5);
+    const y=H-(n.data.pitch-minP+1)*rowH+0.5;
+    const h=Math.max(2.5,rowH-1.5);
+    g.fillStyle=VOICE_COLORS[n.channel%4];
+    g.globalAlpha=0.35+(n.data.velocity/127)*0.6;
+    g.beginPath(); g.roundRect(x,y,w,h,2.5); g.fill();
+    g.globalAlpha=1;
+  }
+}
+function rollHit(mx,my,out,cfg){
+  const cv=$('roll'); const rect=cv.getBoundingClientRect();
+  const W=rect.width,H=rect.height; const beats=Math.max(1,cfg.bars*4);
+  const notes=out.events.filter(e=>e.type==='note');
+  let minP=127,maxP=0; for(const n of notes){ if(n.data.pitch<minP)minP=n.data.pitch; if(n.data.pitch>maxP)maxP=n.data.pitch; }
+  minP=Math.max(0,minP-2); maxP=Math.min(127,maxP+2); const rows=maxP-minP+1,rowH=H/rows;
+  for(let i=notes.length-1;i>=0;i--){
+    const n=notes[i];
+    const x=(n.timestamp/beats)*W, w=Math.max(3,(n.duration/beats)*W-1.5);
+    const y=H-(n.data.pitch-minP+1)*rowH+0.5, h=Math.max(2.5,rowH-1.5);
+    if(mx>=x&&mx<=x+w&&my>=y&&my<=y+h) return n;
+  }
+  return null;
+}
+
+// ---------- stats ----------
+function renderStats(out,cfg){
+  const meta=out.metadata||{};
+  const items=[
+    ['events',out.events.length],['bars',meta.bars||cfg.bars],['voices',meta.voices||cfg.voices],
+    ['time',(meta.generationTimeMs||0)+'ms'],['memorability',meta.memorabilityScore!=null?meta.memorabilityScore+'/100':'—'],
+    ['quality',meta.quality||'—'],
+  ];
+  $('stats').innerHTML=items.map((it)=>'<div class="stat"><span class="k">'+it[0]+'</span><span class="v">'+it[1]+'</span></div>').join('');
+}
+function renderPresets(out){
+  const meta=out.metadata||{};
+  $('infoPanel').innerHTML='<div class="info-line">intent: <b>'+(meta.intent||'—')+'</b></div>';
+}
+
+// ---------- transport ----------
+function setPlaying(on){
+  isPlaying=on; appState.set({playing:on});
+  $('play').textContent=on?'⏹ STOP':'▶ PLAY';
+  $('play').classList.toggle('playing',on);
+  if(on) startProgressLoop(); else stopProgressLoop();
+}
+async function play(){
+  const entry=currentEntry();
+  if(!entry){ toast('Generate an anthem first','info'); return; }
+  const s=ensureSynth();
+  if(isPlaying){ stopPlayback(); return; }
+  const fromBar=parseInt($('playFrom').value,10)||1;
+  const fromBeat=(fromBar-1)*4;
+  try {
+    const dur=await s.playEvents(entry.out.events, entry.config.bpm||140, fromBeat);
+    playDurationSec=dur||0; playStartCtxTime=s.ctx.currentTime;
+    setPlaying(true);
+  } catch(e){
+    appState.set({error:'Playback failed: '+(e&&e.message?e.message:String(e))});
+    toast('Playback failed','error');
+  }
+}
+function stopPlayback(){ if(synth) synth.stop(); setPlaying(false); setProgress(0); }
+function startProgressLoop(){
+  stopProgressLoop();
+  const step=()=>{
+    if(!isPlaying) return;
+    const el=performance.now();
+    const ctxT=synth&&synth.ctx?synth.ctx.currentTime:0;
+    const pos=Math.max(0,ctxT-playStartCtxTime);
+    const frac=playDurationSec>0?Math.min(1,pos/playDurationSec):0;
+    setProgress(frac);
+    progressRaf=requestAnimationFrame(step);
+  };
+  progressRaf=requestAnimationFrame(step);
+}
+function stopProgressLoop(){ if(progressRaf)cancelAnimationFrame(progressRaf); progressRaf=0; }
+function setProgress(frac){
+  const bar=$('progressBar'); const fill=$('progressFill');
+  if(bar) bar.value=String(Math.round(frac*1000)/10);
+  if(fill) fill.style.width=(frac*100).toFixed(2)+'%';
+  const cur=frac*playDurationSec;
+  $('posLabel').textContent=fmtT(cur)+' / '+fmtT(playDurationSec);
+}
+function fmtT(s){ if(!isFinite(s))s=0; const m=Math.floor(s/60); const r=s-m*60; return m+':'+(r<10?'0':'')+r.toFixed(1); }
+function seek(){
+  const entry=currentEntry(); if(!entry||!isPlaying) return;
+  const frac=parseFloat($('progressBar').value)/100;
+  const beat=frac*(entry.config.bars*4);
+  const bar=Math.max(1,Math.floor(beat/4)+1);
+  $('playFrom').value=String(bar);
   play();
 }
 
-function auditionNote(pitch, velocity) {
-  const s = ensureSynth();
-  s.playNote(pitch, velocity);
-  setStatus('audition: ' + pitchName(pitch) + (s.ctx.state === 'running' ? '' : ' (audio blocked!)'));
+// ---------- visualizer ----------
+function startViz(){
+  if(vizRaf) return;
+  const cv=$('viz'); if(!cv) return;
+  const loop=()=>{
+    vizRaf=requestAnimationFrame(loop);
+    const dpr=window.devicePixelRatio||1; const rect=cv.getBoundingClientRect();
+    cv.width=Math.floor(rect.width*dpr); cv.height=Math.floor(rect.height*dpr);
+    const g=cv.getContext('2d'); g.setTransform(dpr,0,0,dpr,0,0);
+    const W=rect.width,H=rect.height; g.clearRect(0,0,W,H);
+    const t=performance.now()/600;
+    const bars=48;
+    for(let i=0;i<bars;i++){
+      const amp=isPlaying?(0.3+0.7*Math.abs(Math.sin(i*0.35+t)*Math.cos(i*0.13-t*0.7))):0.12;
+      const h=amp*(H-8);
+      const hue=(i/bars)*280+180;
+      g.fillStyle='hsla('+hue+',90%,62%,0.85)';
+      const x=(i/bars)*W; const bw=W/bars-2;
+      g.beginPath(); g.roundRect(x,H-h,bw,h,2); g.fill();
+    }
+  };
+  loop();
 }
 
-// Quick audibility check: C major triad via synth.testSound(), independent of any generation.
-async function testSound() {
-  try {
-    setStatus('unlocking audio...');
-    const s = ensureSynth();
-    setStatus('playing test tones...');
-    const duration = await s.testSound();
-    setStatus(s.ctx.state === 'running'
-      ? 'audio OK - 3 test tones (' + duration.toFixed(1) + 's)'
-      : 'audio BLOCKED by browser autoplay policy - click again');
-  } catch (e) {
-    setStatus('AUDIO BLOCKED - click again to unlock');
-    console.error(e);
-  }
+// ---------- export ----------
+function midiFileName(cfg){ return 'psy-anthem-seed'+cfg.seed+'-'+cfg.intent+'.mid'; }
+function doDownloadMidi(){ const e=currentEntry(); if(!e)return; downloadBlob(midiFromOutput(e.out,e.config.bpm||140), midiFileName(e.config),'audio/midi'); toast('MIDI exported','ok'); }
+function doDownloadJson(){ const e=currentEntry(); if(!e)return; downloadBlob(new TextEncoder().encode(JSON.stringify(e.out,null,2)),'psy-anthem-seed'+e.config.seed+'.json','application/json'); toast('JSON exported','ok'); }
+async function doDownloadWav(){
+  const e=currentEntry(); if(!e)return; const s=ensureSynth();
+  toast('Rendering WAV offline…','info');
+  try{
+    const bytes=await s.renderToWav(e.out.events,e.config.bpm||140,0);
+    if(bytes){ downloadBlob(bytes,'psy-anthem-seed'+e.config.seed+'.wav','audio/wav'); toast('WAV exported','ok'); }
+    else { toast('WAV render not supported here','error'); }
+  }catch(err){ toast('WAV render failed','error'); }
 }
-
-// ---------- export actions ----------
-function copyConfig() {
-  const entry = currentEntry();
-  if (!entry) return;
-  const text = JSON.stringify(entry.config, null, 2);
-  if (navigator.clipboard && navigator.clipboard.writeText) {
-    navigator.clipboard.writeText(text).then(() => flash('copyConfig', 'COPIED'));
-  } else {
-    const ta = document.createElement('textarea');
-    ta.value = text;
-    document.body.appendChild(ta);
-    ta.select();
-    document.execCommand('copy');
-    ta.remove();
-    flash('copyConfig', 'COPIED');
-  }
-}
-
-function flash(id, label) {
-  const el = document.getElementById(id);
-  const original = el.dataset.label || el.textContent;
-  el.dataset.label = original;
-  el.textContent = label;
-  setTimeout(() => { el.textContent = original; }, 1200);
-}
-
-function midiFileName(config) {
-  return 'psy-anthem-' + config.seed + '-' + config.intent + '.mid';
-}
-
-function downloadMidi() {
-  const entry = currentEntry();
-  if (!entry) return;
-  const bytes = midiFromOutput(entry.out, entry.config.bpm ?? 140);
-  downloadBlob(bytes, midiFileName(entry.config), 'audio/midi');
-  flash('downloadMidi', 'SAVED');
-}
-
-function downloadJson() {
-  const entry = currentEntry();
-  if (!entry) return;
-  const text = JSON.stringify(entry.out, null, 2);
-  downloadBlob(new TextEncoder().encode(text), 'psy-anthem-' + entry.config.seed + '.json', 'application/json');
-  flash('downloadJson', 'SAVED');
-}
-
-// Offline-render the anthem to a WAV file and download it.
-async function downloadWav() {
-  const entry = currentEntry();
-  if (!entry) { showError('Generate an anthem first.'); return; }
-  try {
-    setStatus('rendering audio offline...');
-    const s = ensureSynth();
-    s.setPresets(getCurrentPresets());
-    applyMacros();
-    const wav = await s.renderToWav(entry.out.events, entry.config.bpm ?? 140, 0);
-    if (!wav) { showError('Offline rendering not supported in this browser.'); return; }
-    downloadBlob(wav, 'psy-anthem-' + entry.config.seed + '.wav', 'audio/wav');
-    setStatus('WAV exported (' + Math.round(wav.length / 1024) + ' KB)');
-  } catch (e) {
-    showError('WAV render error: ' + e.message);
-  }
-}
-
-// Pause / resume the live audio context.
-function pausePlayback() {
-  if (!synth) return;
-  if (synth.ctx.state === 'running') {
-    synth.ctx.suspend();
-    setStatus('paused');
-  } else if (synth.ctx.state === 'suspended') {
-    synth.ctx.resume();
-    setStatus('resumed');
-  }
-}
-
-// ---------- errors ----------
-function showError(msg) {
-  appState.set({ error: msg, status: 'error' });
-  const el = document.getElementById('err');
-  el.textContent = msg;
-  el.style.display = 'block';
-}
-function hideError() {
-  appState.set({ error: null, status: 'ready' });
-  document.getElementById('err').style.display = 'none';
+async function copyConfig(){
+  const e=currentEntry(); const cfg=e?e.config:readConfig();
+  try{ await navigator.clipboard.writeText(JSON.stringify(cfg,null,2)); toast('Config copied','ok'); }
+  catch(err){ toast('Copy blocked by browser','error'); }
 }
 
 // ---------- init ----------
-function init() {
-  initControls();
-  document.getElementById('generate').addEventListener('click', generate);
-  document.getElementById('random').addEventListener('click', () => {
-    document.getElementById('seed').value = String(Math.floor(Math.random() * 1000000));
-    generate();
-  });
-  initPresetDropdowns();
-  for (const id of ['masterCutoff', 'reverbSend', 'delaySend', 'masterDrive']) {
-    document.getElementById(id).addEventListener('input', applyMacros);
+function buildPresetSelects(){
+  const cats={ lead:PRESET_CATEGORIES.lead, harmony:PRESET_CATEGORIES.harmony, counter:PRESET_CATEGORIES.counter, bass:PRESET_CATEGORIES.bass };
+  const keys=['lead','harmony','counter','bass'];
+  for(let ch=0; ch<4; ch++){
+    const sel=$('preset-'+keys[ch]); if(!sel) continue;
+    sel.innerHTML='';
+    const list=cats[keys[ch]]||Object.keys(PRESETS);
+    for(const id of list){ const o=document.createElement('option'); o.value=id; o.textContent=PRESETS[id]?PRESETS[id].name:id; sel.appendChild(o); }
+    if(DEFAULT_VOICE_PRESETS[ch]) sel.value=DEFAULT_VOICE_PRESETS[ch];
+    sel.addEventListener('change',()=>{ const s=ensureSynth(); const patch={}; patch[ch]=sel.value; s.setPresets(patch); });
   }
-  document.getElementById('play').addEventListener('click', play);
-  document.getElementById('stop').addEventListener('click', stopPlayback);
-  document.getElementById('testSound').addEventListener('click', testSound);
-  document.getElementById('prev').addEventListener('click', () => navigate(-1));
-  document.getElementById('next').addEventListener('click', () => navigate(1));
-  document.getElementById('copyConfig').addEventListener('click', copyConfig);
-  document.getElementById('downloadMidi').addEventListener('click', downloadMidi);
-  document.getElementById('downloadJson').addEventListener('click', downloadJson);
-  document.getElementById('downloadWav').addEventListener('click', downloadWav);
-  document.getElementById('pause').addEventListener('click', pausePlayback);
-  document.getElementById('progressBar').addEventListener('change', seekToProgress);
-  for (const id of ['seed', 'intent', 'curve', 'root', 'mode', 'voices', 'bars', 'density', 'harmony', 'loopMode', 'callResponse']) {
-    document.getElementById(id).addEventListener('change', generate);
-  }
-  for (let ch = 0; ch < 4; ch++) {
-    document.getElementById('trackVol' + ch).addEventListener('input', applyMacros);
-  }
-  setStatus('ready - GENERATE then PLAY (or TEST SOUND to check your speakers)');
-  generate();
 }
-
+function init(){
+  buildBasicSelects();
+  buildPresetSelects();
+  $('generate').addEventListener('click',generate);
+  $('random').addEventListener('click',()=>{ $('seed').value=String(Math.floor(Math.random()*2147483647)); generate(); });
+  $('play').addEventListener('click',play);
+  $('stop').addEventListener('click',stopPlayback);
+  $('testSound').addEventListener('click',()=>{ const s=ensureSynth(); s.testSound(); });
+  $('prev').addEventListener('click',()=>navigate(-1));
+  $('next').addEventListener('click',()=>navigate(1));
+  $('progressBar').addEventListener('change',seek);
+  $('downloadMidi').addEventListener('click',doDownloadMidi);
+  $('downloadJson').addEventListener('click',doDownloadJson);
+  $('downloadWav').addEventListener('click',doDownloadWav);
+  $('copyConfig').addEventListener('click',copyConfig);
+  ['masterCutoff','reverbSend','delaySend','masterDrive'].forEach(id=>$(id).addEventListener('input',()=>{ ensureSynth(); applyMacros(); }));
+  for(let ch=0;ch<4;ch++){ const el=$('trackVol'+ch); if(el) el.addEventListener('input',()=>{ ensureSynth(); applyTrackVolumes(); }); }
+  const roll=$('roll');
+  roll.addEventListener('click',(ev)=>{
+    const entry=currentEntry(); if(!entry)return;
+    const rect=roll.getBoundingClientRect();
+    const n=rollHit(ev.clientX-rect.left,ev.clientY-rect.top,entry.out,entry.config);
+    if(n){ const s=ensureSynth(); s.playNote(n.data.pitch,n.data.velocity); }
+  });
+  window.addEventListener('keydown',(ev)=>{
+    const tag=ev.target&&ev.target.tagName;
+    if(tag==='INPUT'||tag==='SELECT'||tag==='TEXTAREA') return;
+    if(ev.code==='Space'){ ev.preventDefault(); play(); }
+    else if(ev.key==='g'||ev.key==='G'){ generate(); }
+  });
+  window.addEventListener('resize',()=>{ const e=currentEntry(); if(e)renderRoll(e.out,e.config); });
+  startViz();
+  setStatusReady();
+}
+function setStatusReady(){ appState.set({status:'ready'}); }
 init();
