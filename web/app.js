@@ -1,11 +1,11 @@
-// PSY ANTHEM - web/app.js  (Hyperstage UI v3.6)
+// PSY ANTHEM - web/app.js  (Hyperstage UI v3.7)
 // Presentation layer over the WHAT engine (engine.mjs) and HOW synth (synth.js).
 import { createAnthemEngine, AnthemIntent, EnergyCurve } from './engine.mjs';
 import { PsySynthBrowser, midiToFreq } from './synth.js';
 import { PRESETS, PRESET_CATEGORIES, DEFAULT_VOICE_PRESETS } from './presets.js';
 import { createStateStore } from './state.js';
 
-console.info('[PSY ANTHEM] Hyperstage v3.6 loaded - app.js module OK');
+console.info('[PSY ANTHEM] Hyperstage v3.7 loaded - app.js module OK');
 
 // ---------- shell state store + global error boundaries ----------
 export const appState = createStateStore({ status: 'ready', error: null, playing: false });
@@ -101,7 +101,7 @@ const dbgState={audio:'—',last:'boot'};
 function dbg(msg){
   dbgState.last=msg;
   const el=$('debugStrip');
-  if(el) el.textContent='Hyperstage v3.6 · audio: '+dbgState.audio+' · last: '+msg;
+  if(el) el.textContent='Hyperstage v3.7 · audio: '+dbgState.audio+' · last: '+msg;
 }
 
 // ---------- toast / status ----------
@@ -508,9 +508,9 @@ function init(){
   $('stop').addEventListener('click',stopPlayback);
   $('testSound').addEventListener('click',async ()=>{
     const btn=$('testSound');
-    rawBeep(s);
     const s=ensureSynth();
     try{ if(s.ctx.state==='suspended') await s.ctx.resume(); }catch(e){ /* blocked */ }
+    rawBeep(s);
     try{ await s.testSound(); }catch(e){ /* ignore */ }
     const ok=s.ctx && s.ctx.state==='running';
     dbgState.audio=s.ctx?String(s.ctx.state):'—';
