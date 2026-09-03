@@ -150,46 +150,24 @@ export function audioBufferToWav(buffer) {
 }
 
 // Short decaying white-noise burst for physical-modeling excitation.
+export function makeNoiseBurst(ctx, seconds = 0.02) {
+  const rate = ctx.sampleRate || 44100;
+  const length = Math.max(1, Math.floor(rate * seconds));
+  const buffer = ctx.createBuffer(1, length, rate);
+  const data = buffer.getChannelData(0);
+  for (let i = 0; i < length; i++) {
+    data[i] = (Math.random() * 2 - 1) * (1 - i / length);
+  }
+  return buffer;
+}
+
 // ---------- Drum engine (channel 9 = drums, GM-standard) ----------
 // Drum pitch map (GM): kick=36, snare=38, clap=39, hatClosed=42, hatOpen=46,
 // percLow=43, percHigh=50.
 
-export function schedulePerc(ctx, dest, time, vel, pitch) {
-  const osc = ctx.createOscillator();
-  osc.type = 'square';
-  const base = pitch || 400;
-  osc.frequency.setValueAtTime(base, time);
-  osc.frequency.exponentialRampToValueAtTime(base * 0.5, time + 0.08);
-  const bp = ctx.createBiquadFilter();
-  bp.type = 'bandpass'; bp.frequency.value = base; bp.Q.value = 4;
-  const g = ctx.createGain();
-  g.gain.setValueAtTime(vel * 0.4, time);
-  g.gain.exponentialRampToValueAtTime(0.001, time + 0.1);
-  osc.connect(bp); bp.connect(g); g.connect(dest);
-  osc.start(time); osc.stop(time + 0.12);
-  return [osc];
-}
-
-// Minimal fallback so the engine never crashes without an injected library.
-export const FALLBACK_PRESETS = {
-  'basic-lead': {
-    name: 'Basic Lead',
-    oscillators: [{ type: 'sawtooth', detune: 0, gain: 0.8 }],
-    filter: { type: 'lowpass', cutoff: 3000, resonance: 4, envelope: null },
-    envelope: { attack: 0.01, decay: 0.1, sustain: 0.6, release: 0.2 },
-    fx: { distortion: 0.1, delaySend: 0.2, reverbSend: 0.2 },
-  },
-};
-export const FALLBACK_DEFAULTS = { 0: 'basic-lead', 1: 'basic-lead', 2: 'basic-lead', 3: 'basic-lead' };
 
 
-function makeNoiseBurst(ctx, duration) {
-  const len = Math.max(1, Math.ceil(ctx.sampleRate * duration));
-  const buf = ctx.createBuffer(1, len, ctx.sampleRate);
-  const data = buf.getChannelData(0);
-  for (let i = 0; i < len; i++) data[i] = Math.random() * 2 - 1;
-  return buf;
-}
+
 
 export class PsySynthBrowser {
   // presetLibrary: { PRESETS, defaults } - injected, no static imports.
@@ -744,13 +722,66 @@ export class PsySynthBrowser {
   }
 
   _scheduleNote(note, startTime) {
-    if (note.channel === 9) return; // skip drum channel (melody-focused)
+    if (note.channel === 9) return; // drum channel removed (melody-focused)
     const presetId = this.presets[note.channel] || this.presets[0] || Object.keys(this.PRESETS)[0];
     const preset = this.PRESETS[presetId] || FALLBACK_PRESETS['basic-lead'];
     this._scheduleVoice(note, preset, startTime);
   }
 
+  // ---------- transport ----------
+  isValidEvent(event) {
+    if (!event || event.type !== 'note' || !event.data) return false;
+    const p = event.data.pitch;
+    const v = event.data.velocity;
+    if (typeof p !== 'number' || p < 0 || p > 127) return false;
+    if (typeof v !== 'number' || v < 0 || v > 127) return false;
+    if (typeof event.timestamp !== 'number' || event.timestamp < 0) return false;
+    if (typeof event.duration !== 'number' || event.duration <= 0) return false;
+    return true;
+  }
 
+  // Play a full AnthemOutput. fromBeat lets the scrubber start mid-piece.
+  // Async: awaits the AudioContext unlock (autoplay policy) before scheduling.
+  // Robust: validates events up front and isolates per-note scheduling errors.
+  async playEvents(events, bpm = 140, fromBeat = 0) {
+    this.stop();
+    if (this.ctx.state === 'suspended') {
+      try { await this.ctx.resume(); } catch (e) { /* context may still be locked */ }
+    }
+
+    const valid = Array.isArray(events) ? events.filter((e) => this.isValidEvent(e)) : [];
+    if (valid.length === 0) {
+      this.lastNoteCount = 0;
+      return 0;
+    }
+
+    this.setTempo(bpm);
+    const plan = scheduleEvents(valid, bpm, fromBeat);
+
+    // ---- Full upfront scheduling ----
+    // For a composition engine every note is known ahead of time, so we schedule
+    // them all up front. Web Audio is designed for this and it avoids the
+    // setInterval-throttling gaps that lookahead scheduling introduced.
+    this._plan = plan.notes;
+    this._t0 = this.ctx.currentTime + 0.06;
+    this._scheduledCount = 0;
+    for (const note of plan.notes) {
+      try {
+        this._scheduleNote(note, this._t0 + Math.max(0, note.startAt));
+        this._scheduledCount++;
+      } catch (err) {
+        console.warn('psy-anthem: failed to schedule one note:', err);
+      }
+    }
+
+    this.lastNoteCount = plan.notes.length;
+    if (plan.totalSeconds > 0 && this.onFinish) {
+      this._finishTimer = setTimeout(() => {
+        if (this.onFinish) this.onFinish();
+      }, (plan.totalSeconds + 0.4) * 1000);
+    }
+    return plan.totalSeconds;
+  }
 
   // Audibility check: three staggered tones (C major triad). Returns total seconds.
   async testSound() {
