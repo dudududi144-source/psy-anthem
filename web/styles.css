@@ -291,3 +291,19 @@ input[type=range]::-moz-range-thumb{
   background:rgba(46,230,255,.06); border-bottom:1px solid rgba(46,230,255,.18);
   text-align:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
 }
+
+.check-btn{grid-column:span 2; border-color:rgba(46,230,255,.5); color:var(--cyan)}
+.ac-banner{
+  max-width:1560px; margin:0 auto; padding:14px 22px;
+  background:rgba(20,24,54,.92); border-bottom:1px solid rgba(46,230,255,.35);
+  display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:16px;
+}
+.ac-msg{font-size:14.5px; font-weight:600; color:var(--txt); text-align:center}
+.ac-actions{display:flex; gap:10px}
+.ac-btn{
+  padding:9px 18px; border-radius:10px; border:1px solid var(--stroke2); cursor:pointer;
+  font-family:var(--sans); font-size:13.5px; font-weight:700; background:var(--glass2); color:var(--txt);
+}
+.ac-btn.yes{border-color:rgba(61,255,160,.5); color:var(--lime)}
+.ac-btn.no{border-color:rgba(255,77,109,.5); color:#ff8fa3}
+.ac-btn:hover{transform:translateY(-1px)}

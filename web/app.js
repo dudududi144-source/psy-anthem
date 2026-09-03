@@ -1,11 +1,11 @@
-// PSY ANTHEM - web/app.js  (Hyperstage UI v3.7)
+// PSY ANTHEM - web/app.js  (Hyperstage UI v3.8)
 // Presentation layer over the WHAT engine (engine.mjs) and HOW synth (synth.js).
 import { createAnthemEngine, AnthemIntent, EnergyCurve } from './engine.mjs';
 import { PsySynthBrowser, midiToFreq } from './synth.js';
 import { PRESETS, PRESET_CATEGORIES, DEFAULT_VOICE_PRESETS } from './presets.js';
 import { createStateStore } from './state.js';
 
-console.info('[PSY ANTHEM] Hyperstage v3.7 loaded - app.js module OK');
+console.info('[PSY ANTHEM] Hyperstage v3.8 loaded - app.js module OK');
 
 // ---------- shell state store + global error boundaries ----------
 export const appState = createStateStore({ status: 'ready', error: null, playing: false });
@@ -101,7 +101,7 @@ const dbgState={audio:'—',last:'boot'};
 function dbg(msg){
   dbgState.last=msg;
   const el=$('debugStrip');
-  if(el) el.textContent='Hyperstage v3.7 · audio: '+dbgState.audio+' · last: '+msg;
+  if(el) el.textContent='Hyperstage v3.8 · audio: '+dbgState.audio+' · last: '+msg;
 }
 
 // ---------- toast / status ----------
@@ -127,6 +127,50 @@ function rawBeep(s){
   g.gain.exponentialRampToValueAtTime(0.0001,t+0.6);
   o.connect(g); g.connect(s.ctx.destination);
   o.start(t); o.stop(t+0.65);
+}
+
+function checkTones(s){
+  const t=s.ctx.currentTime;
+  const freqs=[660,880];
+  for(let i=0;i<2;i++){
+    const o=s.ctx.createOscillator(); const g=s.ctx.createGain();
+    o.type='sine'; o.frequency.value=freqs[i];
+    const st=t+i*0.55;
+    g.gain.setValueAtTime(0.0001,st);
+    g.gain.exponentialRampToValueAtTime(0.5,st+0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001,st+0.5);
+    o.connect(g); g.connect(s.ctx.destination);
+    o.start(st); o.stop(st+0.55);
+  }
+}
+function audioCheckFlow(){
+  const banner=$('audioCheckBanner');
+  const msg=$('audioCheckMsg');
+  if(!banner) return;
+  const s=ensureSynth();
+  try{ if(s.ctx.state==='suspended') s.ctx.resume().catch(()=>{}); }catch(e){ /* blocked */ }
+  checkTones(s);
+  dbgState.audio=s.ctx?String(s.ctx.state):'—';
+  dbg('AUDIO CHECK · two-tone beep sent · ctx='+dbgState.audio);
+  console.info('[PSY ANTHEM] AUDIO CHECK: two-tone beep sent to speakers · ctx=', dbgState.audio);
+  if(msg) msg.textContent='🔊 שני צפצופים נשלחו (660+880 הרץ) — שמעת אותם?';
+  banner.hidden=false;
+}
+function audioCheckAnswer(yes){
+  const msg=$('audioCheckMsg');
+  const banner=$('audioCheckBanner');
+  if(yes){
+    dbg('AUDIO CHECK: user HEARD the beep');
+    console.info('[PSY ANTHEM] AUDIO CHECK: user heard the beep - audio path OK');
+    if(msg) msg.textContent='✅ מעולה! השמע עובד — לחץ ▶ PLAY ותהנה';
+    toast('🔊 audio confirmed — press ▶ PLAY','ok');
+    setTimeout(()=>{ if(banner) banner.hidden=true; },4000);
+  }else{
+    dbg('AUDIO CHECK: user heard NOTHING - environment issue');
+    console.warn('[PSY ANTHEM] AUDIO CHECK: user heard nothing while ctx=', dbgState.audio, '- tab/site mute, OS mixer, output device, or an extension blocking audio');
+    if(msg) msg.textContent='❌ הדפדפן/מערכת ההפעלה משתיקים את העמוד: 1) קליק ימני על הטאב → בטל השתקה  2) סמל רמקול בשורת הכתובת  3) מיקסר OS  4) נסה חלון פרטי (מבטל תוספים)';
+    toast('השתקה מחוץ לאתר — ראה הנחיות בפס','error');
+  }
 }
 
 // ---------- synth ----------
@@ -506,6 +550,10 @@ function init(){
   $('random').addEventListener('click',()=>{ $('seed').value=String(Math.floor(Math.random()*2147483647)); generate(); });
   $('play').addEventListener('click',play);
   $('stop').addEventListener('click',stopPlayback);
+  const acBtn=$('audioCheck');
+  if(acBtn) acBtn.addEventListener('click',audioCheckFlow);
+  const acYes=$('audioCheckYes'); if(acYes) acYes.addEventListener('click',()=>audioCheckAnswer(true));
+  const acNo=$('audioCheckNo'); if(acNo) acNo.addEventListener('click',()=>audioCheckAnswer(false));
   $('testSound').addEventListener('click',async ()=>{
     const btn=$('testSound');
     const s=ensureSynth();
