@@ -1,5 +1,16 @@
 # Changelog
 
+## 13.5.0 - Drastically simplify the mix (fix muddy/torture sound)
+
+The sound was still a muddy mess (user: 'torture to listen to'). Root cause:
+too many overlapping voices. Fixed by drastically simplifying:
+- Removed the harmonizer completely (it added a voice on top of every lead
+  note = mud).
+- Pad volume lowered drastically (lush-wide 0.060 -> 0.035, airy-heaven ->
+  0.030, analog-warm 0.10 -> 0.05) so pads are a soft bed, not competing.
+
+
+
 ## 13.4.0 - Fix muddy/overlapping sound (mix balance)
 
 The sound was a muddy mess because too many voices overlapped at full volume.
