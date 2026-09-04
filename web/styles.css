@@ -148,3 +148,13 @@ footer{max-width:1320px; margin:0 auto; padding:6px 24px 26px; color:#5b6284; fo
 @media (prefers-reduced-motion: reduce){
   .logo span{animation:none}
 }
+
+.kit-wrap{margin-top:12px; padding-top:10px; border-top:1px dashed var(--line)}
+.kit-title{font-size:11px; letter-spacing:.18em; text-transform:uppercase; color:var(--dim); margin-bottom:8px}
+.kit{display:flex; flex-wrap:wrap; gap:8px}
+.kit-chip{
+  padding:6px 12px; border-radius:999px; font-size:12.5px; color:var(--txt);
+  border:1px solid var(--kc, var(--line)); background:rgba(8,11,22,.7);
+  box-shadow:0 0 10px color-mix(in srgb, var(--kc) 25%, transparent);
+}
+.kit-chip b{color:var(--kc); text-transform:uppercase; font-size:10.5px; letter-spacing:.12em; margin-right:4px}

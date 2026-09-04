@@ -1,4 +1,4 @@
-// PSY ANTHEM — render-core.js (v9.0 "sound library")
+// PSY ANTHEM — render-core.js (v9.1 "sound library + draft preview")
 // Commercial-trance offline renderer with a deterministic SOUND LIBRARY:
 // 25 distinct sounds across lead/pad/pluck/bass roles. Each song picks its
 // sounds from intent-curated pools using the song seed - same seed+intent
@@ -79,6 +79,16 @@ const LIB = {
 
 // Intent-curated pools: the sounds chosen for a genre are curated to serve
 // each other (e.g. dark-psy pairs squelch bass + acid pluck + dark pad).
+const SOUND_NAMES = {
+  lead: ['euphoric-saw', 'full-on-grit', 'acid-lead', 'dreamy-lead', 'pluck-lead', 'dark-rave', 'crystal-lead', 'uplifting-gate'],
+  pad: ['lush-wide', 'dark-drift', 'airy-heaven', 'gated-rhythm', 'analog-warm'],
+  pluck: ['acid-303', 'trance-gate', 'bell-stab', 'acid-squelch', 'arp-pluck', 'dark-stab'],
+  bass: ['rolling-psy', 'offbeat-kbbb', 'acid-bass', 'sub-deep', 'gritty-neuro', 'forest-squelch'],
+};
+for (const role of Object.keys(LIB)) {
+  for (let i = 0; i < LIB[role].length; i++) LIB[role][i].name = SOUND_NAMES[role][i];
+}
+
 const INTENT_POOLS = {
   'euphoric-trance':     { lead: [0, 1, 3], pad: [0, 2], pluck: [1, 4], bass: [0, 1] },
   'progressive':         { lead: [3, 4],    pad: [4, 0], pluck: [1],    bass: [0, 3] },
@@ -267,7 +277,17 @@ function stereoToWav16(channels, sr) {
 function render(events, bpm, onProgress, opts) {
   const sr = 44100;
   const spb = 60 / Math.max(1, bpm);
-  const sounds = (opts && opts.intent) ? selectSounds(opts.intent, (opts.seed | 0)) : defaultSounds();
+  let sounds = (opts && opts.intent) ? selectSounds(opts.intent, (opts.seed | 0)) : defaultSounds();
+  const draft = !!(opts && opts.quality === 'draft');
+  if (draft) {
+    const draftify = (rec) => {
+      const d = Object.assign({}, rec);
+      d.unison = Math.min(d.unison, 2);
+      d.spread = Math.min(d.spread, 0.5);
+      return d;
+    };
+    sounds = { lead: draftify(sounds.lead), pad: draftify(sounds.pad), pluck: draftify(sounds.pluck), bass: draftify(sounds.bass) };
+  }
   let endSec = 0;
   const notes = [];
   for (const e of events) {
@@ -278,7 +298,7 @@ function render(events, bpm, onProgress, opts) {
     if (start + dur > endSec) endSec = start + dur;
   }
   if (notes.length === 0) throw new Error('no notes');
-  const total = Math.ceil((endSec + 3.0) * sr);
+  const total = Math.ceil((endSec + (draft ? 1.5 : 3.0)) * sr);
   const L = new Float32Array(total);
   const R = new Float32Array(total);
 
@@ -298,7 +318,7 @@ function render(events, bpm, onProgress, opts) {
   if (onProgress) onProgress(75);
   pingpong(L, R, sr, spb, total);
   if (onProgress) onProgress(82);
-  reverb(L, R, sr, total);
+  if (!draft) reverb(L, R, sr, total);
   if (onProgress) onProgress(90);
 
   let peak = 0.0001;
@@ -328,7 +348,12 @@ function render(events, bpm, onProgress, opts) {
   }
 
   const wav = stereoToWav16([L, R], sr);
-  return { wav: wav, peaks: peaks, seconds: endSec };
+  return {
+    wav: wav,
+    peaks: peaks,
+    seconds: endSec,
+    names: { lead: sounds.lead.name, pad: sounds.pad.name, pluck: sounds.pluck.name, bass: sounds.bass.name },
+  };
 }
 
 export function renderSong(events, bpm, onProgress, opts) {

@@ -1,5 +1,19 @@
 # Changelog
 
+## 9.1.0 - Visible sound kit + draft preview
+
+- The chosen sound kit is now visible: render returns the selected sound
+  names (lead/pad/pluck/bass) and the stage shows them as color-coded chips.
+- New "Render quality" switch: Full (commercial) / Draft (fast preview).
+  Draft caps unison at 2 voices, narrows spread, skips the reverb pass and
+  shortens the tail - renders several times faster on weak machines while
+  keeping the same selected sounds.
+- Tests: default names, deterministic names+bytes with opts, cross-intent
+  sound difference, seed-stability sweep, draft determinism and
+  draft-vs-full difference.
+
+
+
 ## 9.0.0 - Sound library (25 sounds, deterministic per-song selection)
 
 "Everything sounded the same" - fixed. The renderer now ships a curated

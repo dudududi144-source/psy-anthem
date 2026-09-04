@@ -63,7 +63,7 @@ function requestRender() {
   setStatus('Rendering audio… 0%', 'busy');
   setTransportEnabled(false);
   if (workerBroken) { renderOnMain(); return; }
-  ensureWorker().postMessage({ type: 'render', id: renderId, events: anthem.events, bpm: anthemCfg.bpm, opts: { intent: anthemCfg.intent, seed: anthemCfg.seed } });
+  ensureWorker().postMessage({ type: 'render', id: renderId, events: anthem.events, bpm: anthemCfg.bpm, opts: { intent: anthemCfg.intent, seed: anthemCfg.seed, quality: $('quality') ? $('quality').value : 'full' } });
 }
 
 // Fallback: render on the main thread if the Worker cannot run in this
@@ -75,7 +75,7 @@ async function renderOnMain() {
     if (myId !== renderId) return; // stale
     const out = mod.renderSong(anthem.events, anthemCfg.bpm, (p) => {
       if (myId === renderId) setStatus('Rendering audio… ' + p + '%', 'busy');
-    }, { intent: anthemCfg.intent, seed: anthemCfg.seed });
+    }, { intent: anthemCfg.intent, seed: anthemCfg.seed, quality: $('quality') ? $('quality').value : 'full' });
     if (myId !== renderId) return;
     finishRender({ buffer: out.wav.buffer, peaks: out.peaks, seconds: out.seconds });
   } catch (e) {
@@ -84,7 +84,10 @@ async function renderOnMain() {
   }
 }
 
+let soundNames = null;
 function finishRender(d) {
+  soundNames = d.names || null;
+  renderSoundKit();
   const bytes = new Uint8Array(d.buffer);
   audioUrl = URL.createObjectURL(new Blob([bytes], { type: 'audio/wav' }));
   peaks = d.peaks;
@@ -101,6 +104,25 @@ function setTransportEnabled(on) {
   playBtn.disabled = !on;
   seek.disabled = !on;
   $('stopBtn').disabled = !on;
+}
+
+// ---------- sound kit display ----------
+const KIT_COLORS = { lead: '#ff2ec4', pad: '#a855f7', pluck: '#22d3ee', bass: '#ffb02e' };
+function renderSoundKit() {
+  const el = $('soundKit');
+  if (!el) return;
+  el.innerHTML = '';
+  if (!soundNames) return;
+  const roles = ['lead', 'pad', 'pluck', 'bass'];
+  for (const role of roles) {
+    const name = soundNames[role];
+    if (!name) continue;
+    const chip = document.createElement('span');
+    chip.className = 'kit-chip';
+    chip.style.setProperty('--kc', KIT_COLORS[role]);
+    chip.innerHTML = '<b>' + role + '</b> ' + name;
+    el.appendChild(chip);
+  }
 }
 
 // ---------- generate ----------

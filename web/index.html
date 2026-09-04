@@ -9,7 +9,7 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'self' blob: data: https://cdn.jsdelivr.net; script-src 'self' blob:; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; font-src 'self' data: https://cdn.jsdelivr.net; img-src 'self' data: blob:; media-src 'self' blob: data:; worker-src 'self' blob:; connect-src 'self' blob: data:;">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/space-grotesk@5.0.0/500.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/space-grotesk@5.0.0/700.css">
-<link rel="stylesheet" href="./styles.css?v=70">
+<link rel="stylesheet" href="./styles.css?v=91">
 <link rel="icon" href="data:,">
 </head>
 <body>
@@ -41,6 +41,12 @@
       <label class="field"><span>Key</span><select id="root"></select></label>
       <label class="field"><span>Length</span><select id="bars"></select></label>
     </div>
+    <label class="field"><span>Render quality</span>
+      <select id="quality">
+        <option value="full" selected>Full (commercial)</option>
+        <option value="draft">Draft (fast preview)</option>
+      </select>
+    </label>
     <button id="generate" class="primary">⚡ Generate Anthem</button>
     <div id="statusLine" class="status-line">Loading…</div>
   </aside>
@@ -62,6 +68,10 @@
       <div id="rollHead" class="playhead"></div>
     </div>
     <div id="stats" class="stats"></div>
+    <div class="kit-wrap">
+      <div class="kit-title">Sound kit (chosen by seed + intent)</div>
+      <div id="soundKit" class="kit"></div>
+    </div>
   </section>
 
   <!-- Output panel -->
@@ -79,6 +89,6 @@
 
 <footer>PSY ANTHEM · deterministic composition engine · audio renders off the main thread, UI never blocks</footer>
 <audio id="audio" preload="auto"></audio>
-<script type="module" src="./app.js?v=70"></script>
+<script type="module" src="./app.js?v=91"></script>
 </body>
 </html>
