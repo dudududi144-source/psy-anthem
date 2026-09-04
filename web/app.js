@@ -396,6 +396,7 @@ function readConfig() {
     voices: 3,
     bars: parseInt($('bars').value, 10) || 16,
     bpm: 140,
+    harmonyComplexity: 'complex',
   };
 }
 function fill(id, list) {

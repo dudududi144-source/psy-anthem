@@ -1,5 +1,14 @@
 # Changelog
 
+## 12.6.0 - Richer harmony by default (complex chords)
+
+Sets harmonyComplexity to 'complex' by default so the anthem uses richer
+chords (7ths/9ths/11ths/13ths) instead of plain triads. This is the harmonic
+richness of commercial trance. The mix balance from 12.4 keeps it from
+getting muddy.
+
+
+
 ## 12.5.0 - Richer pads, still balanced
 
 Pads get one more unison voice (3->4) and slightly wider detune for a richer,
