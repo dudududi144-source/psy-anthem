@@ -2,6 +2,9 @@
 
 ## 10.2.0 - Richer energy curves + emotional intents
 
+
+Note: engine bundle gate raised 30KB -> 32KB to accommodate the richer
+energy-curve and intent content (bundle is now ~31KB).
 Energy curves (the emotional shape of a piece) expanded from 5 to 10:
 - Emotional Swell (builds to a late swell, brief release, final lift)
 - Double Drop (build-drop, pull back, second build, second drop)
