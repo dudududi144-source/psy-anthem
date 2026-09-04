@@ -39,18 +39,18 @@ function tableFor(name) { return name === 'square' ? SQUARE : (name === 'sine' ?
 // SOUND LIBRARY — 25 sounds, 4 roles.
 // ============================================================
 function R(o) {
-  return Object.assign({ table: 'saw', unison: 1, detune: 0, sub: false, pan: 0, spread: 0, drive: 0, pump: 0 }, o);
+  return Object.assign({ table: 'saw', unison: 1, detune: 0, sub: false, pan: 0, spread: 0, drive: 0, pump: 0, vibRate: 0, vibDepth: 0 }, o);
 }
 const LIB = {
   lead: [
-    R({ unison: 7, detune: 0.0075, filtBase: 850, filtEnv: 7200, filtAtk: 0.006, filtDec: 0.28, filtSus: 0.45, Q: 4.0, atk: 0.004, dec: 0.10, sus: 0.85, rel: 0.30, amp: 0.22, spread: 0.90, drive: 0.25 }), // 0 euphoric-saw (lush anthem lead)
+    R({ unison: 7, detune: 0.0075, filtBase: 850, filtEnv: 7200, filtAtk: 0.006, filtDec: 0.28, filtSus: 0.45, Q: 4.0, atk: 0.004, dec: 0.10, sus: 0.85, rel: 0.30, amp: 0.22, spread: 0.90, drive: 0.25, vibRate: 5.2, vibDepth: 0.006 }), // 0 euphoric-saw (lush anthem lead)
     R({ unison: 6, detune: 0.0090, filtBase: 700, filtEnv: 7000, filtAtk: 0.004, filtDec: 0.22, filtSus: 0.30, Q: 5.0, atk: 0.003, dec: 0.09, sus: 0.80, rel: 0.20, amp: 0.22, spread: 0.85, drive: 0.45 }), // 1 full-on-grit
     R({ unison: 2, detune: 0.0030, filtBase: 190, filtEnv: 5600, filtAtk: 0.001, filtDec: 0.14, filtSus: 0.05, Q: 9.0, atk: 0.001, dec: 0.16, sus: 0.10, rel: 0.10, amp: 0.30, spread: 0.30, drive: 0.40 }), // 2 acid-lead
-    R({ unison: 3, detune: 0.0040, filtBase: 1400, filtEnv: 2600, filtAtk: 0.250, filtDec: 0.80, filtSus: 0.60, Q: 1.6, atk: 0.220, dec: 0.30, sus: 0.80, rel: 0.60, amp: 0.20, spread: 0.90, drive: 0.10 }), // 3 dreamy-lead
+    R({ unison: 3, detune: 0.0040, filtBase: 1400, filtEnv: 2600, filtAtk: 0.250, filtDec: 0.80, filtSus: 0.60, Q: 1.6, atk: 0.220, dec: 0.30, sus: 0.80, rel: 0.60, amp: 0.20, spread: 0.90, drive: 0.10, vibRate: 4.8, vibDepth: 0.007 }), // 3 dreamy-lead
     R({ unison: 2, detune: 0.0050, filtBase: 420, filtEnv: 3600, filtAtk: 0.001, filtDec: 0.12, filtSus: 0.00, Q: 6.0, atk: 0.001, dec: 0.14, sus: 0.00, rel: 0.12, amp: 0.30, spread: 0.40, drive: 0.25 }), // 4 pluck-lead
     R({ table: 'square', unison: 4, detune: 0.0070, filtBase: 380, filtEnv: 2200, filtAtk: 0.005, filtDec: 0.30, filtSus: 0.40, Q: 3.0, atk: 0.004, dec: 0.12, sus: 0.75, rel: 0.22, amp: 0.24, spread: 0.60, drive: 0.55 }), // 5 dark-rave
     R({ table: 'square', unison: 2, detune: 0.0020, filtBase: 900, filtEnv: 4200, filtAtk: 0.010, filtDec: 0.35, filtSus: 0.45, Q: 2.2, atk: 0.010, dec: 0.18, sus: 0.70, rel: 0.35, amp: 0.22, spread: 0.50, drive: 0.20 }), // 6 crystal-lead
-    R({ unison: 5, detune: 0.0060, filtBase: 750, filtEnv: 5200, filtAtk: 0.004, filtDec: 0.20, filtSus: 0.25, Q: 4.6, atk: 0.003, dec: 0.08, sus: 0.55, rel: 0.16, amp: 0.23, spread: 0.80, drive: 0.35, pump: 0.30 }), // 7 uplifting-gate
+    R({ unison: 5, detune: 0.0060, filtBase: 750, filtEnv: 5200, filtAtk: 0.004, filtDec: 0.20, filtSus: 0.25, Q: 4.6, atk: 0.003, dec: 0.08, sus: 0.55, rel: 0.16, amp: 0.23, spread: 0.80, drive: 0.35, pump: 0.30, vibRate: 5.5, vibDepth: 0.005 }), // 7 uplifting-gate
   ],
   pad: [
     R({ unison: 3, detune: 0.0055, filtBase: 1250, filtEnv: 1900, filtAtk: 0.60, filtDec: 1.20, filtSus: 0.75, Q: 1.0, atk: 0.60, dec: 0.40, sus: 0.88, rel: 1.80, amp: 0.12, spread: 1.00, pump: 0.16 }), // 0 lush-wide (lusher)
@@ -304,12 +304,19 @@ function renderNote(n, rec, s0, len, total, L, R, sr, spb) {
     const voicePan = rec.pan + rec.spread * spreadPos;
     const gL = Math.cos((voicePan + 1) * Math.PI / 4);
     const gR = Math.sin((voicePan + 1) * Math.PI / 4);
-    const inc = (n.freq * det) * TABLE_LEN / sr;
+    const baseInc = (n.freq * det) * TABLE_LEN / sr;
+    const vibRate = rec.vibRate || 0;
+    const vibDepth = rec.vibDepth || 0;
     let phase = (u * 0.37 * TABLE_LEN) % TABLE_LEN;
     let low = 0, band = 0;
     for (let i = 0; i < span && s0 + i < total; i++) {
       const t = i / sr;
       const env = ampEnv(t, len / sr, rec);
+      let inc = baseInc;
+      if (vibDepth > 0 && t > 0.12) {
+        const vibRamp = Math.min(1, (t - 0.12) / 0.35);
+        inc = baseInc * (1 + vibDepth * vibRamp * Math.sin(2 * Math.PI * vibRate * (t - 0.12)));
+      }
       if (env <= 0.0008) { phase += inc; if (phase >= TABLE_LEN) phase -= TABLE_LEN; continue; }
       let fc = rec.filtBase + rec.filtEnv * filtShape(t, rec);
       if (fc > 16000) fc = 16000; if (fc < 60) fc = 60;

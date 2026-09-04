@@ -1,5 +1,14 @@
 # Changelog
 
+## 12.3.0 - Expressive vibrato for anthem leads
+
+Adds singing vibrato to the sustained lead patches (euphoric-saw, dreamy-lead,
+uplifting-gate) - the hallmark of commercial trance leads. Vibrato ramps in
+after 120ms (natural phrasing), deterministic (no randomness) so golden tests
+stay byte-identical.
+
+
+
 ## 12.2.0 - render-core as primary renderer (reliable on slow machines)
 
 The OfflineAudioContext renderer hangs/times out on slow machines, so the
