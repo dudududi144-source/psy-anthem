@@ -38,6 +38,12 @@ export const INTENT_INTERVAL_POOLS: Record<AnthemIntent, readonly number[]> = {
   [AnthemIntent.DREAMY_ATMOSPHERE]: [3, 4, 7, 10],
   [AnthemIntent.MORNING_MELODIC]: [2, 4, 5, 7, 9],
   [AnthemIntent.EPIC_CINEMATIC]: [5, 7, 8, 12],
+  // Bittersweet longing: m3, M3, P5, m6 (the m6 gives the ache), m7
+  [AnthemIntent.NOSTALGIC_LONGING]: [3, 4, 7, 8, 10],
+  // Triumphant rise: M3, P4, P5, octave
+  [AnthemIntent.TRIUMPHANT_RISE]: [4, 5, 7, 12],
+  // Tender lullaby: gentle steps m2, m3, M3, P5
+  [AnthemIntent.TENDER_LULLABY]: [1, 3, 4, 7],
 };
 
 export const INTENT_TENSION_WEIGHTS: Record<AnthemIntent, TensionWeights> = {
@@ -52,6 +58,9 @@ export const INTENT_TENSION_WEIGHTS: Record<AnthemIntent, TensionWeights> = {
   [AnthemIntent.DREAMY_ATMOSPHERE]: { harmonic: 0.3, rhythmic: 0.1, register: 0.25, dynamic: 0.15, density: 0.1 },
   [AnthemIntent.MORNING_MELODIC]: { harmonic: 0.25, rhythmic: 0.2, register: 0.25, dynamic: 0.15, density: 0.15 },
   [AnthemIntent.EPIC_CINEMATIC]: { harmonic: 0.35, rhythmic: 0.15, register: 0.3, dynamic: 0.25, density: 0.1 },
+  [AnthemIntent.NOSTALGIC_LONGING]: { harmonic: 0.35, rhythmic: 0.1, register: 0.25, dynamic: 0.25, density: 0.1 },
+  [AnthemIntent.TRIUMPHANT_RISE]: { harmonic: 0.2, rhythmic: 0.25, register: 0.35, dynamic: 0.25, density: 0.1 },
+  [AnthemIntent.TENDER_LULLABY]: { harmonic: 0.3, rhythmic: 0.1, register: 0.2, dynamic: 0.2, density: 0.1 },
 };
 
 // Voice ranges (MIDI): lead, harmony, counter, bass

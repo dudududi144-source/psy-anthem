@@ -46,6 +46,12 @@ export function rhythmicCharacterFor(intent: AnthemIntent, rng: RNG): RhythmicCh
       return 'flowing';
     case AnthemIntent.EPIC_CINEMATIC:
       return rng.pick(['flowing', 'sparse'] as const);
+    case AnthemIntent.NOSTALGIC_LONGING:
+      return rng.pick(['flowing', 'flowing', 'sparse'] as const);
+    case AnthemIntent.TRIUMPHANT_RISE:
+      return rng.pick(['driving', 'flowing'] as const);
+    case AnthemIntent.TENDER_LULLABY:
+      return rng.pick(['sparse', 'flowing'] as const);
   }
 }
 

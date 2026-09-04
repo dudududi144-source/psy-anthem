@@ -24,6 +24,47 @@ describe('barEnergy', () => {
     expect(mid).toBeGreaterThan(start);
     expect(mid).toBeGreaterThan(end);
   });
+
+  it('all curves return values in [0,1] across the whole piece', () => {
+    const curves = [
+      EnergyCurve.FLAT, EnergyCurve.ARC, EnergyCurve.BUILD_DROP, EnergyCurve.WAVE,
+      EnergyCurve.EMOTIONAL_SWELL, EnergyCurve.DOUBLE_DROP,
+      EnergyCurve.PROGRESSIVE_CLIMB, EnergyCurve.SUNRISE, EnergyCurve.PLATEAU_BREAK,
+    ];
+    for (const curve of curves) {
+      for (let bar = 0; bar < 32; bar++) {
+        const e = barEnergy(bar, { ...base, energyCurve: curve });
+        expect(e).toBeGreaterThanOrEqual(0);
+        expect(e).toBeLessThanOrEqual(1);
+      }
+    }
+  });
+
+  it('EMOTIONAL_SWELL swells late then lifts at the end', () => {
+    const swellMid = barEnergy(20, { ...base, energyCurve: EnergyCurve.EMOTIONAL_SWELL });
+    const swellEnd = barEnergy(31, { ...base, energyCurve: EnergyCurve.EMOTIONAL_SWELL });
+    const swellStart = barEnergy(0, { ...base, energyCurve: EnergyCurve.EMOTIONAL_SWELL });
+    expect(swellMid).toBeGreaterThan(swellStart);
+    expect(swellEnd).toBeGreaterThan(swellStart);
+  });
+
+  it('DOUBLE_DROP has two high peaks', () => {
+    const cfg = { ...base, energyCurve: EnergyCurve.DOUBLE_DROP };
+    const drop1 = barEnergy(14, cfg);
+    const drop2 = barEnergy(28, cfg);
+    const valley = barEnergy(17, cfg);
+    expect(drop1).toBeGreaterThan(0.7);
+    expect(drop2).toBeGreaterThan(0.7);
+    expect(valley).toBeLessThan(drop1);
+  });
+
+  it('SUNRISE and PROGRESSIVE_CLIMB rise toward the end', () => {
+    for (const curve of [EnergyCurve.SUNRISE, EnergyCurve.PROGRESSIVE_CLIMB]) {
+      const start = barEnergy(0, { ...base, energyCurve: curve });
+      const end = barEnergy(31, { ...base, energyCurve: curve });
+      expect(end).toBeGreaterThan(start);
+    }
+  });
 });
 
 describe('getMacroForm', () => {

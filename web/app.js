@@ -377,12 +377,20 @@ function buildControls() {
     { v: AnthemIntent.DREAMY_ATMOSPHERE, t: 'Dreamy Atmosphere' },
     { v: AnthemIntent.MORNING_MELODIC, t: 'Morning Melodic' },
     { v: AnthemIntent.EPIC_CINEMATIC, t: 'Epic Cinematic' },
+    { v: AnthemIntent.NOSTALGIC_LONGING, t: 'Nostalgic Longing' },
+    { v: AnthemIntent.TRIUMPHANT_RISE, t: 'Triumphant Rise' },
+    { v: AnthemIntent.TENDER_LULLABY, t: 'Tender Lullaby' },
   ]);
   fill('curve', [
     { v: EnergyCurve.ARC, t: 'Arc' },
     { v: EnergyCurve.BUILD_DROP, t: 'Build → Drop' },
     { v: EnergyCurve.WAVE, t: 'Wave' },
     { v: EnergyCurve.FLAT, t: 'Flat' },
+    { v: EnergyCurve.EMOTIONAL_SWELL, t: 'Emotional Swell' },
+    { v: EnergyCurve.DOUBLE_DROP, t: 'Double Drop' },
+    { v: EnergyCurve.PROGRESSIVE_CLIMB, t: 'Progressive Climb' },
+    { v: EnergyCurve.SUNRISE, t: 'Sunrise' },
+    { v: EnergyCurve.PLATEAU_BREAK, t: 'Plateau Break' },
   ]);
   fill('root', NOTE_NAMES.map((n, i) => ({ v: String(i), t: n })));
   fill('bars', [8, 16, 24, 32].map((b) => ({ v: String(b), t: String(b) + ' bars' })));

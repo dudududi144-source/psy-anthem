@@ -18,6 +18,9 @@ export enum AnthemIntent {
   DREAMY_ATMOSPHERE = 'dreamy-atmosphere',
   MORNING_MELODIC = 'morning-melodic',
   EPIC_CINEMATIC = 'epic-cinematic',
+  NOSTALGIC_LONGING = 'nostalgic-longing',
+  TRIUMPHANT_RISE = 'triumphant-rise',
+  TENDER_LULLABY = 'tender-lullaby',
 }
 
 export type ScaleMode =
@@ -35,6 +38,11 @@ export enum EnergyCurve {
   BUILD_DROP = 'build-drop',
   WAVE = 'wave',
   CUSTOM = 'custom',
+  EMOTIONAL_SWELL = 'emotional-swell',
+  DOUBLE_DROP = 'double-drop',
+  PROGRESSIVE_CLIMB = 'progressive-climb',
+  SUNRISE = 'sunrise',
+  PLATEAU_BREAK = 'plateau-break',
 }
 
 export interface NoteRange { min: number; max: number; }

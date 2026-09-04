@@ -76,3 +76,9 @@ dies. **Never route playback through live WebAudio on this machine.**
    update: types.ts enum, constants.ts INTENT_INTERVAL_POOLS +
    INTENT_TENSION_WEIGHTS, generator.ts rhythmicCharacterFor, app.js
    selector, render-core.js INTENT_POOLS - TS enforces exhaustiveness.
+11. v10.2+: energy curves expanded (flat/arc/build-drop/wave/custom +
+   emotional-swell/double-drop/progressive-climb/sunrise/plateau-break).
+   Adding an EnergyCurve requires updating: types.ts enum, tension.ts
+   sampleEnergyCurve switch, macro-form.ts getMacroForm switch. Intents now
+   14; emotional intents (nostalgic-longing, triumphant-rise, tender-lullaby)
+   favor stepwise/bittersweet intervals + sparse-flowing rhythm.

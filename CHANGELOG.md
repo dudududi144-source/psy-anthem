@@ -1,5 +1,26 @@
 # Changelog
 
+## 10.2.0 - Richer energy curves + emotional intents
+
+Energy curves (the emotional shape of a piece) expanded from 5 to 10:
+- Emotional Swell (builds to a late swell, brief release, final lift)
+- Double Drop (build-drop, pull back, second build, second drop)
+- Progressive Climb (steady stepped climb)
+- Sunrise (gentle exponential dawn rise)
+- Plateau Break (plateau with a mid breakdown, then final peak)
+
+3 new emotional intents:
+- Nostalgic Longing (bittersweet m6 intervals, sparse flowing phrasing)
+- Triumphant Rise (rising anthem, register-driven)
+- Tender Lullaby (gentle steps, sparse)
+
+All new curves get macro-form section plans; all new intents get interval
+pools, tension weights, rhythmic character, and sound-kit pools. TS
+exhaustiveness verified. Tests added: curve range bounds, swell/double-drop
+shape, climb rise.
+
+
+
 ## 10.1.1 - Retune purple/counter pluck (less harsh, more musical)
 
 The purple (counter) voice used very high-resonance acid plucks (Q 5-11,

@@ -101,6 +101,9 @@ const INTENT_POOLS = {
   'dreamy-atmosphere':   { lead: [3, 6],    pad: [2, 0], pluck: [2],    bass: [3] },
   'morning-melodic':     { lead: [0, 3],    pad: [0, 4], pluck: [4],    bass: [0, 3] },
   'epic-cinematic':      { lead: [6, 3],    pad: [1, 2], pluck: [2],    bass: [3, 2] },
+  'nostalgic-longing':   { lead: [3, 2],    pad: [1, 4], pluck: [2],    bass: [3, 0] },
+  'triumphant-rise':     { lead: [0, 7],    pad: [0, 4], pluck: [4],    bass: [0, 1] },
+  'tender-lullaby':      { lead: [2, 3],    pad: [2, 0], pluck: [2],    bass: [3] },
 };
 
 function hashSeed(a, b) {
