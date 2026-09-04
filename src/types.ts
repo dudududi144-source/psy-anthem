@@ -14,6 +14,10 @@ export enum AnthemIntent {
   EMOTIONAL_BREAKDOWN = 'emotional-breakdown',
   FOREST = 'forest',
   EMOTIONAL_LEAD = 'emotional-lead',
+  UPLIFTING_ANTHEM = 'uplifting-anthem',
+  DREAMY_ATMOSPHERE = 'dreamy-atmosphere',
+  MORNING_MELODIC = 'morning-melodic',
+  EPIC_CINEMATIC = 'epic-cinematic',
 }
 
 export type ScaleMode =

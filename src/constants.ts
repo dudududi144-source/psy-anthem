@@ -34,6 +34,10 @@ export const INTENT_INTERVAL_POOLS: Record<AnthemIntent, readonly number[]> = {
   [AnthemIntent.FOREST]: [2, 3, 6, 7, 10],
   // Step-friendly pool: singable, lyrical leads (M2, m3, M3, P4, P5)
   [AnthemIntent.EMOTIONAL_LEAD]: [2, 3, 4, 5, 7],
+  [AnthemIntent.UPLIFTING_ANTHEM]: [4, 5, 7, 9, 12],
+  [AnthemIntent.DREAMY_ATMOSPHERE]: [3, 4, 7, 10],
+  [AnthemIntent.MORNING_MELODIC]: [2, 4, 5, 7, 9],
+  [AnthemIntent.EPIC_CINEMATIC]: [5, 7, 8, 12],
 };
 
 export const INTENT_TENSION_WEIGHTS: Record<AnthemIntent, TensionWeights> = {
@@ -44,6 +48,10 @@ export const INTENT_TENSION_WEIGHTS: Record<AnthemIntent, TensionWeights> = {
   [AnthemIntent.EMOTIONAL_BREAKDOWN]: { harmonic: 0.3, rhythmic: 0.15, register: 0.3, dynamic: 0.15, density: 0.1 },
   [AnthemIntent.FOREST]: { harmonic: 0.3, rhythmic: 0.3, register: 0.15, dynamic: 0.1, density: 0.15 },
   [AnthemIntent.EMOTIONAL_LEAD]: { harmonic: 0.25, rhythmic: 0.15, register: 0.3, dynamic: 0.2, density: 0.1 },
+  [AnthemIntent.UPLIFTING_ANTHEM]: { harmonic: 0.2, rhythmic: 0.25, register: 0.3, dynamic: 0.2, density: 0.15 },
+  [AnthemIntent.DREAMY_ATMOSPHERE]: { harmonic: 0.3, rhythmic: 0.1, register: 0.25, dynamic: 0.15, density: 0.1 },
+  [AnthemIntent.MORNING_MELODIC]: { harmonic: 0.25, rhythmic: 0.2, register: 0.25, dynamic: 0.15, density: 0.15 },
+  [AnthemIntent.EPIC_CINEMATIC]: { harmonic: 0.35, rhythmic: 0.15, register: 0.3, dynamic: 0.25, density: 0.1 },
 };
 
 // Voice ranges (MIDI): lead, harmony, counter, bass

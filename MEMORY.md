@@ -71,3 +71,8 @@ dies. **Never route playback through live WebAudio on this machine.**
    Drums default OFF (groove toggle optional). Synth quality is the focus:
    lush 7-voice anthem lead, lush wide pad, lush reverb. Keep investing in
    synth + melody quality, not peripheral drums/groove.
+10. v10.1+: piano roll is real-time and synced to audio (notes glow as they
+   play). Intent library expanded (11 intents). To add a new intent you MUST
+   update: types.ts enum, constants.ts INTENT_INTERVAL_POOLS +
+   INTENT_TENSION_WEIGHTS, generator.ts rhythmicCharacterFor, app.js
+   selector, render-core.js INTENT_POOLS - TS enforces exhaustiveness.

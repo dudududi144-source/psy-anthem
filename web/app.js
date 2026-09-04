@@ -372,6 +372,11 @@ function buildControls() {
     { v: AnthemIntent.FULL_ON, t: 'Full-On' },
     { v: AnthemIntent.EMOTIONAL_BREAKDOWN, t: 'Emotional' },
     { v: AnthemIntent.FOREST, t: 'Forest' },
+    { v: AnthemIntent.EMOTIONAL_LEAD, t: 'Emotional Lead' },
+    { v: AnthemIntent.UPLIFTING_ANTHEM, t: 'Uplifting Anthem' },
+    { v: AnthemIntent.DREAMY_ATMOSPHERE, t: 'Dreamy Atmosphere' },
+    { v: AnthemIntent.MORNING_MELODIC, t: 'Morning Melodic' },
+    { v: AnthemIntent.EPIC_CINEMATIC, t: 'Epic Cinematic' },
   ]);
   fill('curve', [
     { v: EnergyCurve.ARC, t: 'Arc' },

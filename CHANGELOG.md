@@ -1,5 +1,17 @@
 # Changelog
 
+## 10.1.0 - Real-time piano roll + 4 new intents
+
+- Real-time piano roll synced to audio: notes light up (white glow) exactly
+  as they sound, playhead tracks audio.currentTime. What you see is now
+  exactly what you hear.
+- 4 new intents for emotional melodies & anthems: Uplifting Anthem, Dreamy
+  Atmosphere, Morning Melodic, Epic Cinematic (each with its own interval
+  pool, tension weights, rhythmic character, and sound-kit pool). Also
+  surfaced the previously-missing Emotional Lead in the selector.
+
+
+
 ## 10.0.0 - Focus on synth + melody quality; drums off by default
 
 Direction shift: PSY ANTHEM is about emotional melodies and anthems, not
