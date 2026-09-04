@@ -16,7 +16,7 @@ export function synthSupported() {
 
 // Per-voice patches. ch 0=lead 1=pad 2=pluck/arp 3=bass.
 const VOICE_PATCHES = [
-  { osc:'sawtooth', unison:6, detuneCents:14, sub:0,
+  { osc:'sawtooth', unison:5, detuneCents:14, sub:0,
     cutoff:6000, res:2.5, filterEnv:3200, fDecay:0.28,
     attack:0.006, decay:0.22, sustain:0.82, release:0.45,
     level:0.20, reverb:0.42, delay:0.26, chorus:0.5 },
@@ -133,7 +133,10 @@ function scheduleRollingBass(octx, bus, midi, startSec, dur, vel, spb) {
   const subFreq = freq * 0.5;
   const step = spb / 2;               // 8th notes
   let t = startSec + step;             // start on the offbeat (the "and")
-  while (t < startSec + dur - 0.02) {
+  let steps = 0;
+  const MAX_STEPS = 24;                // cap to keep node count bounded
+  while (t < startSec + dur - 0.02 && steps < MAX_STEPS) {
+    steps++;
     const noteDur = step * 0.72;
     // main bass note
     const osc = octx.createOscillator(); osc.type = 'sawtooth'; osc.frequency.value = freq;

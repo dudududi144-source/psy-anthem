@@ -103,3 +103,8 @@ dies. **Never route playback through live WebAudio on this machine.**
    the pads + lush supersaw lead. All added in web/synth-renderer.js (offline,
    standard Web Audio nodes). If it still sounds "game-like", the next levers
    are the MELODY/HARMONY content in src/ (not the synth).
+16. v11.1+: the pro-synth offline render can hang on slow machines if the
+   rolling bass creates too many oscillators. Fixes: rolling bass capped at 24
+   steps/note, lead unison 5, and renderWithSynth wrapped in a 20s timeout
+   that falls back to render-core. If the pro sound still doesn't render on a
+   machine, the 20s timeout guarantees it falls back instead of hanging.

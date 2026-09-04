@@ -57,6 +57,14 @@ function ensureWorker() {
 }
 
 const WORKLET_NAMES = ['Pro Lead', 'Pro Pad', 'Pro Pluck', 'Pro Bass'];
+function withTimeout(promise, ms) {
+  return new Promise((resolve) => {
+    let done = false;
+    const t = setTimeout(() => { if (!done) { done = true; resolve(null); } }, ms);
+    promise.then((v) => { if (!done) { done = true; clearTimeout(t); resolve(v); } },
+                 (e) => { if (!done) { done = true; clearTimeout(t); resolve(null); } });
+  });
+}
 function computePeaks(buffer, buckets) {
   const nCh = buffer.numberOfChannels;
   const len = buffer.length;
@@ -95,7 +103,8 @@ async function renderViaWorklet(myId) {
     if (myId !== renderId) return;
     if (!mod.synthSupported()) throw new Error('worklet not supported');
     setStatus('Rendering audio… (pro synth)', 'busy');
-    const buf = await mod.renderWithSynth(anthem.events, anthemCfg.bpm);
+    const buf = await withTimeout(mod.renderWithSynth(anthem.events, anthemCfg.bpm), 20000);
+    if (!buf) throw new Error('synth render timed out');
     if (myId !== renderId) return;
     const bytes = mod.audioBufferToWav(buf);
     const peaks = computePeaks(buf, 900);

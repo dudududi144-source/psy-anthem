@@ -1,5 +1,17 @@
 # Changelog
 
+## 11.1.0 - Fix pro-synth render hanging (timeout + bounded rolling bass)
+
+The pro-synth render hung at "Rendering audio… (pro synth)" because the
+rolling bass created an unbounded number of oscillators for long bass notes,
+making the offline render hang on slow machines.
+- app.js: renderWithSynth is now wrapped in a 20s timeout; if the render is
+  too slow it falls back to render-core instead of hanging forever.
+- synth-renderer.js: rolling bass capped at 24 steps per note (bounded node
+  count); lead unison reduced 6 -> 5 to cut node count and render time.
+
+
+
 ## 11.0.0 - Commercial-trance groove (kick + rolling bass + sidechain pump)
 
 The output kept sounding like "RPG/gamelan" because it lacked the things that
