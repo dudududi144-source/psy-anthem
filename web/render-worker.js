@@ -1,7 +1,7 @@
 // PSY ANTHEM — render-worker.js (v7.1)
 // Thin Web Worker wrapper around render-core.js: keeps the heavy rendering
 // off the main thread. Loaded as a module worker from app.js.
-import { renderSong } from './render-core.js';
+import { renderSong } from './render-core.js?v=100';
 
 self.onmessage = (msg) => {
   const d = msg.data;

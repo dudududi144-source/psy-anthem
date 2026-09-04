@@ -35,7 +35,7 @@ function setStatus(msg, mode) {
 // ---------- worker ----------
 function ensureWorker() {
   if (worker) return worker;
-  worker = new Worker('./render-worker.js', { type: 'module' });
+  worker = new Worker('./render-worker.js?v=100', { type: 'module' });
   worker.onmessage = (msg) => {
     const d = msg.data;
     if (!d || d.id !== renderId) return; // stale render
@@ -99,11 +99,11 @@ function requestRender() {
 
 async function renderViaWorklet(myId) {
   try {
-    const mod = await import('./synth-renderer.js');
+    const mod = await import('./synth-renderer.js?v=100');
     if (myId !== renderId) return;
     if (!mod.synthSupported()) throw new Error('worklet not supported');
     setStatus('Rendering audio… (pro synth)', 'busy');
-    const buf = await withTimeout(mod.renderWithSynth(anthem.events, anthemCfg.bpm), 20000);
+    const buf = await withTimeout(mod.renderWithSynth(anthem.events, anthemCfg.bpm), 12000);
     if (!buf) throw new Error('synth render timed out');
     if (myId !== renderId) return;
     const bytes = mod.audioBufferToWav(buf);

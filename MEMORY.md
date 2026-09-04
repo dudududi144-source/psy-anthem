@@ -112,3 +112,8 @@ dies. **Never route playback through live WebAudio on this machine.**
    drums, rolling bass, or sidechain pump unless explicitly asked. The user
    rejected drums. The synth-renderer renders only the 4 melodic voices
    (lead/pad/pluck/bass) with lush supersaw/chorus/reverb/delay.
+18. v12.1+: stuck-render root cause was often a CACHED old synth-renderer/
+   render-worker/render-core file. Always keep cache-busting query params on
+   the dynamic imports (synth-renderer import, render-worker Worker, and the
+   render-core import inside render-worker). Bump ?v= together with the
+   index.html ?v= when these files change.

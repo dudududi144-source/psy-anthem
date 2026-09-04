@@ -1,5 +1,18 @@
 # Changelog
 
+## 12.1.0 - Cache-busting + faster fallback (fix stuck render)
+
+The render could appear stuck because the browser served a CACHED old copy of
+synth-renderer.js / render-worker.js / render-core.js (an earlier version that
+hung). Fixes:
+- Cache-busting query params (?v=100) on the dynamic synth-renderer import,
+  the render-worker Worker, and render-core import inside the worker, so the
+  browser always loads the fresh files.
+- Render timeout reduced 20s -> 12s so a slow/hung offline render falls back
+  to the reliable render-core faster.
+
+
+
 ## 12.0.0 - Melody & anthem only (removed all drums)
 
 The drums/kicks/rolling-bass/sidechain-pump were added without being asked for
