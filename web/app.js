@@ -1,4 +1,4 @@
-// PSY ANTHEM — v8.0 professional UI (pro synth playback)
+// PSY ANTHEM — v8.1 professional UI (pro synth playback, reliable renderer)
 // Architecture (see MEMORY.md):
 //   compose (engine) -> render -> <audio> element playback.
 //   Primary renderer: the professional PSY synth AudioWorklet
@@ -91,18 +91,18 @@ function requestRender() {
 
 async function renderViaWorklet(myId) {
   try {
-    const mod = await import('./worklet-renderer.js');
+    const mod = await import('./synth-renderer.js');
     if (myId !== renderId) return;
-    if (!mod.workletSupported()) throw new Error('worklet not supported');
+    if (!mod.synthSupported()) throw new Error('worklet not supported');
     setStatus('Rendering audio… (pro synth)', 'busy');
-    const buf = await mod.renderWithWorklet(anthem.events, anthemCfg.bpm);
+    const buf = await mod.renderWithSynth(anthem.events, anthemCfg.bpm);
     if (myId !== renderId) return;
     const bytes = mod.audioBufferToWav(buf);
     const peaks = computePeaks(buf, 900);
     finishRender({ buffer: bytes.buffer, peaks: peaks, seconds: buf.duration, names: WORKLET_NAMES, groove: 'worklet' });
   } catch (e) {
     if (myId !== renderId) return;
-    console.warn('[PSY ANTHEM] worklet render unavailable, using render-core fallback:', e && e.message ? e.message : e);
+    console.warn('[PSY ANTHEM] synth renderer unavailable, using render-core fallback:', e && e.message ? e.message : e);
     if (workerBroken) { renderOnMain(); return; }
     ensureWorker().postMessage({ type: 'render', id: myId, events: anthem.events, bpm: anthemCfg.bpm, opts: buildRenderOpts() });
   }

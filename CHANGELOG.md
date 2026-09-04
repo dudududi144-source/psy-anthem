@@ -1,5 +1,24 @@
 # Changelog
 
+## 8.1.0 - Reliable pro-sound renderer (learned from psyreason)
+
+The v8.0 AudioWorklet offline render produced SILENCE (AudioWorklet nodes do
+not render reliably inside an OfflineAudioContext). Learned from psyreason's
+foundation/core/render.mjs which renders with STANDARD Web Audio nodes.
+
+- New web/synth-renderer.js: offline renderer built from standard Web Audio
+  nodes (oscillators + lowpass envelopes + per-voice sends into shared
+  convolver reverb + feedback delay + master limiter). Standard nodes render
+  reliably offline, which is what actually makes the sound audible.
+- Four distinct per-voice patches: supersaw lead, warm pad, resonant pluck,
+  sub bass - so the voices sound distinct (psyreason-style device thinking).
+- Silence detection: if the render comes out silent it throws, so the app
+  automatically falls back to render-core instead of playing silence.
+- web/app.js switches to synth-renderer.js; the old worklet files are no
+  longer loaded (pages.yml copies synth-renderer.js instead).
+
+
+
 ## 8.0.0 - Professional sound via PSY synth AudioWorklet
 
 Connects psy-anthem (WHAT layer) to the professional PSY synth (HOW layer)

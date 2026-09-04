@@ -92,3 +92,9 @@ dies. **Never route playback through live WebAudio on this machine.**
    PsySynthPro or any other repo). worklet-renderer.js offline-renders events
    with one worklet node per voice. app.js uses the worklet as primary
    renderer with render-core fallback.
+14. v8.1+: IMPORTANT LESSON (learned from psyreason/foundation/core/render.mjs):
+   AudioWorklet nodes do NOT render reliably in an OfflineAudioContext (they
+   render silence). Offline bounce MUST use STANDARD Web Audio nodes
+   (createOscillator/BiquadFilter/Gain/Convolver/Delay), like psyreason does.
+   web/synth-renderer.js implements this. It includes silence detection and
+   falls back to render-core. Do NOT use AudioWorklet for offline bounce.
