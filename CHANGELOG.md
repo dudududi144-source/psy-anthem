@@ -1,5 +1,13 @@
 # Changelog
 
+## 12.5.0 - Richer pads, still balanced
+
+Pads get one more unison voice (3->4) and slightly wider detune for a richer,
+wider anthem bed, but levels stay LOW so they sit under the lead and don't
+overload. Richness without mud.
+
+
+
 ## 12.4.0 - Mix balance: harmony without overload
 
 The sound was getting muddy/overloaded because pad and bass competed with the
