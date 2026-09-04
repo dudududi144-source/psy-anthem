@@ -1,5 +1,13 @@
 # Changelog
 
+## 13.7.0 - Lusher lead (richer unison)
+
+Lead unison 3 -> 4, wider detune (0.0075 -> 0.0085), slightly lower amp to
+compensate. Makes the lead richer and more professional. Other voices stay at
+low unison for speed.
+
+
+
 ## 13.6.0 - Faster rendering (simplify unison + reverb)
 
 The render was taking too long and causing failures. Simplified drastically

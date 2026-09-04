@@ -43,7 +43,7 @@ function R(o) {
 }
 const LIB = {
   lead: [
-    R({ unison: 3, detune: 0.0075, filtBase: 850, filtEnv: 7200, filtAtk: 0.006, filtDec: 0.28, filtSus: 0.45, Q: 4.0, atk: 0.004, dec: 0.10, sus: 0.85, rel: 0.30, amp: 0.22, spread: 0.90, drive: 0.25, vibRate: 5.2, vibDepth: 0.006 }), // 0 euphoric-saw (lush anthem lead)
+    R({ unison: 4, detune: 0.0085, filtBase: 850, filtEnv: 7200, filtAtk: 0.006, filtDec: 0.28, filtSus: 0.45, Q: 4.0, atk: 0.004, dec: 0.10, sus: 0.85, rel: 0.30, amp: 0.20, spread: 0.90, drive: 0.25, vibRate: 5.2, vibDepth: 0.006 }), // 0 euphoric-saw (lush anthem lead)
     R({ unison: 3, detune: 0.0090, filtBase: 700, filtEnv: 7000, filtAtk: 0.004, filtDec: 0.22, filtSus: 0.30, Q: 5.0, atk: 0.003, dec: 0.09, sus: 0.80, rel: 0.20, amp: 0.22, spread: 0.85, drive: 0.45 }), // 1 full-on-grit
     R({ unison: 2, detune: 0.0030, filtBase: 190, filtEnv: 5600, filtAtk: 0.001, filtDec: 0.14, filtSus: 0.05, Q: 9.0, atk: 0.001, dec: 0.16, sus: 0.10, rel: 0.10, amp: 0.30, spread: 0.30, drive: 0.40 }), // 2 acid-lead
     R({ unison: 3, detune: 0.0040, filtBase: 1400, filtEnv: 2600, filtAtk: 0.250, filtDec: 0.80, filtSus: 0.60, Q: 1.6, atk: 0.220, dec: 0.30, sus: 0.80, rel: 0.60, amp: 0.20, spread: 0.90, drive: 0.10, vibRate: 4.8, vibDepth: 0.007 }), // 3 dreamy-lead
