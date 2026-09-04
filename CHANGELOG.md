@@ -1,5 +1,18 @@
 # Changelog
 
+## 12.2.0 - render-core as primary renderer (reliable on slow machines)
+
+The OfflineAudioContext renderer hangs/times out on slow machines, so the
+fallback (render-core) became the thing that actually produces audio. Made
+render-core the PRIMARY renderer so it always runs:
+- render-core (Web Worker) is now the primary renderer; it shows progress and
+  never hangs. The OfflineAudioContext path is no longer attempted first.
+- render-core shows progress every 8 notes (was 24) so slow machines show
+  feedback sooner.
+- Reduced render tail 3.0s -> 1.5s so renders finish faster on slow machines.
+
+
+
 ## 12.1.0 - Cache-busting + faster fallback (fix stuck render)
 
 The render could appear stuck because the browser served a CACHED old copy of

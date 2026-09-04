@@ -496,7 +496,7 @@ function render(events, bpm, onProgress, opts) {
     if (start + dur > endSec) endSec = start + dur;
   }
   if (notes.length === 0) throw new Error('no notes');
-  const total = Math.ceil((endSec + (draft ? 1.5 : 3.0)) * sr);
+  const total = Math.ceil((endSec + (draft ? 1.0 : 1.5)) * sr);
   // Per-voice buffers (v10.3): each voice gets its own processing so the
   // lead / pad / pluck / bass each get a distinct character.
   const vb = [];
@@ -512,7 +512,7 @@ function render(events, bpm, onProgress, opts) {
     rec.amp = savedAmp * velAmp;
     renderNote(n, rec, s0, len, total, vb[n.ch].L, vb[n.ch].R, sr, spb);
     rec.amp = savedAmp;
-    if ((ni % 24) === 23 && onProgress) onProgress(Math.round((ni / notes.length) * 70));
+    if ((ni % 8) === 7 && onProgress) onProgress(Math.round((ni / notes.length) * 70));
   }
 
   if (onProgress) onProgress(75);

@@ -117,3 +117,7 @@ dies. **Never route playback through live WebAudio on this machine.**
    the dynamic imports (synth-renderer import, render-worker Worker, and the
    render-core import inside render-worker). Bump ?v= together with the
    index.html ?v= when these files change.
+19. v12.2+: render-core (Web Worker) is the PRIMARY renderer because the
+   OfflineAudioContext renderer hangs on slow machines. Do not make the
+   OfflineAudioContext renderer primary again unless it is proven fast on the
+   target machine. render-core shows progress every 8 notes and uses a 1.5s tail.

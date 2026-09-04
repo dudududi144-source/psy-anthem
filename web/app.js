@@ -98,23 +98,16 @@ function requestRender() {
 }
 
 async function renderViaWorklet(myId) {
-  try {
-    const mod = await import('./synth-renderer.js?v=100');
-    if (myId !== renderId) return;
-    if (!mod.synthSupported()) throw new Error('worklet not supported');
-    setStatus('Rendering audio… (pro synth)', 'busy');
-    const buf = await withTimeout(mod.renderWithSynth(anthem.events, anthemCfg.bpm), 12000);
-    if (!buf) throw new Error('synth render timed out');
-    if (myId !== renderId) return;
-    const bytes = mod.audioBufferToWav(buf);
-    const peaks = computePeaks(buf, 900);
-    finishRender({ buffer: bytes.buffer, peaks: peaks, seconds: buf.duration, names: WORKLET_NAMES, groove: 'worklet' });
-  } catch (e) {
-    if (myId !== renderId) return;
-    console.warn('[PSY ANTHEM] synth renderer unavailable, using render-core fallback:', e && e.message ? e.message : e);
-    if (workerBroken) { renderOnMain(); return; }
+  // Primary: render-core in the Web Worker. It is the reliable path on every
+  // machine (the OfflineAudioContext renderer can hang on slow machines).
+  // render-core shows progress and never hangs; if the worker itself is
+  // broken, fall back to main-thread rendering.
+  if (!workerBroken) {
+    setStatus('Rendering audio… 0%', 'busy');
     ensureWorker().postMessage({ type: 'render', id: myId, events: anthem.events, bpm: anthemCfg.bpm, opts: buildRenderOpts() });
+    return;
   }
+  renderOnMain();
 }
 
 // Fallback: render on the main thread if the Worker cannot run in this
