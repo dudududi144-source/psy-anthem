@@ -508,6 +508,18 @@ function render(events, bpm, onProgress, opts) {
     if (start + dur > endSec) endSec = start + dur;
   }
   if (notes.length === 0) throw new Error('no notes');
+  // Harmonizer (advanced effect): for each lead note, add a harmony a fifth
+  // above (7 semitones) at lower volume. A fifth is almost always consonant,
+  // so this thickens the melody into a commercial-trance lead without clashing.
+  if (!draft) {
+    const hn = [];
+    for (const n of notes) {
+      if (n.ch === 0) {
+        hn.push({ start: n.start, dur: n.dur, freq: n.freq * 1.4983070768766815, vel: n.vel * 0.5, ch: 0 });
+      }
+    }
+    for (let i = 0; i < hn.length; i++) notes.push(hn[i]);
+  }
   const total = Math.ceil((endSec + (draft ? 1.0 : 1.5)) * sr);
   // Per-voice buffers (v10.3): each voice gets its own processing so the
   // lead / pad / pluck / bass each get a distinct character.

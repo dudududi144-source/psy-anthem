@@ -1,5 +1,14 @@
 # Changelog
 
+## 13.3.0 - Harmonizer (advanced effect)
+
+Adds a harmonizer: for each lead note, renders a harmony a fifth above
+(7 semitones, ~1.5x freq) at lower volume. A fifth is almost always
+consonant, so this thickens the melody into a commercial-trance lead without
+clashing. Skipped in draft mode to keep drafts fast.
+
+
+
 ## 13.2.0 - Lusher pads + deeper reverb
 
 - Pads richer: unison 4 -> 5, slightly wider detune (lowered level to keep
