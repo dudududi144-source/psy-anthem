@@ -8,17 +8,18 @@ On the target machine, audio is ONLY reliably audible through an `<audio>`
 media element. Live WebAudio (`AudioContext -> destination`) overloads and
 dies. **Never route playback through live WebAudio on this machine.**
 
-## Playback architecture that actually works (v6.3+)
+## Playback architecture that actually works (v7.0+)
 1. `createAnthemEngine(config).generate()` -> MusicalEvent[] (fast, works).
-2. Standard renderer (pure-JS stereo wavetable synth, zero WebAudio):
-   detuned unison lead / pad stack / filtered pluck / driven bass,
-   ADSR envelopes, per-voice lowpass, stereo pans, tempo-synced delay,
-   normalize + soft clip. Fast (~0.5-2s) and guaranteed on any machine.
-3. WAV -> Blob URL -> visible `<audio controls>` element -> `play()`.
-   The media-element path is the one proven audible on this machine.
-4. Studio Render (✨ button): full engine via OfflineAudioContext with a
-   120s budget; upgrades the player when it completes. Keep it explicit -
-   on weak machines it may not finish and must never block the UI.
+2. Rendering runs in a **Web Worker** (web/render-worker.js): a pure-JS
+   stereo wavetable synth (zero WebAudio) - detuned unison lead / pad
+   stack / filtered pluck / driven bass, ADSR, per-voice lowpass, stereo
+   pans, tempo-synced delay, normalize + soft clip. The main thread never
+   blocks, so the UI can never freeze or get stuck during rendering.
+3. WAV -> Blob URL -> single <audio> element -> play(). The media-element
+   path is the one proven audible on the target machine.
+4. Keep it this way: ONE playback path, no experimental modes, no hidden
+   players, no OfflineAudioContext on the hot path (it hung on the weak
+   field machine - the reason it was removed from the default flow).
 
 ## Facts learned the hard way
 - Pure `<audio>` beep: HEARD repeatedly => media path is fine.

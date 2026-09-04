@@ -1,5 +1,22 @@
 # Changelog
 
+## 7.0.0 - Professional Studio UI (single reliable path, zero stuck states)
+
+Replaces the accumulated v3-v6 experiment layers with one clean product:
+
+- Audio rendering moved to a **Web Worker** (web/render-worker.js): the main
+  thread never blocks, the UI never freezes, nothing can "get stuck" during
+  rendering. Progress is reported live.
+- One reliable playback path: worker-rendered stereo WAV -> <audio> element
+  (the path proven audible on the field machine). No live WebAudio, no
+  experimental modes, no hidden players.
+- Professional UI: transport (play/pause/stop/seek), waveform view with
+  playhead, piano roll with playhead, live time readout, stats, WAV/MIDI
+  export, keyboard shortcuts (Space/G), responsive layout.
+- Clean state flow: compose -> render (progress %) -> ready -> play.
+
+
+
 ## 6.3.0 - Real synth sound (no more game-boy)
 
 Field report: playback works but sounds like a toy (the old pure-JS

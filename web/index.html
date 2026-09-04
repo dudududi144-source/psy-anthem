@@ -3,55 +3,82 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PSY ANTHEM — Studio</title>
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
-<title>PSY ANTHEM</title>
 <meta http-equiv="Content-Security-Policy" content="default-src 'self' blob: data: https://cdn.jsdelivr.net; script-src 'self' blob:; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; font-src 'self' data: https://cdn.jsdelivr.net; img-src 'self' data: blob:; media-src 'self' blob: data:; worker-src 'self' blob:; connect-src 'self' blob: data:;">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/space-grotesk@5.0.0/500.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/space-grotesk@5.0.0/700.css">
-<link rel="stylesheet" href="./styles.css?v=63">
+<link rel="stylesheet" href="./styles.css?v=70">
 <link rel="icon" href="data:,">
 </head>
 <body>
 <header>
-  <h1>PSY ANTHEM</h1>
-  <span class="tag">clean build · v6.3</span>
+  <div class="brand">
+    <div class="logo" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span></div>
+    <div class="brand-text">
+      <h1>PSY ANTHEM</h1>
+      <p>Generative Anthem Studio</p>
+    </div>
+  </div>
+  <div class="header-right">
+    <span id="statusChip" class="chip idle">loading</span>
+    <span class="ver">v7.0</span>
+  </div>
 </header>
 
-<main>
-  <section class="card controls">
-    <div class="row">
-      <label class="field"><span>seed</span><input id="seed" type="number" value="42"></label>
-      <label class="field"><span>intent</span><select id="intent"></select></label>
-      <label class="field"><span>energy</span><select id="curve"></select></label>
-      <label class="field"><span>root</span><select id="root"></select></label>
-      <label class="field"><span>bars</span><select id="bars"></select></label>
+<main class="studio">
+  <!-- Composition panel -->
+  <aside class="panel compose">
+    <h2>Composition</h2>
+    <div class="seed-row">
+      <label class="field grow"><span>Seed</span><input id="seed" type="number" value="42"></label>
+      <button id="random" class="icon-btn" title="Random seed + generate">🎲</button>
     </div>
-    <div class="row actions">
-      <button id="generate" class="primary">⚡ Generate</button>
-      <button id="random" class="ghost">🎲 Random</button>
+    <label class="field"><span>Intent</span><select id="intent"></select></label>
+    <label class="field"><span>Energy curve</span><select id="curve"></select></label>
+    <div class="two-col">
+      <label class="field"><span>Key</span><select id="root"></select></label>
+      <label class="field"><span>Length</span><select id="bars"></select></label>
     </div>
-  </section>
+    <button id="generate" class="primary">⚡ Generate Anthem</button>
+    <div id="statusLine" class="status-line">Loading…</div>
+  </aside>
 
-  <section class="card playerbox">
-    <button id="play" class="bigplay">▶ Play</button>
-    <div id="status" class="status">Loading…</div>
-    <audio id="player" controls preload="auto"></audio>
-  </section>
-
-  <section class="card">
-    <canvas id="roll" width="900" height="280"></canvas>
+  <!-- Stage -->
+  <section class="panel stage">
+    <div class="transport">
+      <button id="playBtn" class="play" disabled title="Play">▶</button>
+      <button id="stopBtn" class="stop" disabled title="Stop">■</button>
+      <div id="timeRead" class="time">0:00.0 / 0:00.0</div>
+      <input id="seek" type="range" min="0" max="1000" value="0" disabled title="Seek">
+    </div>
+    <div class="wave-wrap">
+      <canvas id="wave"></canvas>
+      <div id="waveHead" class="playhead"></div>
+    </div>
+    <div class="roll-wrap">
+      <canvas id="roll"></canvas>
+      <div id="rollHead" class="playhead"></div>
+    </div>
     <div id="stats" class="stats"></div>
   </section>
 
-  <section class="card exports">
-    <button id="hqRender" class="primary">✨ Studio Render (full engine)</button>
-    <button id="dlWav" class="ghost">⬇ WAV</button>
-    <button id="dlMidi" class="ghost">⬇ MIDI</button>
-  </section>
+  <!-- Output panel -->
+  <aside class="panel output">
+    <h2>Output</h2>
+    <button id="dlWav" class="export">⬇ &nbsp;WAV<span>the exact audio you hear</span></button>
+    <button id="dlMidi" class="export">⬇ &nbsp;MIDI<span>open in any DAW</span></button>
+    <div class="tips">
+      <p><b>Space</b> — play / pause</p>
+      <p><b>G</b> — generate</p>
+      <p>Same seed = same anthem, always.</p>
+    </div>
+  </aside>
 </main>
 
-<footer>PSY ANTHEM · deterministic anthem engine · same seed = same anthem</footer>
-<script type="module" src="./app.js?v=63"></script>
+<footer>PSY ANTHEM · deterministic composition engine · audio renders off the main thread, UI never blocks</footer>
+<audio id="audio" preload="auto"></audio>
+<script type="module" src="./app.js?v=70"></script>
 </body>
 </html>
