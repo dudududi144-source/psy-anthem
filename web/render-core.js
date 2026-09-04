@@ -139,10 +139,10 @@ function ampEnv(t, dur, rec) {
   const tr = (t - dur) / rec.rel;
   return rec.sus * Math.max(0, 1 - tr);
 }
-function filtShape(t, rec) {
-  if (t < rec.filtAtk) return t / rec.filtAtk;
-  const d = (t - rec.filtAtk) / Math.max(0.01, rec.filtDec);
-  return rec.filtSus + (1 - rec.filtSus) * Math.exp(-3.2 * d);
+function filtShape(t, fAtk, fDec, fSus) {
+  if (t < fAtk) return t / fAtk;
+  const d = (t - fAtk) / fDec;
+  return fSus + (1 - fSus) * Math.exp(-3.2 * d);
 }
 function pumpVal(t, beatDur, depth) {
   const ph = (t % beatDur) / beatDur;
@@ -294,8 +294,9 @@ function widenStereo(L, R, total, amount) {
   }
 }
 
-function renderNote(n, rec, s0, len, total, L, R, sr, spb) {
+function renderNote(n, rec, s0, len, total, L, R, sr, spb, invSr) {
   const table = tableFor(rec.table);
+  const lenSec = len / sr;
   const span = rec.sus <= 0.01 ? len : len + Math.floor(rec.rel * sr);
   const unison = rec.unison;
   for (let u = 0; u < unison; u++) {
@@ -304,24 +305,25 @@ function renderNote(n, rec, s0, len, total, L, R, sr, spb) {
     const voicePan = rec.pan + rec.spread * spreadPos;
     const gL = Math.cos((voicePan + 1) * Math.PI / 4);
     const gR = Math.sin((voicePan + 1) * Math.PI / 4);
-    const baseInc = (n.freq * det) * TABLE_LEN / sr;
+    const baseInc = (n.freq * det) * TABLE_LEN * invSr;
     const vibRate = rec.vibRate || 0;
     const vibDepth = rec.vibDepth || 0;
+    const fAtk = rec.filtAtk, fDec = Math.max(0.01, rec.filtDec), fSus = rec.filtSus;
+    const q = 1 / rec.Q;
     let phase = (u * 0.37 * TABLE_LEN) % TABLE_LEN;
     let low = 0, band = 0;
     for (let i = 0; i < span && s0 + i < total; i++) {
-      const t = i / sr;
-      const env = ampEnv(t, len / sr, rec);
+      const t = i * invSr;
+      const env = ampEnv(t, lenSec, rec);
       let inc = baseInc;
       if (vibDepth > 0 && t > 0.12) {
         const vibRamp = Math.min(1, (t - 0.12) / 0.35);
         inc = baseInc * (1 + vibDepth * vibRamp * Math.sin(2 * Math.PI * vibRate * (t - 0.12)));
       }
       if (env <= 0.0008) { phase += inc; if (phase >= TABLE_LEN) phase -= TABLE_LEN; continue; }
-      let fc = rec.filtBase + rec.filtEnv * filtShape(t, rec);
-      if (fc > 16000) fc = 16000; if (fc < 60) fc = 60;
-      const f = 2 * Math.sin(Math.PI * fc / sr);
-      const q = 1 / rec.Q;
+      let fc = rec.filtBase + rec.filtEnv * filtShape(t, fAtk, fDec, fSus);
+      if (fc > 16000) fc = 16000; else if (fc < 60) fc = 60;
+      const f = 2 * Math.sin(Math.PI * fc * invSr);
       const smp = tableAt(table, phase);
       low += f * band;
       const high = smp - low - q * band;
@@ -482,6 +484,7 @@ function mixVoices(vb, L, R, total) {
 
 function render(events, bpm, onProgress, opts) {
   const sr = 44100;
+  const invSr = 1 / sr;
   const spb = 60 / Math.max(1, bpm);
   let sounds = (opts && opts.intent) ? selectSounds(opts.intent, (opts.seed | 0)) : defaultSounds();
   const draft = !!(opts && opts.quality === 'draft');
@@ -519,7 +522,7 @@ function render(events, bpm, onProgress, opts) {
     const velAmp = 0.55 + 0.45 * n.vel;
     const savedAmp = rec.amp;
     rec.amp = savedAmp * velAmp;
-    renderNote(n, rec, s0, len, total, vb[n.ch].L, vb[n.ch].R, sr, spb);
+    renderNote(n, rec, s0, len, total, vb[n.ch].L, vb[n.ch].R, sr, spb, invSr);
     rec.amp = savedAmp;
     if ((ni % 8) === 7 && onProgress) onProgress(Math.round((ni / notes.length) * 70));
   }

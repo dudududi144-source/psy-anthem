@@ -1,5 +1,13 @@
 # Changelog
 
+## 13.0.0 - Faster render (inner-loop optimization)
+
+Hoisted per-sample computations out of the hot loop: precompute invSr (1/sr),
+use multiplication instead of division, cache filter-envelope params as locals.
+Same sound, faster render.
+
+
+
 ## 12.9.0 - Wider pads + tighter bass (quality)
 
 - Pads wider via more detune (no extra CPU, so not slower).
