@@ -1,5 +1,14 @@
 # Changelog
 
+## 12.7.0 - Fix blob URL revocation race (ERR_FILE_NOT_FOUND)
+
+The audio element kept trying to load a blob URL that had already been
+revoked, spamming ERR_FILE_NOT_FOUND and breaking playback. Fix: detach the
+media element from the old blob (removeAttribute('src') + load) BEFORE
+revoking it, so it never references a revoked URL.
+
+
+
 ## 12.6.0 - Richer harmony by default (complex chords)
 
 Sets harmonyComplexity to 'complex' by default so the anthem uses richer

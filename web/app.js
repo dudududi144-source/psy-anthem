@@ -7,7 +7,7 @@
 import { createAnthemEngine, AnthemIntent, EnergyCurve } from './engine.mjs';
 
 const $ = (id) => document.getElementById(id);
-console.info('[PSY ANTHEM] v7.1 professional build loaded');
+console.info('[PSY ANTHEM] v7.2 professional build loaded');
 
 // ---------- state ----------
 let anthem = null;       // AnthemOutput
@@ -89,6 +89,9 @@ function computePeaks(buffer, buckets) {
 function requestRender() {
   if (!anthem) return;
   stopPlayback();
+  // Detach the media element from the old blob BEFORE revoking it, so the
+  // element never tries to load a revoked URL (ERR_FILE_NOT_FOUND).
+  try { audio.pause(); audio.removeAttribute('src'); audio.load(); } catch (e) { /* ignore */ }
   if (audioUrl) { try { URL.revokeObjectURL(audioUrl); } catch (e) { /* ignore */ } audioUrl = null; }
   renderId++;
   const myId = renderId;
