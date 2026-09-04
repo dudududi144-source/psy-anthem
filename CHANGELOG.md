@@ -1,5 +1,21 @@
 # Changelog
 
+## 9.2.0 - Groove engine (the commercial-trance backbone)
+
+The missing element was the groove itself:
+
+- Renderer-side drums (deterministic, zero samples): four-on-the-floor psy
+  kick (sine pitch-drop + click transient) and offbeat high-passed hats.
+- Sidechain: the whole mix ducks under every kick (classic psy pump),
+  layered with the existing per-recipe beat pumps on pads/bass.
+- Master stereo widener (mid/side) + reverb pre-delay for cleaner space.
+- UI toggle "Trance groove" (on by default); render requests carry
+  drums on/off; draft mode supports groove too.
+- Tests: groove determinism, groove-vs-dry difference, drum-free default
+  (byte-stable backwards compatibility), groove in draft mode.
+
+
+
 ## 9.1.0 - Visible sound kit + draft preview
 
 - The chosen sound kit is now visible: render returns the selected sound

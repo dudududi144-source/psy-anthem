@@ -158,3 +158,10 @@ footer{max-width:1320px; margin:0 auto; padding:6px 24px 26px; color:#5b6284; fo
   box-shadow:0 0 10px color-mix(in srgb, var(--kc) 25%, transparent);
 }
 .kit-chip b{color:var(--kc); text-transform:uppercase; font-size:10.5px; letter-spacing:.12em; margin-right:4px}
+
+.toggle-row{
+  display:flex; align-items:center; gap:10px; margin:12px 0 4px; padding:10px 12px;
+  border:1px solid var(--line); border-radius:10px; background:#080b16; cursor:pointer;
+  font-size:13.5px; color:var(--txt);
+}
+.toggle-row input{width:17px; height:17px; accent-color:var(--accent); cursor:pointer}

@@ -1,4 +1,4 @@
-// PSY ANTHEM — render-core.js (v9.1 "sound library + draft preview")
+// PSY ANTHEM — render-core.js (v9.2 "sound library + groove engine")
 // Commercial-trance offline renderer with a deterministic SOUND LIBRARY:
 // 25 distinct sounds across lead/pad/pluck/bass roles. Each song picks its
 // sounds from intent-curated pools using the song seed - same seed+intent
@@ -141,6 +141,67 @@ function pumpVal(t, beatDur, depth) {
   return 1 - depth * Math.exp(-ph * 5.5);
 }
 
+// ---------- groove layer (renderer-side drums, fully deterministic) ----------
+function hashNoise(i, salt) {
+  let h = Math.imul((i | 0) ^ (salt | 0), 0x9e3779b9);
+  h ^= h >>> 15;
+  h = Math.imul(h, 0x85ebca6b);
+  h ^= h >>> 13;
+  return ((h >>> 0) / 4294967296) * 2 - 1;
+}
+function renderDrums(L, R, sr, spb, bars, total) {
+  // Four-on-the-floor psy kick: sine pitch-drop + click transient.
+  const kickLen = Math.floor(0.30 * sr);
+  for (let b = 0; b < bars; b++) {
+    const s0 = Math.floor(b * spb * sr);
+    let phase = 0;
+    for (let i = 0; i < kickLen && s0 + i < total; i++) {
+      const t = i / sr;
+      const f0 = 46 + (150 - 46) * Math.exp(-t / 0.030);
+      phase += 2 * Math.PI * f0 / sr;
+      const atk = t < 0.002 ? t / 0.002 : 1;
+      const env = atk * Math.exp(-t / 0.085);
+      const click = t < 0.0025 ? (1 - t / 0.0025) * 0.5 * hashNoise(i, b * 7919 + 17) : 0;
+      const val = (Math.sin(phase) * 0.85 + Math.sin(phase * 0.5) * 0.25) * env * 0.5 + click * 0.25;
+      L[s0 + i] += val;
+      R[s0 + i] += val;
+    }
+  }
+  // Offbeat hats: high-passed deterministic noise burst.
+  const hatLen = Math.floor(0.12 * sr);
+  for (let b = 0; b < bars; b++) {
+    const s0 = Math.floor((b * spb + spb / 2) * sr);
+    let prev = 0, prev2 = 0;
+    for (let i = 0; i < hatLen && s0 + i < total; i++) {
+      const t = i / sr;
+      const n = hashNoise(i, b * 104729 + 31);
+      const hp = n - 2 * prev + prev2;
+      prev2 = prev; prev = n;
+      const env = Math.exp(-t / 0.035);
+      const val = hp * env * 0.16;
+      L[s0 + i] += val * 0.9;
+      R[s0 + i] += val * 1.1;
+    }
+  }
+}
+function applySidechain(L, R, sr, spb, total, depth) {
+  for (let i = 0; i < total; i++) {
+    const t = i / sr;
+    const ph = (t % spb) / spb;
+    const duck = 1 - depth * Math.exp(-ph * 7.5);
+    L[i] *= duck;
+    R[i] *= duck;
+  }
+}
+function widenStereo(L, R, total, amount) {
+  for (let i = 0; i < total; i++) {
+    const mid = (L[i] + R[i]) * 0.5;
+    const side = (L[i] - R[i]) * 0.5 * amount;
+    L[i] = mid + side;
+    R[i] = mid - side;
+  }
+}
+
 function renderNote(n, rec, s0, len, total, L, R, sr, spb) {
   const table = tableFor(rec.table);
   const span = rec.sus <= 0.01 ? len : len + Math.floor(rec.rel * sr);
@@ -224,9 +285,11 @@ function reverb(L, R, sr, total) {
       const buf = new Float32Array(M);
       const g = combFb[c];
       let w = 0;
+      const pre = Math.floor(0.012 * sr);
       for (let i = 0; i < total; i++) {
+        const xi = i >= pre ? x[i - pre] : 0;
         const delayed = buf[w];
-        buf[w] = x[i] + g * delayed;
+        buf[w] = xi + g * delayed;
         sum[i] += delayed;
         w = (w + 1) % M;
       }
@@ -279,6 +342,7 @@ function render(events, bpm, onProgress, opts) {
   const spb = 60 / Math.max(1, bpm);
   let sounds = (opts && opts.intent) ? selectSounds(opts.intent, (opts.seed | 0)) : defaultSounds();
   const draft = !!(opts && opts.quality === 'draft');
+  const drumsOn = !!(opts && opts.drums === 'on');
   if (draft) {
     const draftify = (rec) => {
       const d = Object.assign({}, rec);
@@ -319,6 +383,12 @@ function render(events, bpm, onProgress, opts) {
   pingpong(L, R, sr, spb, total);
   if (onProgress) onProgress(82);
   if (!draft) reverb(L, R, sr, total);
+  if (drumsOn) {
+    const barsTotal = Math.max(1, Math.ceil(endSec / (4 * spb)));
+    applySidechain(L, R, sr, spb, total, 0.3);
+    renderDrums(L, R, sr, spb, barsTotal, total);
+  }
+  widenStereo(L, R, total, 1.22);
   if (onProgress) onProgress(90);
 
   let peak = 0.0001;

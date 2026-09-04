@@ -109,3 +109,25 @@ describe('render-core (v9 sound library)', () => {
     expect(() => renderSong([], 140)).toThrow();
   });
 });
+
+describe('render-core (v9.2 groove engine)', () => {
+  it('groove layer is deterministic and different from dry render', () => {
+    const g1 = renderSong(makeEvents(), 140, undefined, { intent: 'full-on', seed: 9, drums: 'on' });
+    const g2 = renderSong(makeEvents(), 140, undefined, { intent: 'full-on', seed: 9, drums: 'on' });
+    expect(sameBytes(g1.wav, g2.wav)).toBe(true);
+    const dry = renderSong(makeEvents(), 140, undefined, { intent: 'full-on', seed: 9, drums: 'off' });
+    expect(sameBytes(g1.wav, dry.wav)).toBe(false);
+  });
+
+  it('default render stays drum-free (backwards compatible)', () => {
+    const a = renderSong(makeEvents(), 140);
+    const b = renderSong(makeEvents(), 140, undefined, { drums: 'off' });
+    expect(sameBytes(a.wav, b.wav)).toBe(true);
+  });
+
+  it('groove works in draft mode too', () => {
+    const a = renderSong(makeEvents(), 140, undefined, { intent: 'euphoric-trance', seed: 4, quality: 'draft', drums: 'on' });
+    const b = renderSong(makeEvents(), 140, undefined, { intent: 'euphoric-trance', seed: 4, quality: 'draft', drums: 'on' });
+    expect(sameBytes(a.wav, b.wav)).toBe(true);
+  });
+});

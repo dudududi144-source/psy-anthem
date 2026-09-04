@@ -29,6 +29,10 @@ dies. **Never route playback through live WebAudio on this machine.**
    deterministic. Rules: keep pools genre-coherent (sounds must serve each
    other), never break determinism, keep renderSong(events, bpm,
    onProgress, opts) backwards compatible (no opts = default sounds).
+7. v9.2+: groove engine - renderer-side deterministic drums (kick + offbeat
+   hats, hashNoise only, NEVER Math.random), sidechain duck + stereo
+   widener. opts.drums 'on'/'off' (no opts = drums off = byte-stable old
+   behavior). The UI sends drums 'on' by default.
 
 ## Facts learned the hard way
 - Pure `<audio>` beep: HEARD repeatedly => media path is fine.
