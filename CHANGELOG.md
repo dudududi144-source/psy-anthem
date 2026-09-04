@@ -1,5 +1,18 @@
 # Changelog
 
+## 12.0.0 - Melody & anthem only (removed all drums)
+
+The drums/kicks/rolling-bass/sidechain-pump were added without being asked for
+and are not part of this project (which is melodies & anthems, NOT drums).
+They are now REMOVED from web/synth-renderer.js:
+- No four-on-the-floor kick.
+- No rolling bass (bass is back to a normal melodic bass voice).
+- No sidechain pump.
+- Kept: lush supersaw lead, warm pad, resonant pluck, sub bass, chorus,
+  shared reverb + delay + limiter, silence detection with render-core fallback.
+
+
+
 ## 11.1.0 - Fix pro-synth render hanging (timeout + bounded rolling bass)
 
 The pro-synth render hung at "Rendering audio… (pro synth)" because the

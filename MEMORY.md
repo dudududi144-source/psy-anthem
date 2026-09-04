@@ -108,3 +108,7 @@ dies. **Never route playback through live WebAudio on this machine.**
    steps/note, lead unison 5, and renderWithSynth wrapped in a 20s timeout
    that falls back to render-core. If the pro sound still doesn't render on a
    machine, the 20s timeout guarantees it falls back instead of hanging.
+17. v12.0+: THIS PROJECT IS MELODIES & ANTHEMS, NOT DRUMS. Do NOT add kick,
+   drums, rolling bass, or sidechain pump unless explicitly asked. The user
+   rejected drums. The synth-renderer renders only the 4 melodic voices
+   (lead/pad/pluck/bass) with lush supersaw/chorus/reverb/delay.
