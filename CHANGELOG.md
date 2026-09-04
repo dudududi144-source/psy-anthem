@@ -1,5 +1,12 @@
 # Changelog
 
+## 12.9.0 - Wider pads + tighter bass (quality)
+
+- Pads wider via more detune (no extra CPU, so not slower).
+- Bass tighter: faster envelope, tighter filter, for a punchier psy bass.
+
+
+
 ## 12.8.0 - Lusher reverb (quality)
 
 Upgraded the reverb from 4 combs + 2 allpasses to 6 combs + 3 allpasses with

@@ -53,11 +53,11 @@ const LIB = {
     R({ unison: 5, detune: 0.0060, filtBase: 750, filtEnv: 5200, filtAtk: 0.004, filtDec: 0.20, filtSus: 0.25, Q: 4.6, atk: 0.003, dec: 0.08, sus: 0.55, rel: 0.16, amp: 0.23, spread: 0.80, drive: 0.35, pump: 0.30, vibRate: 5.5, vibDepth: 0.005 }), // 7 uplifting-gate
   ],
   pad: [
-    R({ unison: 4, detune: 0.0062, filtBase: 1250, filtEnv: 1900, filtAtk: 0.60, filtDec: 1.20, filtSus: 0.75, Q: 1.0, atk: 0.60, dec: 0.40, sus: 0.88, rel: 1.80, amp: 0.088, spread: 1.00, pump: 0.30 }), // 0 lush-wide (lusher)
+    R({ unison: 4, detune: 0.0080, filtBase: 1250, filtEnv: 1900, filtAtk: 0.60, filtDec: 1.20, filtSus: 0.75, Q: 1.0, atk: 0.60, dec: 0.40, sus: 0.88, rel: 1.80, amp: 0.088, spread: 1.00, pump: 0.30 }), // 0 lush-wide (lusher)
     R({ unison: 2, detune: 0.0050, filtBase: 520, filtEnv: 900, filtAtk: 0.70, filtDec: 1.40, filtSus: 0.65, Q: 1.4, atk: 0.65, dec: 0.50, sus: 0.85, rel: 1.80, amp: 0.14, spread: 0.90, drive: 0.15, pump: 0.18 }), // 1 dark-drift
-    R({ unison: 4, detune: 0.0068, filtBase: 2200, filtEnv: 2400, filtAtk: 0.80, filtDec: 1.60, filtSus: 0.75, Q: 0.9, atk: 0.75, dec: 0.60, sus: 0.90, rel: 2.00, amp: 0.082, spread: 1.00, pump: 0.28 }), // 2 airy-heaven
+    R({ unison: 4, detune: 0.0085, filtBase: 2200, filtEnv: 2400, filtAtk: 0.80, filtDec: 1.60, filtSus: 0.75, Q: 0.9, atk: 0.75, dec: 0.60, sus: 0.90, rel: 2.00, amp: 0.082, spread: 1.00, pump: 0.28 }), // 2 airy-heaven
     R({ unison: 2, detune: 0.0040, filtBase: 900, filtEnv: 1500, filtAtk: 0.30, filtDec: 0.90, filtSus: 0.60, Q: 1.8, atk: 0.30, dec: 0.30, sus: 0.80, rel: 1.00, amp: 0.13, spread: 0.85, pump: 0.42 }), // 3 gated-rhythm
-    R({ unison: 3, detune: 0.0055, filtBase: 1000, filtEnv: 1200, filtAtk: 0.45, filtDec: 1.00, filtSus: 0.70, Q: 1.3, atk: 0.45, dec: 0.40, sus: 0.85, rel: 1.40, amp: 0.10, spread: 0.90, drive: 0.12, pump: 0.32 }), // 4 analog-warm
+    R({ unison: 3, detune: 0.0070, filtBase: 1000, filtEnv: 1200, filtAtk: 0.45, filtDec: 1.00, filtSus: 0.70, Q: 1.3, atk: 0.45, dec: 0.40, sus: 0.85, rel: 1.40, amp: 0.10, spread: 0.90, drive: 0.12, pump: 0.32 }), // 4 analog-warm
   ],
   pluck: [
     R({ filtBase: 420, filtEnv: 2600, filtAtk: 0.002, filtDec: 0.16, filtSus: 0.00, Q: 3.2, atk: 0.002, dec: 0.20, sus: 0.00, rel: 0.12, amp: 0.24, pan: 0.25, drive: 0.12 }), // 0 clean-pluck (was acid-303, tamed)
@@ -68,8 +68,8 @@ const LIB = {
     R({ table: 'square', filtBase: 300, filtEnv: 1800, filtAtk: 0.002, filtDec: 0.18, filtSus: 0.00, Q: 3.0, atk: 0.002, dec: 0.20, sus: 0.00, rel: 0.12, amp: 0.23, pan: 0.25, drive: 0.18 }), // 5 warm-stab (was dark-stab, tamed)
   ],
   bass: [
-    R({ sub: true, filtBase: 260, filtEnv: 700, filtAtk: 0.002, filtDec: 0.12, filtSus: 0.30, Q: 3.2, atk: 0.002, dec: 0.15, sus: 0.35, rel: 0.09, amp: 0.32, drive: 0.45, pump: 0.20 }), // 0 rolling-psy
-    R({ sub: true, filtBase: 280, filtEnv: 1200, filtAtk: 0.002, filtDec: 0.10, filtSus: 0.25, Q: 4.0, atk: 0.002, dec: 0.12, sus: 0.30, rel: 0.08, amp: 0.36, drive: 0.55, pump: 0.28 }), // 1 offbeat-kbbb
+    R({ sub: true, filtBase: 240, filtEnv: 600, filtAtk: 0.001, filtDec: 0.10, filtSus: 0.25, Q: 3.5, atk: 0.001, dec: 0.12, sus: 0.30, rel: 0.07, amp: 0.33, drive: 0.48, pump: 0.22 }), // 0 rolling-psy
+    R({ sub: true, filtBase: 250, filtEnv: 1000, filtAtk: 0.001, filtDec: 0.09, filtSus: 0.22, Q: 4.2, atk: 0.001, dec: 0.10, sus: 0.26, rel: 0.06, amp: 0.37, drive: 0.58, pump: 0.30 }), // 1 offbeat-kbbb
     R({ filtBase: 180, filtEnv: 3800, filtAtk: 0.001, filtDec: 0.13, filtSus: 0.10, Q: 8.5, atk: 0.001, dec: 0.16, sus: 0.15, rel: 0.08, amp: 0.32, drive: 0.45, pump: 0.12 }), // 2 acid-bass
     R({ table: 'sine', sub: true, filtBase: 600, filtEnv: 500, filtAtk: 0.003, filtDec: 0.10, filtSus: 0.50, Q: 1.5, atk: 0.003, dec: 0.10, sus: 0.60, rel: 0.10, amp: 0.38, drive: 0.20, pump: 0.14 }), // 3 sub-deep
     R({ filtBase: 240, filtEnv: 1600, filtAtk: 0.002, filtDec: 0.11, filtSus: 0.30, Q: 5.0, atk: 0.002, dec: 0.13, sus: 0.35, rel: 0.08, amp: 0.34, drive: 0.70, pump: 0.20 }), // 4 gritty-neuro
