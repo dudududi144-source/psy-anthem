@@ -1,5 +1,13 @@
 # Changelog
 
+## 13.2.0 - Lusher pads + deeper reverb
+
+- Pads richer: unison 4 -> 5, slightly wider detune (lowered level to keep
+  the mix balanced).
+- Deeper reverb: wet 0.36 -> 0.40 for more space/depth.
+
+
+
 ## 13.1.0 - Stronger melodic identity (contour bias)
 
 Increased the ARCH contour weight (0.5 -> 0.55) so the lead melody has a

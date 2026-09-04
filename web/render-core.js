@@ -53,7 +53,7 @@ const LIB = {
     R({ unison: 5, detune: 0.0060, filtBase: 750, filtEnv: 5200, filtAtk: 0.004, filtDec: 0.20, filtSus: 0.25, Q: 4.6, atk: 0.003, dec: 0.08, sus: 0.55, rel: 0.16, amp: 0.23, spread: 0.80, drive: 0.35, pump: 0.30, vibRate: 5.5, vibDepth: 0.005 }), // 7 uplifting-gate
   ],
   pad: [
-    R({ unison: 4, detune: 0.0080, filtBase: 1250, filtEnv: 1900, filtAtk: 0.60, filtDec: 1.20, filtSus: 0.75, Q: 1.0, atk: 0.60, dec: 0.40, sus: 0.88, rel: 1.80, amp: 0.088, spread: 1.00, pump: 0.30 }), // 0 lush-wide (lusher)
+    R({ unison: 5, detune: 0.0090, filtBase: 1250, filtEnv: 1900, filtAtk: 0.60, filtDec: 1.20, filtSus: 0.75, Q: 1.0, atk: 0.60, dec: 0.40, sus: 0.88, rel: 1.80, amp: 0.082, spread: 1.00, pump: 0.30 }), // 0 lush-wide (lusher)
     R({ unison: 2, detune: 0.0050, filtBase: 520, filtEnv: 900, filtAtk: 0.70, filtDec: 1.40, filtSus: 0.65, Q: 1.4, atk: 0.65, dec: 0.50, sus: 0.85, rel: 1.80, amp: 0.14, spread: 0.90, drive: 0.15, pump: 0.18 }), // 1 dark-drift
     R({ unison: 4, detune: 0.0085, filtBase: 2200, filtEnv: 2400, filtAtk: 0.80, filtDec: 1.60, filtSus: 0.75, Q: 0.9, atk: 0.75, dec: 0.60, sus: 0.90, rel: 2.00, amp: 0.082, spread: 1.00, pump: 0.28 }), // 2 airy-heaven
     R({ unison: 2, detune: 0.0040, filtBase: 900, filtEnv: 1500, filtAtk: 0.30, filtDec: 0.90, filtSus: 0.60, Q: 1.8, atk: 0.30, dec: 0.30, sus: 0.80, rel: 1.00, amp: 0.13, spread: 0.85, pump: 0.42 }), // 3 gated-rhythm
@@ -416,7 +416,7 @@ function reverb(L, R, sr, total) {
   }
   const wetL = processChan(L, 1.0);
   const wetR = processChan(R, 1.045);
-  const wet = 0.36;
+  const wet = 0.40;
   for (let i = 0; i < total; i++) { L[i] += wetL[i] * wet; R[i] += wetR[i] * wet; }
 }
 function stereoToWav16(channels, sr) {
