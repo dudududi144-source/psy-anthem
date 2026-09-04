@@ -98,3 +98,8 @@ dies. **Never route playback through live WebAudio on this machine.**
    (createOscillator/BiquadFilter/Gain/Convolver/Delay), like psyreason does.
    web/synth-renderer.js implements this. It includes silence detection and
    falls back to render-core. Do NOT use AudioWorklet for offline bounce.
+15. v9.0+: what actually makes it sound like modern trance (not RPG/gamelan):
+   four-on-the-floor kick + rolling offbeat bassline + sidechain-style pump on
+   the pads + lush supersaw lead. All added in web/synth-renderer.js (offline,
+   standard Web Audio nodes). If it still sounds "game-like", the next levers
+   are the MELODY/HARMONY content in src/ (not the synth).

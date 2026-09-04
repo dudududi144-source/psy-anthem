@@ -1,5 +1,19 @@
 # Changelog
 
+## 11.0.0 - Commercial-trance groove (kick + rolling bass + sidechain pump)
+
+The output kept sounding like "RPG/gamelan" because it lacked the things that
+actually define modern trance. Added in web/synth-renderer.js (offline,
+standard Web Audio nodes):
+- Four-on-the-floor KICK (pitch-drop sine + click, every beat).
+- ROLLING offbeat BASSLINE (the K-B-B-B psy groove) instead of long sub notes.
+- SIDECHAIN-style PUMPING on the pads (duck on every kick, recover by the
+  offbeat) - the signature trance pumping.
+- Lusher SUPERSAW lead (6 unison voices + chorus), chorus on pad/pluck.
+- Silence detection still falls back to render-core if the render is empty.
+
+
+
 ## 8.1.0 - Reliable pro-sound renderer (learned from psyreason)
 
 The v8.0 AudioWorklet offline render produced SILENCE (AudioWorklet nodes do
