@@ -10,7 +10,7 @@ export type RhythmicCharacter = keyof typeof RHYTHMIC_CELLS;
 
 const CONTOURS: Contour[] = ['ARCH', 'ASCENT', 'DESCENT', 'WAVE', 'PLATEAU'];
 // Contour bias: clear arch shapes are weighted highest (melodic identity).
-const CONTOUR_WEIGHTS = [0.55, 0.15, 0.15, 0.15, 0.05];
+const CONTOUR_WEIGHTS = [0.5, 0.15, 0.15, 0.1, 0.1];
 
 function pickContour(rng: RNG): Contour {
   const r = rng.next();
