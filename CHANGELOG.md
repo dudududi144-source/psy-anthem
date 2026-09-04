@@ -1,5 +1,22 @@
 # Changelog
 
+## 9.3.0 - Groove styles + phrase transitions
+
+- Groove styles: four (the classic, byte-stable default), fullon (driving
+  8th kicks + accented 16th hats), rolling (offbeat open hat + 16th gallop).
+- "Auto" groove: chosen deterministically per song from intent-curated pools,
+  so each song gets its own feel instead of the same pattern.
+- Phrase transitions: rising noise-sweep risers over the last bar of every
+  8-bar phrase (opts.risers, on by default in the UI).
+- Selected groove is reported in the render result and shown as a chip in
+  the sound kit.
+- Back-compat preserved: no opts = drum-free byte-stable default;
+  drums 'on' with no groove = byte-identical 'four'.
+- Tests: groove-style differences, auto determinism, back-compat byte
+  stability, risers determinism.
+
+
+
 ## 9.2.0 - Groove engine (the commercial-trance backbone)
 
 The missing element was the groove itself:

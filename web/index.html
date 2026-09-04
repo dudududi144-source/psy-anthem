@@ -9,7 +9,7 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'self' blob: data: https://cdn.jsdelivr.net; script-src 'self' blob:; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; font-src 'self' data: https://cdn.jsdelivr.net; img-src 'self' data: blob:; media-src 'self' blob: data:; worker-src 'self' blob:; connect-src 'self' blob: data:;">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/space-grotesk@5.0.0/500.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/space-grotesk@5.0.0/700.css">
-<link rel="stylesheet" href="./styles.css?v=92">
+<link rel="stylesheet" href="./styles.css?v=93">
 <link rel="icon" href="data:,">
 </head>
 <body>
@@ -49,7 +49,15 @@
     </label>
     <label class="toggle-row">
       <input id="groove" type="checkbox" checked>
-      <span>Trance groove — kick + offbeat hats + sidechain</span>
+      <span>Trance groove — kick + hats + sidechain + risers</span>
+    </label>
+    <label class="field"><span>Groove style</span>
+      <select id="grooveStyle">
+        <option value="auto" selected>Auto (changes per song)</option>
+        <option value="four">4-on-the-floor</option>
+        <option value="fullon">Full-On drive</option>
+        <option value="rolling">Rolling</option>
+      </select>
     </label>
     <button id="generate" class="primary">⚡ Generate Anthem</button>
     <div id="statusLine" class="status-line">Loading…</div>
@@ -93,6 +101,6 @@
 
 <footer>PSY ANTHEM · deterministic composition engine · audio renders off the main thread, UI never blocks</footer>
 <audio id="audio" preload="auto"></audio>
-<script type="module" src="./app.js?v=92"></script>
+<script type="module" src="./app.js?v=93"></script>
 </body>
 </html>

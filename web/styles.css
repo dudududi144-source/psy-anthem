@@ -165,3 +165,5 @@ footer{max-width:1320px; margin:0 auto; padding:6px 24px 26px; color:#5b6284; fo
   font-size:13.5px; color:var(--txt);
 }
 .toggle-row input{width:17px; height:17px; accent-color:var(--accent); cursor:pointer}
+
+.kit-chip.groove{border-color:rgba(52,211,153,.5)}

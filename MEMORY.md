@@ -33,6 +33,10 @@ dies. **Never route playback through live WebAudio on this machine.**
    hats, hashNoise only, NEVER Math.random), sidechain duck + stereo
    widener. opts.drums 'on'/'off' (no opts = drums off = byte-stable old
    behavior). The UI sends drums 'on' by default.
+8. v9.3+: groove styles (four/fullon/rolling) + auto (intent-curated pools,
+   hash(seed,99)) + phrase risers every 8 bars (opts.risers). Back-compat:
+   drums 'on' + no groove = byte-identical 'four'; no opts = drum-free.
+   Do NOT change renderDrumsFour bytes without a golden-test decision.
 
 ## Facts learned the hard way
 - Pure `<audio>` beep: HEARD repeatedly => media path is fine.

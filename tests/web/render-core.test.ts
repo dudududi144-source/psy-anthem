@@ -131,3 +131,50 @@ describe('render-core (v9.2 groove engine)', () => {
     expect(sameBytes(a.wav, b.wav)).toBe(true);
   });
 });
+
+describe('render-core (v9.3 groove styles + transitions)', () => {
+  it('back-compat: drums on with no groove == groove four (byte-identical)', () => {
+    const a = renderSong(makeEvents(), 140, undefined, { intent: 'full-on', seed: 2, drums: 'on' });
+    const b = renderSong(makeEvents(), 140, undefined, { intent: 'full-on', seed: 2, drums: 'on', groove: 'four' });
+    expect(sameBytes(a.wav, b.wav)).toBe(true);
+    expect(a.groove).toBe('four');
+  });
+
+  it('groove styles differ from each other', () => {
+    const o = { intent: 'full-on', seed: 2 };
+    const four = renderSong(makeEvents(), 140, undefined, Object.assign({ drums: 'on', groove: 'four' }, o));
+    const fullon = renderSong(makeEvents(), 140, undefined, Object.assign({ drums: 'on', groove: 'fullon' }, o));
+    const rolling = renderSong(makeEvents(), 140, undefined, Object.assign({ drums: 'on', groove: 'rolling' }, o));
+    expect(sameBytes(four.wav, fullon.wav)).toBe(false);
+    expect(sameBytes(four.wav, rolling.wav)).toBe(false);
+    expect(sameBytes(fullon.wav, rolling.wav)).toBe(false);
+    expect(fullon.groove).toBe('fullon');
+    expect(rolling.groove).toBe('rolling');
+  });
+
+  it('auto groove is deterministic per intent+seed', () => {
+    const a = renderSong(makeEvents(), 140, undefined, { intent: 'dark-psy', seed: 11, drums: 'on', groove: 'auto' });
+    const b = renderSong(makeEvents(), 140, undefined, { intent: 'dark-psy', seed: 11, drums: 'on', groove: 'auto' });
+    expect(sameBytes(a.wav, b.wav)).toBe(true);
+    expect(a.groove).toBe(b.groove);
+    expect(['four', 'fullon', 'rolling']).toContain(a.groove);
+  });
+
+  it('groove off == drums off == no-opts default (byte-identical, no drums)', () => {
+    const noopts = renderSong(makeEvents(), 140);
+    const grooveOff = renderSong(makeEvents(), 140, undefined, { groove: 'off' });
+    const drumsOff = renderSong(makeEvents(), 140, undefined, { drums: 'off' });
+    expect(sameBytes(noopts.wav, grooveOff.wav)).toBe(true);
+    expect(sameBytes(noopts.wav, drumsOff.wav)).toBe(true);
+    expect(grooveOff.groove).toBe('off');
+  });
+
+  it('risers change the render and are deterministic', () => {
+    const base = { intent: 'euphoric-trance', seed: 3, drums: 'on', groove: 'four' };
+    const a = renderSong(makeEvents(), 140, undefined, Object.assign({ risers: 'on' }, base));
+    const b = renderSong(makeEvents(), 140, undefined, Object.assign({ risers: 'on' }, base));
+    const c = renderSong(makeEvents(), 140, undefined, base);
+    expect(sameBytes(a.wav, b.wav)).toBe(true);
+    expect(sameBytes(a.wav, c.wav)).toBe(false);
+  });
+});

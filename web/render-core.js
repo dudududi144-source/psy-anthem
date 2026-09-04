@@ -1,4 +1,4 @@
-// PSY ANTHEM — render-core.js (v9.2 "sound library + groove engine")
+// PSY ANTHEM — render-core.js (v9.3 "groove styles + transitions")
 // Commercial-trance offline renderer with a deterministic SOUND LIBRARY:
 // 25 distinct sounds across lead/pad/pluck/bass roles. Each song picks its
 // sounds from intent-curated pools using the song seed - same seed+intent
@@ -149,7 +149,7 @@ function hashNoise(i, salt) {
   h ^= h >>> 13;
   return ((h >>> 0) / 4294967296) * 2 - 1;
 }
-function renderDrums(L, R, sr, spb, bars, total) {
+function renderDrumsFour(L, R, sr, spb, bars, total) {
   // Four-on-the-floor psy kick: sine pitch-drop + click transient.
   const kickLen = Math.floor(0.30 * sr);
   for (let b = 0; b < bars; b++) {
@@ -183,6 +183,90 @@ function renderDrums(L, R, sr, spb, bars, total) {
       R[s0 + i] += val * 1.1;
     }
   }
+}
+// ---- groove variants + helpers (deterministic, salt-based) ----
+function kickAt(L, R, sr, s0, total, salt, gainMul) {
+  const kickLen = Math.floor(0.30 * sr);
+  let phase = 0;
+  for (let i = 0; i < kickLen && s0 + i < total; i++) {
+    const t = i / sr;
+    const f0 = 46 + (150 - 46) * Math.exp(-t / 0.030);
+    phase += 2 * Math.PI * f0 / sr;
+    const atk = t < 0.002 ? t / 0.002 : 1;
+    const env = atk * Math.exp(-t / 0.085);
+    const click = t < 0.0025 ? (1 - t / 0.0025) * 0.5 * hashNoise(i, salt) : 0;
+    const val = ((Math.sin(phase) * 0.85 + Math.sin(phase * 0.5) * 0.25) * env * 0.5 + click * 0.25) * gainMul;
+    L[s0 + i] += val;
+    R[s0 + i] += val;
+  }
+}
+function hatAt(L, R, sr, s0, total, salt, gainMul, decay) {
+  const hatLen = Math.floor(0.12 * sr);
+  let prev = 0, prev2 = 0;
+  for (let i = 0; i < hatLen && s0 + i < total; i++) {
+    const t = i / sr;
+    const n = hashNoise(i, salt);
+    const hp = n - 2 * prev + prev2;
+    prev2 = prev; prev = n;
+    const env = Math.exp(-t / decay);
+    const val = hp * env * gainMul;
+    L[s0 + i] += val * 0.9;
+    R[s0 + i] += val * 1.1;
+  }
+}
+function renderDrumsFullon(L, R, sr, spb, bars, total) {
+  const sixteenth = spb / 4;
+  for (let b = 0; b < bars; b++) {
+    const beatStart = b * spb;
+    kickAt(L, R, sr, Math.floor(beatStart * sr), total, b * 7919 + 17, 1.0);
+    kickAt(L, R, sr, Math.floor((beatStart + spb / 2) * sr), total, b * 7919 + 113, 0.6);
+    for (let s = 0; s < 4; s++) {
+      const pos = beatStart + s * sixteenth;
+      const accented = (s % 2 === 1);
+      hatAt(L, R, sr, Math.floor(pos * sr), total, b * 104729 + s * 517 + 31, accented ? 0.14 : 0.065, accented ? 0.05 : 0.026);
+    }
+  }
+}
+function renderDrumsRolling(L, R, sr, spb, bars, total) {
+  const sixteenth = spb / 4;
+  for (let b = 0; b < bars; b++) {
+    const beatStart = b * spb;
+    kickAt(L, R, sr, Math.floor(beatStart * sr), total, b * 7919 + 17, 1.0);
+    hatAt(L, R, sr, Math.floor((beatStart + spb / 2) * sr), total, b * 104729 + 31, 0.17, 0.09);
+    hatAt(L, R, sr, Math.floor((beatStart + sixteenth) * sr), total, b * 104729 + 517 + 31, 0.06, 0.03);
+    hatAt(L, R, sr, Math.floor((beatStart + 3 * sixteenth) * sr), total, b * 104729 + 1031 + 31, 0.06, 0.03);
+  }
+}
+function renderRisers(L, R, sr, spb, bars, total) {
+  const phrase = 8;
+  const len = Math.floor(spb * 4 * sr);
+  for (let p = phrase; p <= bars; p += phrase) {
+    const s0 = Math.floor((p - 1) * 4 * spb * sr);
+    let prev = 0;
+    for (let i = 0; i < len && s0 + i < total; i++) {
+      const t = i / sr;
+      const prog = i / len;
+      const n = hashNoise(i, p * 991 + 7);
+      const hp = n - prev; prev = n;
+      const bright = 0.3 + prog * 0.7;
+      const env = prog * prog * 0.15 * bright;
+      const val = hp * env;
+      L[s0 + i] += val;
+      R[s0 + i] += val;
+    }
+  }
+}
+function selectGroove(intent, seed) {
+  const pools = {
+    'euphoric-trance': ['four', 'fullon'],
+    'progressive': ['four', 'rolling'],
+    'dark-psy': ['rolling', 'fullon'],
+    'full-on': ['fullon', 'four'],
+    'emotional-breakdown': ['four', 'rolling'],
+    'forest': ['rolling', 'fullon'],
+  };
+  const pool = pools[intent] || ['four', 'fullon', 'rolling'];
+  return pool[hashSeed(seed, 99) % pool.length];
 }
 function applySidechain(L, R, sr, spb, total, depth) {
   for (let i = 0; i < total; i++) {
@@ -383,10 +467,26 @@ function render(events, bpm, onProgress, opts) {
   pingpong(L, R, sr, spb, total);
   if (onProgress) onProgress(82);
   if (!draft) reverb(L, R, sr, total);
-  if (drumsOn) {
+  // Groove selection: opts.groove = auto|four|fullon|rolling|off.
+  // Back-compat: no groove + drums 'on' => 'four' (byte-identical).
+  let grooveStyle = (opts && opts.groove) || null;
+  let doDrums = false;
+  if (grooveStyle === 'off') {
+    doDrums = false;
+  } else if (grooveStyle) {
+    if (grooveStyle === 'auto') grooveStyle = selectGroove((opts && opts.intent) || '', (opts && opts.seed) | 0);
+    doDrums = true;
+  } else if (drumsOn) {
+    grooveStyle = 'four';
+    doDrums = true;
+  }
+  if (doDrums) {
     const barsTotal = Math.max(1, Math.ceil(endSec / (4 * spb)));
     applySidechain(L, R, sr, spb, total, 0.3);
-    renderDrums(L, R, sr, spb, barsTotal, total);
+    if (grooveStyle === 'fullon') renderDrumsFullon(L, R, sr, spb, barsTotal, total);
+    else if (grooveStyle === 'rolling') renderDrumsRolling(L, R, sr, spb, barsTotal, total);
+    else renderDrumsFour(L, R, sr, spb, barsTotal, total);
+    if (opts && opts.risers === 'on') renderRisers(L, R, sr, spb, barsTotal, total);
   }
   widenStereo(L, R, total, 1.22);
   if (onProgress) onProgress(90);
@@ -423,6 +523,7 @@ function render(events, bpm, onProgress, opts) {
     peaks: peaks,
     seconds: endSec,
     names: { lead: sounds.lead.name, pad: sounds.pad.name, pluck: sounds.pluck.name, bass: sounds.bass.name },
+    groove: doDrums ? grooveStyle : 'off',
   };
 }
 

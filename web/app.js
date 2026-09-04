@@ -63,7 +63,7 @@ function requestRender() {
   setStatus('Rendering audio… 0%', 'busy');
   setTransportEnabled(false);
   if (workerBroken) { renderOnMain(); return; }
-  ensureWorker().postMessage({ type: 'render', id: renderId, events: anthem.events, bpm: anthemCfg.bpm, opts: { intent: anthemCfg.intent, seed: anthemCfg.seed, quality: $('quality') ? $('quality').value : 'full', drums: ($('groove') && $('groove').checked) ? 'on' : 'off' } });
+  ensureWorker().postMessage({ type: 'render', id: renderId, events: anthem.events, bpm: anthemCfg.bpm, opts: buildRenderOpts() });
 }
 
 // Fallback: render on the main thread if the Worker cannot run in this
@@ -75,7 +75,7 @@ async function renderOnMain() {
     if (myId !== renderId) return; // stale
     const out = mod.renderSong(anthem.events, anthemCfg.bpm, (p) => {
       if (myId === renderId) setStatus('Rendering audio… ' + p + '%', 'busy');
-    }, { intent: anthemCfg.intent, seed: anthemCfg.seed, quality: $('quality') ? $('quality').value : 'full', drums: ($('groove') && $('groove').checked) ? 'on' : 'off' });
+    }, buildRenderOpts());
     if (myId !== renderId) return;
     finishRender({ buffer: out.wav.buffer, peaks: out.peaks, seconds: out.seconds });
   } catch (e) {
@@ -85,8 +85,10 @@ async function renderOnMain() {
 }
 
 let soundNames = null;
+let grooveStyle = null;
 function finishRender(d) {
   soundNames = d.names || null;
+  grooveStyle = d.groove || null;
   renderSoundKit();
   const bytes = new Uint8Array(d.buffer);
   audioUrl = URL.createObjectURL(new Blob([bytes], { type: 'audio/wav' }));
@@ -123,6 +125,27 @@ function renderSoundKit() {
     chip.innerHTML = '<b>' + role + '</b> ' + name;
     el.appendChild(chip);
   }
+  if (grooveStyle) {
+    const GL = { four: '4-on-floor', fullon: 'Full-On drive', rolling: 'Rolling', off: 'no drums' };
+    const chip = document.createElement('span');
+    chip.className = 'kit-chip groove';
+    chip.style.setProperty('--kc', '#34d399');
+    chip.innerHTML = '<b>groove</b> ' + (GL[grooveStyle] || grooveStyle);
+    el.appendChild(chip);
+  }
+}
+
+function buildRenderOpts() {
+  const grooveOn = $('groove') ? $('groove').checked : true;
+  const style = $('grooveStyle') ? $('grooveStyle').value : 'auto';
+  return {
+    intent: anthemCfg.intent,
+    seed: anthemCfg.seed,
+    quality: $('quality') ? $('quality').value : 'full',
+    drums: grooveOn ? 'on' : 'off',
+    groove: grooveOn ? style : 'off',
+    risers: grooveOn ? 'on' : 'off',
+  };
 }
 
 // ---------- generate ----------
