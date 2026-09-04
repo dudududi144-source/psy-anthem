@@ -1,5 +1,15 @@
 # Changelog
 
+## 13.4.0 - Fix muddy/overlapping sound (mix balance)
+
+The sound was a muddy mess because too many voices overlapped at full volume.
+Fixed by reducing the density:
+- Harmonizer volume 0.5 -> 0.2 (it was doubling the lead and muddying it).
+- Pad volume lowered (lush-wide 0.082 -> 0.06, airy-heaven -> 0.055) so pads
+  sit in the background instead of competing with the lead.
+
+
+
 ## 13.3.0 - Harmonizer (advanced effect)
 
 Adds a harmonizer: for each lead note, renders a harmony a fifth above
