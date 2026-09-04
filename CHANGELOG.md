@@ -1,5 +1,14 @@
 # Changelog
 
+## 10.1.1 - Retune purple/counter pluck (less harsh, more musical)
+
+The purple (counter) voice used very high-resonance acid plucks (Q 5-11,
+drive 0.25-0.5) that sounded harsh/piercing. Retuned all 6 pluck sounds to be
+cleaner and more musical: resonance lowered to Q 1.8-4.0, drive to 0.04-0.18,
+slightly higher filter base for clarity, gentler gate pump.
+
+
+
 ## 10.1.0 - Real-time piano roll + 4 new intents
 
 - Real-time piano roll synced to audio: notes light up (white glow) exactly

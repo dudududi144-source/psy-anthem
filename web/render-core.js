@@ -60,12 +60,12 @@ const LIB = {
     R({ unison: 3, detune: 0.0055, filtBase: 1000, filtEnv: 1200, filtAtk: 0.45, filtDec: 1.00, filtSus: 0.70, Q: 1.3, atk: 0.45, dec: 0.40, sus: 0.85, rel: 1.40, amp: 0.12, spread: 0.90, drive: 0.12, pump: 0.22 }), // 4 analog-warm
   ],
   pluck: [
-    R({ filtBase: 190, filtEnv: 5400, filtAtk: 0.001, filtDec: 0.15, filtSus: 0.00, Q: 9.5, atk: 0.001, dec: 0.20, sus: 0.00, rel: 0.09, amp: 0.26, pan: 0.25, drive: 0.40 }), // 0 acid-303
-    R({ unison: 2, detune: 0.0040, filtBase: 350, filtEnv: 4200, filtAtk: 0.001, filtDec: 0.12, filtSus: 0.00, Q: 6.5, atk: 0.001, dec: 0.12, sus: 0.00, rel: 0.08, amp: 0.24, pan: 0.25, spread: 0.50, drive: 0.25, pump: 0.35 }), // 1 trance-gate
-    R({ table: 'sine', sub: true, filtBase: 2500, filtEnv: 3000, filtAtk: 0.001, filtDec: 0.30, filtSus: 0.00, Q: 2.0, atk: 0.001, dec: 0.35, sus: 0.00, rel: 0.30, amp: 0.24, pan: 0.20, drive: 0.05 }), // 2 bell-stab
-    R({ filtBase: 240, filtEnv: 6800, filtAtk: 0.001, filtDec: 0.11, filtSus: 0.00, Q: 11.0, atk: 0.001, dec: 0.13, sus: 0.00, rel: 0.07, amp: 0.25, pan: 0.30, drive: 0.45 }), // 3 acid-squelch
-    R({ unison: 2, detune: 0.0050, filtBase: 600, filtEnv: 5200, filtAtk: 0.001, filtDec: 0.10, filtSus: 0.00, Q: 5.0, atk: 0.001, dec: 0.10, sus: 0.00, rel: 0.08, amp: 0.26, pan: 0.20, spread: 0.60, drive: 0.30 }), // 4 arp-pluck
-    R({ table: 'square', filtBase: 160, filtEnv: 2600, filtAtk: 0.001, filtDec: 0.18, filtSus: 0.00, Q: 7.0, atk: 0.001, dec: 0.20, sus: 0.00, rel: 0.10, amp: 0.26, pan: 0.25, drive: 0.50 }), // 5 dark-stab
+    R({ filtBase: 420, filtEnv: 2600, filtAtk: 0.002, filtDec: 0.16, filtSus: 0.00, Q: 3.2, atk: 0.002, dec: 0.20, sus: 0.00, rel: 0.12, amp: 0.24, pan: 0.25, drive: 0.12 }), // 0 clean-pluck (was acid-303, tamed)
+    R({ unison: 2, detune: 0.0040, filtBase: 500, filtEnv: 2400, filtAtk: 0.002, filtDec: 0.14, filtSus: 0.00, Q: 3.6, atk: 0.002, dec: 0.13, sus: 0.00, rel: 0.10, amp: 0.22, pan: 0.25, spread: 0.50, drive: 0.10, pump: 0.22 }), // 1 trance-gate (tamed)
+    R({ table: 'sine', sub: true, filtBase: 2500, filtEnv: 1800, filtAtk: 0.002, filtDec: 0.30, filtSus: 0.00, Q: 1.8, atk: 0.002, dec: 0.35, sus: 0.00, rel: 0.32, amp: 0.23, pan: 0.20, drive: 0.04 }), // 2 bell-stab (softer)
+    R({ filtBase: 360, filtEnv: 3000, filtAtk: 0.002, filtDec: 0.13, filtSus: 0.00, Q: 4.0, atk: 0.002, dec: 0.14, sus: 0.00, rel: 0.09, amp: 0.23, pan: 0.30, drive: 0.16 }), // 3 soft-acid (was acid-squelch, tamed)
+    R({ unison: 2, detune: 0.0050, filtBase: 700, filtEnv: 2800, filtAtk: 0.002, filtDec: 0.12, filtSus: 0.00, Q: 3.4, atk: 0.002, dec: 0.11, sus: 0.00, rel: 0.10, amp: 0.24, pan: 0.20, spread: 0.60, drive: 0.12 }), // 4 arp-pluck (tamed)
+    R({ table: 'square', filtBase: 300, filtEnv: 1800, filtAtk: 0.002, filtDec: 0.18, filtSus: 0.00, Q: 3.0, atk: 0.002, dec: 0.20, sus: 0.00, rel: 0.12, amp: 0.23, pan: 0.25, drive: 0.18 }), // 5 warm-stab (was dark-stab, tamed)
   ],
   bass: [
     R({ sub: true, filtBase: 330, filtEnv: 900, filtAtk: 0.002, filtDec: 0.12, filtSus: 0.30, Q: 3.2, atk: 0.002, dec: 0.15, sus: 0.35, rel: 0.09, amp: 0.34, drive: 0.50, pump: 0.16 }), // 0 rolling-psy
