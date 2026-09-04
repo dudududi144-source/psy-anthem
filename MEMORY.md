@@ -121,3 +121,7 @@ dies. **Never route playback through live WebAudio on this machine.**
    OfflineAudioContext renderer hangs on slow machines. Do not make the
    OfflineAudioContext renderer primary again unless it is proven fast on the
    target machine. render-core shows progress every 8 notes and uses a 1.5s tail.
+20. v12.4+: mix balance lesson - harmony must not overload. Pads sit under the
+   lead (lower level + more pump), bass owns the lows (lower filter). When
+   adding voices/layers, always balance levels and carve frequency space so
+   the voices blend instead of clashing.

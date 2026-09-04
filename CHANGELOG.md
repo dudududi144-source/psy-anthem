@@ -1,5 +1,17 @@
 # Changelog
 
+## 12.4.0 - Mix balance: harmony without overload
+
+The sound was getting muddy/overloaded because pad and bass competed with the
+lead. Balanced the mix so the voices blend instead of clash:
+- Pads sit UNDER the lead: slightly lower level + more sidechain pump so they
+  duck out of the way.
+- Bass owns the lows: tightened top end (lower filter) so it leaves room for
+  the lead.
+- Nothing removed - just balanced so the harmony reads clearly.
+
+
+
 ## 12.3.0 - Expressive vibrato for anthem leads
 
 Adds singing vibrato to the sustained lead patches (euphoric-saw, dreamy-lead,
