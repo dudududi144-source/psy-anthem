@@ -170,10 +170,18 @@ describe('render-core (v9.3 groove styles + transitions)', () => {
   });
 
   it('risers change the render and are deterministic', () => {
+    // Risers fire once per 8-bar phrase, so the song must be >= 8 bars.
+    const events = [];
+    for (let i = 0; i < 68; i++) {
+      events.push({
+        type: 'note', timestamp: i * 0.5, duration: 0.5, channel: i % 4,
+        data: { pitch: 57 + (i % 12), velocity: 90 + (i % 20) },
+      });
+    }
     const base = { intent: 'euphoric-trance', seed: 3, drums: 'on', groove: 'four' };
-    const a = renderSong(makeEvents(), 140, undefined, Object.assign({ risers: 'on' }, base));
-    const b = renderSong(makeEvents(), 140, undefined, Object.assign({ risers: 'on' }, base));
-    const c = renderSong(makeEvents(), 140, undefined, base);
+    const a = renderSong(events, 140, undefined, Object.assign({ risers: 'on' }, base));
+    const b = renderSong(events, 140, undefined, Object.assign({ risers: 'on' }, base));
+    const c = renderSong(events, 140, undefined, base);
     expect(sameBytes(a.wav, b.wav)).toBe(true);
     expect(sameBytes(a.wav, c.wav)).toBe(false);
   });
