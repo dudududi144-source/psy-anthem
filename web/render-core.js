@@ -429,6 +429,48 @@ function stereoToWav16(channels, sr) {
   return new Uint8Array(ab);
 }
 
+// ============================================================
+// Per-voice processing (v10.3): each voice gets its own character
+// ============================================================
+function voiceChorus(L, R, sr, total, depth) {
+  const d1 = Math.floor(0.012 * sr), d2 = Math.floor(0.019 * sr);
+  const bL1 = new Float32Array(d1), bR1 = new Float32Array(d1);
+  const bL2 = new Float32Array(d2), bR2 = new Float32Array(d2);
+  let w1 = 0, w2 = 0;
+  for (let i = 0; i < total; i++) {
+    const mod = 0.5 + 0.5 * Math.sin(i / sr * 2 * Math.PI * 0.6);
+    const oL1 = bL1[w1], oR1 = bR1[w1], oL2 = bL2[w2], oR2 = bR2[w2];
+    bL1[w1] = L[i]; bR1[w1] = R[i];
+    bL2[w2] = L[i]; bR2[w2] = R[i];
+    w1 = (w1 + 1) % d1; w2 = (w2 + 1) % d2;
+    L[i] += (oL1 + oL2) * depth * (0.6 + 0.4 * mod);
+    R[i] += (oR1 * 0.8 + oR2 * 1.1) * depth * (0.6 + 0.4 * mod);
+  }
+}
+function voiceBassShape(L, R, sr, total, satAmt) {
+  let lpL = 0, lpR = 0;
+  const f = 2 * Math.sin(Math.PI * 2600 / sr);
+  for (let i = 0; i < total; i++) {
+    lpL += f * (L[i] - lpL);
+    lpR += f * (R[i] - lpR);
+    let l = lpL, r = lpR;
+    if (satAmt > 0) { l = Math.tanh(l * (1 + satAmt * 4)); r = Math.tanh(r * (1 + satAmt * 4)); }
+    const mid = (l + r) * 0.5;
+    L[i] = mid * 0.75 + l * 0.25;
+    R[i] = mid * 0.75 + r * 0.25;
+  }
+}
+const ROLE_LEVELS = [1.0, 0.8, 0.72, 0.95]; // lead, pad, pluck, bass
+function mixVoices(vb, L, R, total) {
+  for (let c = 0; c < 4; c++) {
+    const g = ROLE_LEVELS[c];
+    for (let i = 0; i < total; i++) {
+      L[i] += vb[c].L[i] * g;
+      R[i] += vb[c].R[i] * g;
+    }
+  }
+}
+
 function render(events, bpm, onProgress, opts) {
   const sr = 44100;
   const spb = 60 / Math.max(1, bpm);
@@ -455,8 +497,10 @@ function render(events, bpm, onProgress, opts) {
   }
   if (notes.length === 0) throw new Error('no notes');
   const total = Math.ceil((endSec + (draft ? 1.5 : 3.0)) * sr);
-  const L = new Float32Array(total);
-  const R = new Float32Array(total);
+  // Per-voice buffers (v10.3): each voice gets its own processing so the
+  // lead / pad / pluck / bass each get a distinct character.
+  const vb = [];
+  for (let c = 0; c < 4; c++) vb.push({ L: new Float32Array(total), R: new Float32Array(total) });
 
   for (let ni = 0; ni < notes.length; ni++) {
     const n = notes[ni];
@@ -466,12 +510,21 @@ function render(events, bpm, onProgress, opts) {
     const velAmp = 0.55 + 0.45 * n.vel;
     const savedAmp = rec.amp;
     rec.amp = savedAmp * velAmp;
-    renderNote(n, rec, s0, len, total, L, R, sr, spb);
+    renderNote(n, rec, s0, len, total, vb[n.ch].L, vb[n.ch].R, sr, spb);
     rec.amp = savedAmp;
     if ((ni % 24) === 23 && onProgress) onProgress(Math.round((ni / notes.length) * 70));
   }
 
   if (onProgress) onProgress(75);
+  if (!draft) {
+    voiceChorus(vb[0].L, vb[0].R, sr, total, 0.16);
+    voiceChorus(vb[1].L, vb[1].R, sr, total, 0.22);
+    voiceChorus(vb[2].L, vb[2].R, sr, total, 0.10);
+    voiceBassShape(vb[3].L, vb[3].R, sr, total, 0.4);
+  }
+  const L = new Float32Array(total);
+  const R = new Float32Array(total);
+  mixVoices(vb, L, R, total);
   pingpong(L, R, sr, spb, total);
   if (onProgress) onProgress(82);
   if (!draft) reverb(L, R, sr, total);

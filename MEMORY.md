@@ -82,3 +82,8 @@ dies. **Never route playback through live WebAudio on this machine.**
    sampleEnergyCurve switch, macro-form.ts getMacroForm switch. Intents now
    14; emotional intents (nostalgic-longing, triumphant-rise, tender-lullaby)
    favor stepwise/bittersweet intervals + sparse-flowing rhythm.
+12. v10.3+: render-core renders each voice (lead/pad/pluck/bass) to its own
+   buffer and applies per-voice character (chorus on lead/pad/pluck,
+   high-cut+saturation on bass) before mixing with per-role levels. Fix for
+   "everything sounds the same". Render-core is a preview renderer; for pro
+   sound use the HOW-layer synth (psysynth/PsySynthPro).

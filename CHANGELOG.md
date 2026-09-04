@@ -1,5 +1,19 @@
 # Changelog
 
+## 10.3.0 - Per-voice processing (distinct voice characters)
+
+Addresses "everything sounds the same / no musical balance". Previously all
+four voices (lead/pad/pluck/bass) shared one identical signal path. Now each
+voice renders to its own buffer and gets its own character before mixing:
+- Lead: chorus (motion/space)
+- Pad: wider chorus
+- Pluck: light chorus
+- Bass: high-cut + saturation glue, tightened toward mono
+Then voices mix with per-role levels (lead 1.0, pad 0.8, pluck 0.72, bass
+0.95) so the lead sits on top and the bass anchors the low end.
+
+
+
 ## 10.2.0 - Richer energy curves + emotional intents
 
 
