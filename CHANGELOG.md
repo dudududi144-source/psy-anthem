@@ -1,5 +1,13 @@
 # Changelog
 
+## 13.1.0 - Stronger melodic identity (contour bias)
+
+Increased the ARCH contour weight (0.5 -> 0.55) so the lead melody has a
+clearer arch shape (rise to a peak, then resolve down) - the hallmark of a
+memorable anthem melody. Slightly more WAVE for variety, less PLATEAU (flat).
+
+
+
 ## 13.0.0 - Faster render (inner-loop optimization)
 
 Hoisted per-sample computations out of the hot loop: precompute invSr (1/sr),
