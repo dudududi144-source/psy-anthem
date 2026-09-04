@@ -373,13 +373,16 @@ function pingpong(L, R, sr, spb, total) {
 }
 
 function reverb(L, R, sr, total) {
-  const combTimes = [0.0297, 0.0371, 0.0411, 0.0461];
-  const combFb = [0.77, 0.74, 0.72, 0.70];
-  const apTimes = [0.005, 0.0017];
+  // Lush hall-style Schroeder reverb: 6 prime-ish combs + 3 allpasses for a
+  // dense, wide, non-metallic tail. L and R use slightly different delay
+  // scales for stereo width.
+  const combTimes = [0.0297, 0.0371, 0.0411, 0.0461, 0.0333, 0.0393];
+  const combFb   = [0.77, 0.74, 0.72, 0.70, 0.75, 0.73];
+  const apTimes  = [0.005, 0.0017, 0.0031];
   const apG = 0.5;
   function processChan(x, detuneMul) {
     const sum = new Float32Array(total);
-    for (let c = 0; c < 4; c++) {
+    for (let c = 0; c < combTimes.length; c++) {
       const M = Math.max(1, Math.floor(combTimes[c] * detuneMul * sr));
       const buf = new Float32Array(M);
       const g = combFb[c];
@@ -394,7 +397,7 @@ function reverb(L, R, sr, total) {
       }
     }
     let cur = sum;
-    for (let a = 0; a < 2; a++) {
+    for (let a = 0; a < apTimes.length; a++) {
       const M = Math.max(1, Math.floor(apTimes[a] * sr));
       const buf = new Float32Array(M);
       const nxt = new Float32Array(total);
@@ -414,7 +417,6 @@ function reverb(L, R, sr, total) {
   const wet = 0.36;
   for (let i = 0; i < total; i++) { L[i] += wetL[i] * wet; R[i] += wetR[i] * wet; }
 }
-
 function stereoToWav16(channels, sr) {
   const ch = channels.length;
   const n = channels[0].length;

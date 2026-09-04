@@ -1,5 +1,13 @@
 # Changelog
 
+## 12.8.0 - Lusher reverb (quality)
+
+Upgraded the reverb from 4 combs + 2 allpasses to 6 combs + 3 allpasses with
+better tuning, for a denser, wider, less metallic hall tail. Same stereo
+width trick (L/R slightly different delay scales).
+
+
+
 ## 12.7.0 - Fix blob URL revocation race (ERR_FILE_NOT_FOUND)
 
 The audio element kept trying to load a blob URL that had already been
