@@ -1,8 +1,11 @@
-// PSY ANTHEM — render-core.js (v7.1)
-// The offline stereo wavetable renderer core. Pure JS, zero WebAudio, fully
-// deterministic (same events + bpm -> byte-identical WAV).
-// Used by render-worker.js (off the main thread) and, as a fallback,
-// directly by app.js on the main thread.
+// PSY ANTHEM — render-core.js (v9.0 "sound library")
+// Commercial-trance offline renderer with a deterministic SOUND LIBRARY:
+// 25 distinct sounds across lead/pad/pluck/bass roles. Each song picks its
+// sounds from intent-curated pools using the song seed - same seed+intent
+// always renders byte-identical audio, different seeds explore different
+// sounds, and every pool is curated so the chosen sounds serve each other.
+// Pure JS, zero WebAudio, fully deterministic.
+
 const TABLE_LEN = 2048;
 function makeTable(kind) {
   const t = new Float32Array(TABLE_LEN + 1);
@@ -10,11 +13,11 @@ function makeTable(kind) {
     const ph = (i / TABLE_LEN) * 2 * Math.PI;
     let v = 0;
     if (kind === 'saw') {
-      for (let h = 1; h <= 24; h++) v += Math.sin(h * ph) / h;
-      v *= 0.55;
-    } else if (kind === 'pad') {
-      v = Math.sin(ph) + Math.sin(2 * ph) * 0.35 + Math.sin(3 * ph) * 0.15 + Math.sin(4 * ph) * 0.08;
+      for (let h = 1; h <= 32; h++) v += Math.sin(h * ph) / h;
       v *= 0.5;
+    } else if (kind === 'square') {
+      for (let h = 1; h <= 31; h += 2) v += Math.sin(h * ph) / h;
+      v *= 0.55;
     } else {
       v = Math.sin(ph);
     }
@@ -22,21 +25,223 @@ function makeTable(kind) {
   }
   return t;
 }
-const TABLE_SAW = makeTable('saw');
-const TABLE_PAD = makeTable('pad');
-const TABLE_SINE = makeTable('sine');
+const SAW = makeTable('saw');
+const SQUARE = makeTable('square');
+const SINE = makeTable('sine');
 function tableAt(table, phase) {
   const i0 = phase | 0;
   const f = phase - i0;
   return table[i0] * (1 - f) + table[i0 + 1] * f;
 }
-const VOICE_RECIPES = {
-  0: { table: 'saw', unison: 3, detune: 0.0045, attack: 0.006, decay: 0.08, sustain: 0.75, release: 0.18, amp: 0.34, pan: 0.0, cutoff: 5200, kind: 'adsr' },
-  1: { table: 'pad', unison: 2, detune: 0.0025, attack: 0.5, decay: 0.3, sustain: 0.85, release: 1.4, amp: 0.17, pan: -0.3, cutoff: 3800, kind: 'adsr' },
-  2: { table: 'saw', unison: 1, detune: 0.0, attack: 0.002, decay: 0.16, sustain: 0.0, release: 0.1, amp: 0.3, pan: 0.3, cutoff: 4200, kind: 'pluck' },
-  3: { table: 'sine', unison: 1, detune: 0.0, attack: 0.004, decay: 0.05, sustain: 0.8, release: 0.08, amp: 0.5, pan: 0.0, cutoff: 8000, kind: 'bass' },
+function tableFor(name) { return name === 'square' ? SQUARE : (name === 'sine' ? SINE : SAW); }
+
+// ============================================================
+// SOUND LIBRARY — 25 sounds, 4 roles.
+// ============================================================
+function R(o) {
+  return Object.assign({ table: 'saw', unison: 1, detune: 0, sub: false, pan: 0, spread: 0, drive: 0, pump: 0 }, o);
+}
+const LIB = {
+  lead: [
+    R({ unison: 5, detune: 0.0065, filtBase: 850, filtEnv: 6200, filtAtk: 0.006, filtDec: 0.26, filtSus: 0.32, Q: 4.2, atk: 0.004, dec: 0.10, sus: 0.82, rel: 0.24, amp: 0.24, spread: 0.75, drive: 0.30 }), // 0 euphoric-saw
+    R({ unison: 6, detune: 0.0090, filtBase: 700, filtEnv: 7000, filtAtk: 0.004, filtDec: 0.22, filtSus: 0.30, Q: 5.0, atk: 0.003, dec: 0.09, sus: 0.80, rel: 0.20, amp: 0.22, spread: 0.85, drive: 0.45 }), // 1 full-on-grit
+    R({ unison: 2, detune: 0.0030, filtBase: 190, filtEnv: 5600, filtAtk: 0.001, filtDec: 0.14, filtSus: 0.05, Q: 9.0, atk: 0.001, dec: 0.16, sus: 0.10, rel: 0.10, amp: 0.30, spread: 0.30, drive: 0.40 }), // 2 acid-lead
+    R({ unison: 3, detune: 0.0040, filtBase: 1400, filtEnv: 2600, filtAtk: 0.250, filtDec: 0.80, filtSus: 0.60, Q: 1.6, atk: 0.220, dec: 0.30, sus: 0.80, rel: 0.60, amp: 0.20, spread: 0.90, drive: 0.10 }), // 3 dreamy-lead
+    R({ unison: 2, detune: 0.0050, filtBase: 420, filtEnv: 3600, filtAtk: 0.001, filtDec: 0.12, filtSus: 0.00, Q: 6.0, atk: 0.001, dec: 0.14, sus: 0.00, rel: 0.12, amp: 0.30, spread: 0.40, drive: 0.25 }), // 4 pluck-lead
+    R({ table: 'square', unison: 4, detune: 0.0070, filtBase: 380, filtEnv: 2200, filtAtk: 0.005, filtDec: 0.30, filtSus: 0.40, Q: 3.0, atk: 0.004, dec: 0.12, sus: 0.75, rel: 0.22, amp: 0.24, spread: 0.60, drive: 0.55 }), // 5 dark-rave
+    R({ table: 'square', unison: 2, detune: 0.0020, filtBase: 900, filtEnv: 4200, filtAtk: 0.010, filtDec: 0.35, filtSus: 0.45, Q: 2.2, atk: 0.010, dec: 0.18, sus: 0.70, rel: 0.35, amp: 0.22, spread: 0.50, drive: 0.20 }), // 6 crystal-lead
+    R({ unison: 5, detune: 0.0060, filtBase: 750, filtEnv: 5200, filtAtk: 0.004, filtDec: 0.20, filtSus: 0.25, Q: 4.6, atk: 0.003, dec: 0.08, sus: 0.55, rel: 0.16, amp: 0.23, spread: 0.80, drive: 0.35, pump: 0.30 }), // 7 uplifting-gate
+  ],
+  pad: [
+    R({ unison: 2, detune: 0.0045, filtBase: 1250, filtEnv: 1700, filtAtk: 0.55, filtDec: 1.10, filtSus: 0.70, Q: 1.1, atk: 0.55, dec: 0.40, sus: 0.85, rel: 1.50, amp: 0.13, spread: 0.95, pump: 0.20 }), // 0 lush-wide
+    R({ unison: 2, detune: 0.0050, filtBase: 520, filtEnv: 900, filtAtk: 0.70, filtDec: 1.40, filtSus: 0.65, Q: 1.4, atk: 0.65, dec: 0.50, sus: 0.85, rel: 1.80, amp: 0.14, spread: 0.90, drive: 0.15, pump: 0.18 }), // 1 dark-drift
+    R({ unison: 3, detune: 0.0060, filtBase: 2200, filtEnv: 2400, filtAtk: 0.80, filtDec: 1.60, filtSus: 0.75, Q: 0.9, atk: 0.75, dec: 0.60, sus: 0.90, rel: 2.00, amp: 0.11, spread: 1.00, pump: 0.15 }), // 2 airy-heaven
+    R({ unison: 2, detune: 0.0040, filtBase: 900, filtEnv: 1500, filtAtk: 0.30, filtDec: 0.90, filtSus: 0.60, Q: 1.8, atk: 0.30, dec: 0.30, sus: 0.80, rel: 1.00, amp: 0.13, spread: 0.85, pump: 0.42 }), // 3 gated-rhythm
+    R({ unison: 3, detune: 0.0055, filtBase: 1000, filtEnv: 1200, filtAtk: 0.45, filtDec: 1.00, filtSus: 0.70, Q: 1.3, atk: 0.45, dec: 0.40, sus: 0.85, rel: 1.40, amp: 0.12, spread: 0.90, drive: 0.12, pump: 0.22 }), // 4 analog-warm
+  ],
+  pluck: [
+    R({ filtBase: 190, filtEnv: 5400, filtAtk: 0.001, filtDec: 0.15, filtSus: 0.00, Q: 9.5, atk: 0.001, dec: 0.20, sus: 0.00, rel: 0.09, amp: 0.26, pan: 0.25, drive: 0.40 }), // 0 acid-303
+    R({ unison: 2, detune: 0.0040, filtBase: 350, filtEnv: 4200, filtAtk: 0.001, filtDec: 0.12, filtSus: 0.00, Q: 6.5, atk: 0.001, dec: 0.12, sus: 0.00, rel: 0.08, amp: 0.24, pan: 0.25, spread: 0.50, drive: 0.25, pump: 0.35 }), // 1 trance-gate
+    R({ table: 'sine', sub: true, filtBase: 2500, filtEnv: 3000, filtAtk: 0.001, filtDec: 0.30, filtSus: 0.00, Q: 2.0, atk: 0.001, dec: 0.35, sus: 0.00, rel: 0.30, amp: 0.24, pan: 0.20, drive: 0.05 }), // 2 bell-stab
+    R({ filtBase: 240, filtEnv: 6800, filtAtk: 0.001, filtDec: 0.11, filtSus: 0.00, Q: 11.0, atk: 0.001, dec: 0.13, sus: 0.00, rel: 0.07, amp: 0.25, pan: 0.30, drive: 0.45 }), // 3 acid-squelch
+    R({ unison: 2, detune: 0.0050, filtBase: 600, filtEnv: 5200, filtAtk: 0.001, filtDec: 0.10, filtSus: 0.00, Q: 5.0, atk: 0.001, dec: 0.10, sus: 0.00, rel: 0.08, amp: 0.26, pan: 0.20, spread: 0.60, drive: 0.30 }), // 4 arp-pluck
+    R({ table: 'square', filtBase: 160, filtEnv: 2600, filtAtk: 0.001, filtDec: 0.18, filtSus: 0.00, Q: 7.0, atk: 0.001, dec: 0.20, sus: 0.00, rel: 0.10, amp: 0.26, pan: 0.25, drive: 0.50 }), // 5 dark-stab
+  ],
+  bass: [
+    R({ sub: true, filtBase: 330, filtEnv: 900, filtAtk: 0.002, filtDec: 0.12, filtSus: 0.30, Q: 3.2, atk: 0.002, dec: 0.15, sus: 0.35, rel: 0.09, amp: 0.34, drive: 0.50, pump: 0.16 }), // 0 rolling-psy
+    R({ sub: true, filtBase: 280, filtEnv: 1200, filtAtk: 0.002, filtDec: 0.10, filtSus: 0.25, Q: 4.0, atk: 0.002, dec: 0.12, sus: 0.30, rel: 0.08, amp: 0.36, drive: 0.55, pump: 0.28 }), // 1 offbeat-kbbb
+    R({ filtBase: 180, filtEnv: 3800, filtAtk: 0.001, filtDec: 0.13, filtSus: 0.10, Q: 8.5, atk: 0.001, dec: 0.16, sus: 0.15, rel: 0.08, amp: 0.32, drive: 0.45, pump: 0.12 }), // 2 acid-bass
+    R({ table: 'sine', sub: true, filtBase: 600, filtEnv: 500, filtAtk: 0.003, filtDec: 0.10, filtSus: 0.50, Q: 1.5, atk: 0.003, dec: 0.10, sus: 0.60, rel: 0.10, amp: 0.38, drive: 0.20, pump: 0.14 }), // 3 sub-deep
+    R({ filtBase: 240, filtEnv: 1600, filtAtk: 0.002, filtDec: 0.11, filtSus: 0.30, Q: 5.0, atk: 0.002, dec: 0.13, sus: 0.35, rel: 0.08, amp: 0.34, drive: 0.70, pump: 0.20 }), // 4 gritty-neuro
+    R({ filtBase: 210, filtEnv: 2900, filtAtk: 0.001, filtDec: 0.09, filtSus: 0.15, Q: 9.0, atk: 0.001, dec: 0.10, sus: 0.20, rel: 0.07, amp: 0.33, drive: 0.50, pump: 0.22 }), // 5 forest-squelch
+  ],
 };
-function tableFor(name) { return name === 'saw' ? TABLE_SAW : (name === 'pad' ? TABLE_PAD : TABLE_SINE); }
+
+// Intent-curated pools: the sounds chosen for a genre are curated to serve
+// each other (e.g. dark-psy pairs squelch bass + acid pluck + dark pad).
+const INTENT_POOLS = {
+  'euphoric-trance':     { lead: [0, 1, 3], pad: [0, 2], pluck: [1, 4], bass: [0, 1] },
+  'progressive':         { lead: [3, 4],    pad: [4, 0], pluck: [1],    bass: [0, 3] },
+  'dark-psy':            { lead: [5, 2],    pad: [1],    pluck: [3, 5], bass: [5, 2] },
+  'full-on':             { lead: [1, 0],    pad: [3, 0], pluck: [0, 4], bass: [1, 4] },
+  'emotional-breakdown': { lead: [3, 6],    pad: [2, 0], pluck: [2],    bass: [3, 0] },
+  'forest':              { lead: [2, 5],    pad: [1],    pluck: [3],    bass: [5, 2] },
+};
+
+function hashSeed(a, b) {
+  let h = (a | 0) ^ 0x9e3779b9;
+  h = Math.imul(h ^ (b | 0), 0x85ebca6b);
+  h ^= h >>> 13;
+  h = Math.imul(h, 0xc2b2ae35);
+  h ^= h >>> 16;
+  return h >>> 0;
+}
+function selectSounds(intent, seed) {
+  const pool = INTENT_POOLS[intent] || INTENT_POOLS['euphoric-trance'];
+  const pick = (arr, salt) => arr[hashSeed(seed, salt) % arr.length];
+  return {
+    lead: LIB.lead[pick(pool.lead, 11)],
+    pad: LIB.pad[pick(pool.pad, 22)],
+    pluck: LIB.pluck[pick(pool.pluck, 33)],
+    bass: LIB.bass[pick(pool.bass, 44)],
+  };
+}
+function defaultSounds() {
+  return { lead: LIB.lead[0], pad: LIB.pad[0], pluck: LIB.pluck[0], bass: LIB.bass[0] };
+}
+const ROLE = ['lead', 'pad', 'pluck', 'bass']; // engine channels 0..3
+
+// ============================================================
+// DSP
+// ============================================================
+function ampEnv(t, dur, rec) {
+  if (t < rec.atk) return t / rec.atk;
+  if (t < rec.atk + rec.dec) return 1 - (1 - rec.sus) * ((t - rec.atk) / rec.dec);
+  if (t < dur) return rec.sus;
+  const tr = (t - dur) / rec.rel;
+  return rec.sus * Math.max(0, 1 - tr);
+}
+function filtShape(t, rec) {
+  if (t < rec.filtAtk) return t / rec.filtAtk;
+  const d = (t - rec.filtAtk) / Math.max(0.01, rec.filtDec);
+  return rec.filtSus + (1 - rec.filtSus) * Math.exp(-3.2 * d);
+}
+function pumpVal(t, beatDur, depth) {
+  const ph = (t % beatDur) / beatDur;
+  return 1 - depth * Math.exp(-ph * 5.5);
+}
+
+function renderNote(n, rec, s0, len, total, L, R, sr, spb) {
+  const table = tableFor(rec.table);
+  const span = rec.sus <= 0.01 ? len : len + Math.floor(rec.rel * sr);
+  const unison = rec.unison;
+  for (let u = 0; u < unison; u++) {
+    const spreadPos = unison > 1 ? (2 * u / (unison - 1) - 1) : 0;
+    const det = 1 + rec.detune * spreadPos;
+    const voicePan = rec.pan + rec.spread * spreadPos;
+    const gL = Math.cos((voicePan + 1) * Math.PI / 4);
+    const gR = Math.sin((voicePan + 1) * Math.PI / 4);
+    const inc = (n.freq * det) * TABLE_LEN / sr;
+    let phase = (u * 0.37 * TABLE_LEN) % TABLE_LEN;
+    let low = 0, band = 0;
+    for (let i = 0; i < span && s0 + i < total; i++) {
+      const t = i / sr;
+      const env = ampEnv(t, len / sr, rec);
+      if (env <= 0.0008) { phase += inc; if (phase >= TABLE_LEN) phase -= TABLE_LEN; continue; }
+      let fc = rec.filtBase + rec.filtEnv * filtShape(t, rec);
+      if (fc > 16000) fc = 16000; if (fc < 60) fc = 60;
+      const f = 2 * Math.sin(Math.PI * fc / sr);
+      const q = 1 / rec.Q;
+      const smp = tableAt(table, phase);
+      low += f * band;
+      const high = smp - low - q * band;
+      band += f * high;
+      let out = low;
+      if (rec.drive > 0) out = Math.tanh(out * (1 + rec.drive * 5));
+      let val = out * env * rec.amp;
+      if (rec.pump > 0) val *= pumpVal(n.start + t, spb, rec.pump);
+      const o = s0 + i;
+      L[o] += val * gL;
+      R[o] += val * gR;
+      phase += inc;
+      if (phase >= TABLE_LEN) phase -= TABLE_LEN;
+    }
+  }
+  if (rec.sub) {
+    const inc = (n.freq * 0.5) * TABLE_LEN / sr;
+    let phase = 0;
+    const subAmp = rec.amp * 0.55;
+    for (let i = 0; i < len && s0 + i < total; i++) {
+      const t = i / sr;
+      const env = ampEnv(t, len / sr, rec);
+      if (env > 0.0008) {
+        const val = tableAt(SINE, phase) * env * subAmp;
+        const o = s0 + i;
+        L[o] += val;
+        R[o] += val;
+      }
+      phase += inc;
+      if (phase >= TABLE_LEN) phase -= TABLE_LEN;
+    }
+  }
+}
+
+function pingpong(L, R, sr, spb, total) {
+  const dSamples = Math.max(1, Math.floor(0.75 * spb * sr));
+  const fb = 0.36, wet = 0.26;
+  const dL = new Float32Array(dSamples), dR = new Float32Array(dSamples);
+  let w = 0;
+  const wetL = new Float32Array(total), wetR = new Float32Array(total);
+  for (let i = 0; i < total; i++) {
+    const dl = dL[w], dr = dR[w];
+    dL[w] = L[i] + fb * dr;
+    dR[w] = R[i] + fb * dl;
+    wetL[i] = dl; wetR[i] = dr;
+    w = (w + 1) % dSamples;
+  }
+  for (let i = 0; i < total; i++) { L[i] += wetL[i] * wet; R[i] += wetR[i] * wet; }
+}
+
+function reverb(L, R, sr, total) {
+  const combTimes = [0.0297, 0.0371, 0.0411, 0.0461];
+  const combFb = [0.74, 0.71, 0.69, 0.67];
+  const apTimes = [0.005, 0.0017];
+  const apG = 0.5;
+  function processChan(x, detuneMul) {
+    const sum = new Float32Array(total);
+    for (let c = 0; c < 4; c++) {
+      const M = Math.max(1, Math.floor(combTimes[c] * detuneMul * sr));
+      const buf = new Float32Array(M);
+      const g = combFb[c];
+      let w = 0;
+      for (let i = 0; i < total; i++) {
+        const delayed = buf[w];
+        buf[w] = x[i] + g * delayed;
+        sum[i] += delayed;
+        w = (w + 1) % M;
+      }
+    }
+    let cur = sum;
+    for (let a = 0; a < 2; a++) {
+      const M = Math.max(1, Math.floor(apTimes[a] * sr));
+      const buf = new Float32Array(M);
+      const nxt = new Float32Array(total);
+      let w = 0;
+      for (let i = 0; i < total; i++) {
+        const delayed = buf[w];
+        buf[w] = cur[i] + apG * delayed;
+        nxt[i] = delayed - apG * cur[i];
+        w = (w + 1) % M;
+      }
+      cur = nxt;
+    }
+    return cur;
+  }
+  const wetL = processChan(L, 1.0);
+  const wetR = processChan(R, 1.045);
+  const wet = 0.26;
+  for (let i = 0; i < total; i++) { L[i] += wetL[i] * wet; R[i] += wetR[i] * wet; }
+}
 
 function stereoToWav16(channels, sr) {
   const ch = channels.length;
@@ -59,9 +264,10 @@ function stereoToWav16(channels, sr) {
   return new Uint8Array(ab);
 }
 
-function render(events, bpm, onProgress) {
+function render(events, bpm, onProgress, opts) {
   const sr = 44100;
   const spb = 60 / Math.max(1, bpm);
+  const sounds = (opts && opts.intent) ? selectSounds(opts.intent, (opts.seed | 0)) : defaultSounds();
   let endSec = 0;
   const notes = [];
   for (const e of events) {
@@ -72,84 +278,41 @@ function render(events, bpm, onProgress) {
     if (start + dur > endSec) endSec = start + dur;
   }
   if (notes.length === 0) throw new Error('no notes');
-  const total = Math.ceil((endSec + 2.0) * sr);
+  const total = Math.ceil((endSec + 3.0) * sr);
   const L = new Float32Array(total);
   const R = new Float32Array(total);
 
   for (let ni = 0; ni < notes.length; ni++) {
     const n = notes[ni];
-    const rec = VOICE_RECIPES[n.ch] || VOICE_RECIPES[0];
-    const table = tableFor(rec.table);
+    const rec = sounds[ROLE[n.ch]] || sounds.lead;
     const s0 = Math.floor(n.start * sr);
     const len = Math.floor(n.dur * sr);
-    const relLen = Math.floor(rec.release * sr);
-    const amp = rec.amp * (0.5 + 0.5 * n.vel);
-    const panL = Math.cos((rec.pan + 1) * Math.PI / 4);
-    const panR = Math.sin((rec.pan + 1) * Math.PI / 4);
-    const aLp = 1 - Math.exp(-2 * Math.PI * rec.cutoff / sr);
-    for (let u = 0; u < rec.unison; u++) {
-      const det = rec.unison > 1 ? (u / (rec.unison - 1) - 0.5) * 2 * rec.detune : 0;
-      const inc = (n.freq * (1 + det)) * TABLE_LEN / sr;
-      let phase = (u * 0.37 * TABLE_LEN) % TABLE_LEN;
-      let lp = 0;
-      const span = rec.kind === 'pluck' ? len : len + relLen;
-      for (let i = 0; i < span && s0 + i < total; i++) {
-        const t = i / sr;
-        let env;
-        if (rec.kind === 'pluck') {
-          env = t < rec.attack ? t / rec.attack : Math.exp(-(t - rec.attack) / rec.decay);
-        } else if (i < len) {
-          if (t < rec.attack) env = t / rec.attack;
-          else if (t < rec.attack + rec.decay) env = 1 - (1 - rec.sustain) * ((t - rec.attack) / rec.decay);
-          else env = rec.sustain;
-        } else {
-          const tr = (i - len) / sr;
-          env = rec.sustain * Math.max(0, 1 - tr / rec.release);
-        }
-        if (env <= 0.001) { phase += inc; if (phase >= TABLE_LEN) phase -= TABLE_LEN; continue; }
-        const v = tableAt(table, phase) * env * amp / rec.unison;
-        phase += inc;
-        if (phase >= TABLE_LEN) phase -= TABLE_LEN;
-        lp += aLp * (v - lp);
-        const o = s0 + i;
-        L[o] += lp * panL;
-        R[o] += lp * panR;
-      }
-    }
-    if ((ni % 24) === 23 && onProgress) {
-      onProgress(Math.round((ni / notes.length) * 90));
-    }
+    const velAmp = 0.55 + 0.45 * n.vel;
+    const savedAmp = rec.amp;
+    rec.amp = savedAmp * velAmp;
+    renderNote(n, rec, s0, len, total, L, R, sr, spb);
+    rec.amp = savedAmp;
+    if ((ni % 24) === 23 && onProgress) onProgress(Math.round((ni / notes.length) * 70));
   }
 
-  // Tempo-synced cross-feedback delay (dotted 8th).
-  const dSamples = Math.max(1, Math.floor(0.75 * spb * sr));
-  const bufL = new Float32Array(dSamples), bufR = new Float32Array(dSamples);
-  const fb = 0.32, wet = 0.22;
-  let w = 0;
-  for (let i = 0; i < total; i++) {
-    const inL = L[i], inR = R[i];
-    const outL = bufL[w], outR = bufR[w];
-    bufL[w] = inL + outL * fb;
-    bufR[w] = inR + outR * fb;
-    w = (w + 1) % dSamples;
-    L[i] = inL + outR * wet;
-    R[i] = inR + outL * wet;
-  }
+  if (onProgress) onProgress(75);
+  pingpong(L, R, sr, spb, total);
+  if (onProgress) onProgress(82);
+  reverb(L, R, sr, total);
+  if (onProgress) onProgress(90);
 
-  // Normalize + soft clip.
   let peak = 0.0001;
   for (let i = 0; i < total; i++) {
     const al = Math.abs(L[i]), ar = Math.abs(R[i]);
     if (al > peak) peak = al;
     if (ar > peak) peak = ar;
   }
-  const g = 0.88 / peak;
+  const g = 0.9 / peak;
   for (let i = 0; i < total; i++) {
-    L[i] = Math.tanh(L[i] * g * 1.15);
-    R[i] = Math.tanh(R[i] * g * 1.15);
+    L[i] = Math.tanh(L[i] * g * 1.1);
+    R[i] = Math.tanh(R[i] * g * 1.1);
   }
 
-  // Waveform peaks for the UI (900 buckets).
   const BUCKETS = 900;
   const peaks = new Float32Array(BUCKETS);
   const per = total / BUCKETS;
@@ -168,8 +331,6 @@ function render(events, bpm, onProgress) {
   return { wav: wav, peaks: peaks, seconds: endSec };
 }
 
-// Render the song. onProgress(percent) is called with 0..90 while notes are
-// summed. Returns { wav: Uint8Array, peaks: Float32Array(900), seconds }.
-export function renderSong(events, bpm, onProgress) {
-  return render(events, bpm, onProgress);
+export function renderSong(events, bpm, onProgress, opts) {
+  return render(events, bpm, onProgress, opts);
 }

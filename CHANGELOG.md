@@ -1,5 +1,33 @@
 # Changelog
 
+## 9.0.0 - Sound library (25 sounds, deterministic per-song selection)
+
+"Everything sounded the same" - fixed. The renderer now ships a curated
+sound LIBRARY and picks sounds per song from the song's own seed + intent:
+
+- 25 distinct sounds in 4 roles:
+  - 8 leads: euphoric-saw, full-on-grit, acid-lead, dreamy-lead, pluck-lead,
+    dark-rave, crystal-lead, uplifting-gate
+  - 5 pads: lush-wide, dark-drift, airy-heaven, gated-rhythm, analog-warm
+  - 6 plucks: acid-303, trance-gate, bell-stab, acid-squelch, arp-pluck,
+    dark-stab
+  - 6 basses: rolling-psy, offbeat-kbbb, acid-bass, sub-deep, gritty-neuro,
+    forest-squelch
+- Intent-curated pools: sounds chosen for a genre are curated to serve each
+  other (dark-psy pairs squelch bass + acid pluck + dark pad; euphoric pairs
+  supersaw + lush pad + gate pluck + rolling bass...).
+- Deterministic: seed + intent -> the exact same sounds and byte-identical
+  audio every time; different seeds explore different sounds.
+- Commercial-trance DSP (v8): resonant filter envelopes, supersaw unison,
+  303-style acid, driven psy bass with beat pump, ping-pong delay,
+  Schroeder reverb, stereo spread, master glue.
+- Protocol: render requests now carry opts { intent, seed }; worker passes
+  them through; app.js sends them from the current config.
+- Tests extended: default determinism, opts determinism, cross-intent sound
+  variation, default-vs-selected variation, format, progress, empty input.
+
+
+
 ## 7.1.0 - Testable render core + deterministic-audio golden tests
 
 - Renderer extracted to web/render-core.js (pure module, zero WebAudio).

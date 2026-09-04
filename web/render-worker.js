@@ -9,7 +9,7 @@ self.onmessage = (msg) => {
   try {
     const out = renderSong(d.events, d.bpm, (percent) => {
       self.postMessage({ type: 'progress', id: d.id, percent: percent });
-    });
+    }, d.opts || null);
     self.postMessage(
       { type: 'done', id: d.id, seconds: out.seconds, peaks: out.peaks, buffer: out.wav.buffer },
       [out.wav.buffer, out.peaks.buffer]

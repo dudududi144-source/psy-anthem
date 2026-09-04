@@ -1,5 +1,6 @@
 // PSY ANTHEM - tests/web/render-core.test.ts
-// Golden-style tests for the v7 audio renderer core: determinism and format.
+// Golden-style tests for the v9 sound-library renderer: determinism, format,
+// and sound selection.
 import { describe, it, expect } from 'bun:test';
 import { renderSong } from '../../web/render-core.js';
 
@@ -16,9 +17,14 @@ function makeEvents() {
   }
   return events;
 }
+function sameBytes(a: Uint8Array, b: Uint8Array): boolean {
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false;
+  return true;
+}
 
-describe('render-core (v7 audio renderer)', () => {
-  it('renders a valid stereo WAV with peaks', () => {
+describe('render-core (v9 sound library)', () => {
+  it('renders a valid stereo WAV with peaks (default sounds)', () => {
     const out = renderSong(makeEvents(), 140);
     expect(out.wav.length).toBeGreaterThan(44);
     expect(String.fromCharCode(out.wav[0], out.wav[1], out.wav[2], out.wav[3])).toBe('RIFF');
@@ -33,13 +39,29 @@ describe('render-core (v7 audio renderer)', () => {
   it('is deterministic: same input -> byte-identical WAV', () => {
     const a = renderSong(makeEvents(), 140);
     const b = renderSong(makeEvents(), 140);
-    expect(a.wav.length).toBe(b.wav.length);
-    let identical = true;
-    for (let i = 0; i < a.wav.length; i++) {
-      if (a.wav[i] !== b.wav[i]) { identical = false; break; }
-    }
-    expect(identical).toBe(true);
+    expect(sameBytes(a.wav, b.wav)).toBe(true);
     expect(a.seconds).toBe(b.seconds);
+  });
+
+  it('is deterministic with explicit sound selection (intent + seed)', () => {
+    const opts = { intent: 'dark-psy', seed: 7 };
+    const a = renderSong(makeEvents(), 140, undefined, opts);
+    const b = renderSong(makeEvents(), 140, undefined, { intent: 'dark-psy', seed: 7 });
+    expect(sameBytes(a.wav, b.wav)).toBe(true);
+  });
+
+  it('different intents select different sounds (byte-different output)', () => {
+    // lead pools of euphoric-trance [0,1,3] and dark-psy [5,2] are disjoint,
+    // so the renders must differ regardless of seed.
+    const a = renderSong(makeEvents(), 140, undefined, { intent: 'euphoric-trance', seed: 3 });
+    const b = renderSong(makeEvents(), 140, undefined, { intent: 'dark-psy', seed: 3 });
+    expect(sameBytes(a.wav, b.wav)).toBe(false);
+  });
+
+  it('sound selection differs from the default sound set', () => {
+    const dflt = renderSong(makeEvents(), 140);
+    const dark = renderSong(makeEvents(), 140, undefined, { intent: 'dark-psy', seed: 1 });
+    expect(sameBytes(dflt.wav, dark.wav)).toBe(false);
   });
 
   it('different bpm changes the render', () => {

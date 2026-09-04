@@ -63,7 +63,7 @@ function requestRender() {
   setStatus('Rendering audio… 0%', 'busy');
   setTransportEnabled(false);
   if (workerBroken) { renderOnMain(); return; }
-  ensureWorker().postMessage({ type: 'render', id: renderId, events: anthem.events, bpm: anthemCfg.bpm });
+  ensureWorker().postMessage({ type: 'render', id: renderId, events: anthem.events, bpm: anthemCfg.bpm, opts: { intent: anthemCfg.intent, seed: anthemCfg.seed } });
 }
 
 // Fallback: render on the main thread if the Worker cannot run in this
@@ -75,7 +75,7 @@ async function renderOnMain() {
     if (myId !== renderId) return; // stale
     const out = mod.renderSong(anthem.events, anthemCfg.bpm, (p) => {
       if (myId === renderId) setStatus('Rendering audio… ' + p + '%', 'busy');
-    });
+    }, { intent: anthemCfg.intent, seed: anthemCfg.seed });
     if (myId !== renderId) return;
     finishRender({ buffer: out.wav.buffer, peaks: out.peaks, seconds: out.seconds });
   } catch (e) {

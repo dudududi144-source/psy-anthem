@@ -24,6 +24,11 @@ dies. **Never route playback through live WebAudio on this machine.**
    worker is a thin wrapper; app.js falls back to main-thread rendering if
    a browser cannot run module workers. tests/web/render-core.test.ts is
    the golden test: rendering MUST stay byte-identical for the same input.
+6. v9.0+: render-core.js ships a 25-sound LIBRARY (lead/pad/pluck/bass).
+   Sounds are chosen per song from INTENT_POOLS via hash(seed, intent) -
+   deterministic. Rules: keep pools genre-coherent (sounds must serve each
+   other), never break determinism, keep renderSong(events, bpm,
+   onProgress, opts) backwards compatible (no opts = default sounds).
 
 ## Facts learned the hard way
 - Pure `<audio>` beep: HEARD repeatedly => media path is fine.
