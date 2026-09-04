@@ -1,5 +1,16 @@
 # Changelog
 
+## 13.6.0 - Faster rendering (simplify unison + reverb)
+
+The render was taking too long and causing failures. Simplified drastically
+for speed:
+- All unison voices capped at 3 (lead euphoric-saw 7 -> 3, full-on 6 -> 3,
+  pads 4-5 -> 2-3). This is the biggest speed win.
+- Reverb combs reduced 6 -> 3 (still sounds spacious, much faster).
+Draft mode still caps unison at 2.
+
+
+
 ## 13.5.0 - Drastically simplify the mix (fix muddy/torture sound)
 
 The sound was still a muddy mess (user: 'torture to listen to'). Root cause:

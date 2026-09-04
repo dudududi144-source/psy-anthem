@@ -43,21 +43,21 @@ function R(o) {
 }
 const LIB = {
   lead: [
-    R({ unison: 7, detune: 0.0075, filtBase: 850, filtEnv: 7200, filtAtk: 0.006, filtDec: 0.28, filtSus: 0.45, Q: 4.0, atk: 0.004, dec: 0.10, sus: 0.85, rel: 0.30, amp: 0.22, spread: 0.90, drive: 0.25, vibRate: 5.2, vibDepth: 0.006 }), // 0 euphoric-saw (lush anthem lead)
-    R({ unison: 6, detune: 0.0090, filtBase: 700, filtEnv: 7000, filtAtk: 0.004, filtDec: 0.22, filtSus: 0.30, Q: 5.0, atk: 0.003, dec: 0.09, sus: 0.80, rel: 0.20, amp: 0.22, spread: 0.85, drive: 0.45 }), // 1 full-on-grit
+    R({ unison: 3, detune: 0.0075, filtBase: 850, filtEnv: 7200, filtAtk: 0.006, filtDec: 0.28, filtSus: 0.45, Q: 4.0, atk: 0.004, dec: 0.10, sus: 0.85, rel: 0.30, amp: 0.22, spread: 0.90, drive: 0.25, vibRate: 5.2, vibDepth: 0.006 }), // 0 euphoric-saw (lush anthem lead)
+    R({ unison: 3, detune: 0.0090, filtBase: 700, filtEnv: 7000, filtAtk: 0.004, filtDec: 0.22, filtSus: 0.30, Q: 5.0, atk: 0.003, dec: 0.09, sus: 0.80, rel: 0.20, amp: 0.22, spread: 0.85, drive: 0.45 }), // 1 full-on-grit
     R({ unison: 2, detune: 0.0030, filtBase: 190, filtEnv: 5600, filtAtk: 0.001, filtDec: 0.14, filtSus: 0.05, Q: 9.0, atk: 0.001, dec: 0.16, sus: 0.10, rel: 0.10, amp: 0.30, spread: 0.30, drive: 0.40 }), // 2 acid-lead
     R({ unison: 3, detune: 0.0040, filtBase: 1400, filtEnv: 2600, filtAtk: 0.250, filtDec: 0.80, filtSus: 0.60, Q: 1.6, atk: 0.220, dec: 0.30, sus: 0.80, rel: 0.60, amp: 0.20, spread: 0.90, drive: 0.10, vibRate: 4.8, vibDepth: 0.007 }), // 3 dreamy-lead
     R({ unison: 2, detune: 0.0050, filtBase: 420, filtEnv: 3600, filtAtk: 0.001, filtDec: 0.12, filtSus: 0.00, Q: 6.0, atk: 0.001, dec: 0.14, sus: 0.00, rel: 0.12, amp: 0.30, spread: 0.40, drive: 0.25 }), // 4 pluck-lead
-    R({ table: 'square', unison: 4, detune: 0.0070, filtBase: 380, filtEnv: 2200, filtAtk: 0.005, filtDec: 0.30, filtSus: 0.40, Q: 3.0, atk: 0.004, dec: 0.12, sus: 0.75, rel: 0.22, amp: 0.24, spread: 0.60, drive: 0.55 }), // 5 dark-rave
+    R({ table: 'square', unison: 3, detune: 0.0070, filtBase: 380, filtEnv: 2200, filtAtk: 0.005, filtDec: 0.30, filtSus: 0.40, Q: 3.0, atk: 0.004, dec: 0.12, sus: 0.75, rel: 0.22, amp: 0.24, spread: 0.60, drive: 0.55 }), // 5 dark-rave
     R({ table: 'square', unison: 2, detune: 0.0020, filtBase: 900, filtEnv: 4200, filtAtk: 0.010, filtDec: 0.35, filtSus: 0.45, Q: 2.2, atk: 0.010, dec: 0.18, sus: 0.70, rel: 0.35, amp: 0.22, spread: 0.50, drive: 0.20 }), // 6 crystal-lead
-    R({ unison: 5, detune: 0.0060, filtBase: 750, filtEnv: 5200, filtAtk: 0.004, filtDec: 0.20, filtSus: 0.25, Q: 4.6, atk: 0.003, dec: 0.08, sus: 0.55, rel: 0.16, amp: 0.23, spread: 0.80, drive: 0.35, pump: 0.30, vibRate: 5.5, vibDepth: 0.005 }), // 7 uplifting-gate
+    R({ unison: 3, detune: 0.0060, filtBase: 750, filtEnv: 5200, filtAtk: 0.004, filtDec: 0.20, filtSus: 0.25, Q: 4.6, atk: 0.003, dec: 0.08, sus: 0.55, rel: 0.16, amp: 0.23, spread: 0.80, drive: 0.35, pump: 0.30, vibRate: 5.5, vibDepth: 0.005 }), // 7 uplifting-gate
   ],
   pad: [
-    R({ unison: 5, detune: 0.0090, filtBase: 1250, filtEnv: 1900, filtAtk: 0.60, filtDec: 1.20, filtSus: 0.75, Q: 1.0, atk: 0.60, dec: 0.40, sus: 0.88, rel: 1.80, amp: 0.035, spread: 1.00, pump: 0.30 }), // 0 lush-wide (lusher)
+    R({ unison: 2, detune: 0.0090, filtBase: 1250, filtEnv: 1900, filtAtk: 0.60, filtDec: 1.20, filtSus: 0.75, Q: 1.0, atk: 0.60, dec: 0.40, sus: 0.88, rel: 1.80, amp: 0.035, spread: 1.00, pump: 0.30 }), // 0 lush-wide (lusher)
     R({ unison: 2, detune: 0.0050, filtBase: 520, filtEnv: 900, filtAtk: 0.70, filtDec: 1.40, filtSus: 0.65, Q: 1.4, atk: 0.65, dec: 0.50, sus: 0.85, rel: 1.80, amp: 0.14, spread: 0.90, drive: 0.15, pump: 0.18 }), // 1 dark-drift
-    R({ unison: 4, detune: 0.0085, filtBase: 2200, filtEnv: 2400, filtAtk: 0.80, filtDec: 1.60, filtSus: 0.75, Q: 0.9, atk: 0.75, dec: 0.60, sus: 0.90, rel: 2.00, amp: 0.030, spread: 1.00, pump: 0.28 }), // 2 airy-heaven
+    R({ unison: 2, detune: 0.0085, filtBase: 2200, filtEnv: 2400, filtAtk: 0.80, filtDec: 1.60, filtSus: 0.75, Q: 0.9, atk: 0.75, dec: 0.60, sus: 0.90, rel: 2.00, amp: 0.030, spread: 1.00, pump: 0.28 }), // 2 airy-heaven
     R({ unison: 2, detune: 0.0040, filtBase: 900, filtEnv: 1500, filtAtk: 0.30, filtDec: 0.90, filtSus: 0.60, Q: 1.8, atk: 0.30, dec: 0.30, sus: 0.80, rel: 1.00, amp: 0.13, spread: 0.85, pump: 0.42 }), // 3 gated-rhythm
-    R({ unison: 3, detune: 0.0070, filtBase: 1000, filtEnv: 1200, filtAtk: 0.45, filtDec: 1.00, filtSus: 0.70, Q: 1.3, atk: 0.45, dec: 0.40, sus: 0.85, rel: 1.40, amp: 0.05, spread: 0.90, drive: 0.12, pump: 0.32 }), // 4 analog-warm
+    R({ unison: 2, detune: 0.0070, filtBase: 1000, filtEnv: 1200, filtAtk: 0.45, filtDec: 1.00, filtSus: 0.70, Q: 1.3, atk: 0.45, dec: 0.40, sus: 0.85, rel: 1.40, amp: 0.05, spread: 0.90, drive: 0.12, pump: 0.32 }), // 4 analog-warm
   ],
   pluck: [
     R({ filtBase: 420, filtEnv: 2600, filtAtk: 0.002, filtDec: 0.16, filtSus: 0.00, Q: 3.2, atk: 0.002, dec: 0.20, sus: 0.00, rel: 0.12, amp: 0.24, pan: 0.25, drive: 0.12 }), // 0 clean-pluck (was acid-303, tamed)
@@ -378,7 +378,7 @@ function reverb(L, R, sr, total) {
   // Lush hall-style Schroeder reverb: 6 prime-ish combs + 3 allpasses for a
   // dense, wide, non-metallic tail. L and R use slightly different delay
   // scales for stereo width.
-  const combTimes = [0.0297, 0.0371, 0.0411, 0.0461, 0.0333, 0.0393];
+  const combTimes = [0.0297, 0.0371, 0.0411];
   const combFb   = [0.77, 0.74, 0.72, 0.70, 0.75, 0.73];
   const apTimes  = [0.005, 0.0017, 0.0031];
   const apG = 0.5;
