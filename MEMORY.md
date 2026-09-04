@@ -20,6 +20,10 @@ dies. **Never route playback through live WebAudio on this machine.**
 4. Keep it this way: ONE playback path, no experimental modes, no hidden
    players, no OfflineAudioContext on the hot path (it hung on the weak
    field machine - the reason it was removed from the default flow).
+5. v7.1+: the renderer lives in web/render-core.js (pure module). The
+   worker is a thin wrapper; app.js falls back to main-thread rendering if
+   a browser cannot run module workers. tests/web/render-core.test.ts is
+   the golden test: rendering MUST stay byte-identical for the same input.
 
 ## Facts learned the hard way
 - Pure `<audio>` beep: HEARD repeatedly => media path is fine.

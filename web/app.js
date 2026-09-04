@@ -1,4 +1,4 @@
-// PSY ANTHEM — v7.0 professional UI
+// PSY ANTHEM — v7.1 professional UI
 // Architecture (see MEMORY.md):
 //   compose (engine, main thread, <100ms) -> render (Web Worker, never blocks
 //   the UI) -> <audio> element playback (the proven path on every machine).
@@ -6,7 +6,7 @@
 import { createAnthemEngine, AnthemIntent, EnergyCurve } from './engine.mjs';
 
 const $ = (id) => document.getElementById(id);
-console.info('[PSY ANTHEM] v7.0 professional build loaded');
+console.info('[PSY ANTHEM] v7.1 professional build loaded');
 
 // ---------- state ----------
 let anthem = null;       // AnthemOutput
@@ -17,6 +17,7 @@ let musicalSeconds = 0;  // song length (without render tail)
 let renderId = 0;
 let worker = null;
 let generating = false;
+let workerBroken = false;
 
 const audio = $('audio');
 const playBtn = $('playBtn');
@@ -33,7 +34,7 @@ function setStatus(msg, mode) {
 // ---------- worker ----------
 function ensureWorker() {
   if (worker) return worker;
-  worker = new Worker('./render-worker.js');
+  worker = new Worker('./render-worker.js', { type: 'module' });
   worker.onmessage = (msg) => {
     const d = msg.data;
     if (!d || d.id !== renderId) return; // stale render
@@ -47,8 +48,9 @@ function ensureWorker() {
     }
   };
   worker.onerror = (e) => {
-    setStatus('Renderer error', 'err');
     console.error('[PSY ANTHEM] worker error:', e.message);
+    workerBroken = true;
+    if (anthem) renderOnMain(); // automatic fallback, never leave the user stuck
   };
   return worker;
 }
@@ -60,7 +62,26 @@ function requestRender() {
   renderId++;
   setStatus('Rendering audio… 0%', 'busy');
   setTransportEnabled(false);
+  if (workerBroken) { renderOnMain(); return; }
   ensureWorker().postMessage({ type: 'render', id: renderId, events: anthem.events, bpm: anthemCfg.bpm });
+}
+
+// Fallback: render on the main thread if the Worker cannot run in this
+// browser. Slightly blocking, but the product never fails to produce audio.
+async function renderOnMain() {
+  const myId = renderId;
+  try {
+    const mod = await import('./render-core.js');
+    if (myId !== renderId) return; // stale
+    const out = mod.renderSong(anthem.events, anthemCfg.bpm, (p) => {
+      if (myId === renderId) setStatus('Rendering audio… ' + p + '%', 'busy');
+    });
+    if (myId !== renderId) return;
+    finishRender({ buffer: out.wav.buffer, peaks: out.peaks, seconds: out.seconds });
+  } catch (e) {
+    setStatus('Render failed: ' + (e && e.message ? e.message : String(e)), 'err');
+    console.error('[PSY ANTHEM] main-thread render error:', e);
+  }
 }
 
 function finishRender(d) {

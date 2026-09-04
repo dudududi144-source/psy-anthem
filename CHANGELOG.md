@@ -1,5 +1,21 @@
 # Changelog
 
+## 7.1.0 - Testable render core + deterministic-audio golden tests
+
+- Renderer extracted to web/render-core.js (pure module, zero WebAudio).
+  render-worker.js is now a thin module wrapper; app.js loads the worker
+  with { type: 'module' }.
+- New automatic fallback: if the Worker cannot run in a browser, app.js
+  renders on the main thread via dynamic import of render-core.js - the
+  product still produces audio everywhere.
+- New tests/web/render-core.test.ts (golden-style):
+  - valid stereo 16-bit WAV output + 900 waveform peaks
+  - byte-identical determinism (same events + bpm -> same bytes)
+  - bpm sensitivity, monotonic progress, empty-input rejection.
+- pages.yml deploys render-core.js next to the worker.
+
+
+
 ## 7.0.0 - Professional Studio UI (single reliable path, zero stuck states)
 
 Replaces the accumulated v3-v6 experiment layers with one clean product:

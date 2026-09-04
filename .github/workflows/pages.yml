@@ -40,6 +40,7 @@ jobs:
           cp web/presets.js docs/presets.js
           cp web/midi-lite.mjs docs/midi-lite.mjs
           cp web/render-worker.js docs/render-worker.js
+          cp web/render-core.js docs/render-core.js
           echo ".nojekyll" > docs/.nojekyll || touch docs/.nojekyll
       - name: Engine bundle size gate (30KB)
         run: |
