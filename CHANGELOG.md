@@ -1,5 +1,22 @@
 # Changelog
 
+## 8.0.0 - Professional sound via PSY synth AudioWorklet
+
+Connects psy-anthem (WHAT layer) to the professional PSY synth (HOW layer)
+WITHOUT touching any other repo: psysynth-worklet.js is copied INTO this repo
+(web/psysynth-worklet.js) and driven locally.
+
+- New web/psysynth-worklet.js: the professional PSY synth AudioWorklet
+  (copied read-only from PsySynthPro into this repo).
+- New web/worklet-renderer.js: offline-renders psy-anthem events with the
+  worklet, one AudioWorkletNode per voice (lead/pad/pluck/bass), each with its
+  own professional patch -> each voice gets a distinct pro timbre.
+- web/app.js: primary renderer is now the worklet; falls back to render-core
+  (pure-JS) automatically if the worklet cannot run in the browser.
+- pages.yml copies the two new web files into docs/.
+
+
+
 ## 10.3.0 - Per-voice processing (distinct voice characters)
 
 Addresses "everything sounds the same / no musical balance". Previously all

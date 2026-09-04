@@ -87,3 +87,8 @@ dies. **Never route playback through live WebAudio on this machine.**
    high-cut+saturation on bass) before mixing with per-role levels. Fix for
    "everything sounds the same". Render-core is a preview renderer; for pro
    sound use the HOW-layer synth (psysynth/PsySynthPro).
+13. v8.0+: psy-anthem connects to the professional PSY synth AudioWorklet for
+   pro sound. psysynth-worklet.js is COPIED INTO this repo (never write to
+   PsySynthPro or any other repo). worklet-renderer.js offline-renders events
+   with one worklet node per voice. app.js uses the worklet as primary
+   renderer with render-core fallback.

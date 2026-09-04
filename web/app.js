@@ -1,8 +1,9 @@
-// PSY ANTHEM — v7.1 professional UI
+// PSY ANTHEM — v8.0 professional UI (pro synth playback)
 // Architecture (see MEMORY.md):
-//   compose (engine, main thread, <100ms) -> render (Web Worker, never blocks
-//   the UI) -> <audio> element playback (the proven path on every machine).
-// One reliable path. No experimental modes. No stuck states.
+//   compose (engine) -> render -> <audio> element playback.
+//   Primary renderer: the professional PSY synth AudioWorklet
+//   (web/psysynth-worklet.js, one worklet node per voice) rendered offline.
+//   Fallback: render-core.js (pure-JS) if the worklet cannot run.
 import { createAnthemEngine, AnthemIntent, EnergyCurve } from './engine.mjs';
 
 const $ = (id) => document.getElementById(id);
@@ -55,15 +56,56 @@ function ensureWorker() {
   return worker;
 }
 
+const WORKLET_NAMES = ['Pro Lead', 'Pro Pad', 'Pro Pluck', 'Pro Bass'];
+function computePeaks(buffer, buckets) {
+  const nCh = buffer.numberOfChannels;
+  const len = buffer.length;
+  const per = Math.max(1, Math.floor(len / buckets));
+  const peaks = new Float32Array(buckets);
+  const chans = [];
+  for (let c = 0; c < nCh; c++) chans.push(buffer.getChannelData(c));
+  for (let b = 0; b < buckets; b++) {
+    let mx = 0;
+    const s0 = b * per, e0 = Math.min(len, s0 + per);
+    for (let i = s0; i < e0; i += 4) {
+      for (let c = 0; c < nCh; c++) {
+        const v = Math.abs(chans[c][i]);
+        if (v > mx) mx = v;
+      }
+    }
+    peaks[b] = mx;
+  }
+  return peaks;
+}
+
 function requestRender() {
   if (!anthem) return;
   stopPlayback();
   if (audioUrl) { try { URL.revokeObjectURL(audioUrl); } catch (e) { /* ignore */ } audioUrl = null; }
   renderId++;
+  const myId = renderId;
   setStatus('Rendering audio… 0%', 'busy');
   setTransportEnabled(false);
-  if (workerBroken) { renderOnMain(); return; }
-  ensureWorker().postMessage({ type: 'render', id: renderId, events: anthem.events, bpm: anthemCfg.bpm, opts: buildRenderOpts() });
+  renderViaWorklet(myId);
+}
+
+async function renderViaWorklet(myId) {
+  try {
+    const mod = await import('./worklet-renderer.js');
+    if (myId !== renderId) return;
+    if (!mod.workletSupported()) throw new Error('worklet not supported');
+    setStatus('Rendering audio… (pro synth)', 'busy');
+    const buf = await mod.renderWithWorklet(anthem.events, anthemCfg.bpm);
+    if (myId !== renderId) return;
+    const bytes = mod.audioBufferToWav(buf);
+    const peaks = computePeaks(buf, 900);
+    finishRender({ buffer: bytes.buffer, peaks: peaks, seconds: buf.duration, names: WORKLET_NAMES, groove: 'worklet' });
+  } catch (e) {
+    if (myId !== renderId) return;
+    console.warn('[PSY ANTHEM] worklet render unavailable, using render-core fallback:', e && e.message ? e.message : e);
+    if (workerBroken) { renderOnMain(); return; }
+    ensureWorker().postMessage({ type: 'render', id: myId, events: anthem.events, bpm: anthemCfg.bpm, opts: buildRenderOpts() });
+  }
 }
 
 // Fallback: render on the main thread if the Worker cannot run in this
