@@ -1,5 +1,21 @@
 # Changelog
 
+## 10.0.0 - Focus on synth + melody quality; drums off by default
+
+Direction shift: PSY ANTHEM is about emotional melodies and anthems, not
+rhythm/drums. Drums are now OFF by default (the groove toggle stays as an
+option). Investment moved to synth quality:
+
+- Lush anthem lead (euphoric-saw): 7-voice supersaw, wider detune, filter
+  envelope opens wider and stays brighter, wider stereo, cleaner drive,
+  longer release - a singing, wide anthem lead.
+- Lusher pad (lush-wide): 3 voices, full width, longer release, smoother.
+- Lusher reverb: longer tail (higher comb feedback) and more wet - bigger
+  anthem space.
+- Groove toggle defaults to OFF (pure melody).
+
+
+
 ## 9.3.0 - Groove styles + phrase transitions
 
 - Groove styles: four (the classic, byte-stable default), fullon (driving

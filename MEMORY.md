@@ -66,3 +66,8 @@ dies. **Never route playback through live WebAudio on this machine.**
 - web/synth.js    HOW layer (PsySynthBrowser, incl. renderOffline).
 - web/presets.js  15 voice presets.
 - web/app.js      UI + playback orchestration (keep it simple).
+
+9. v10.0+: PSY ANTHEM = emotional melodies & anthems, NOT rhythm/drums.
+   Drums default OFF (groove toggle optional). Synth quality is the focus:
+   lush 7-voice anthem lead, lush wide pad, lush reverb. Keep investing in
+   synth + melody quality, not peripheral drums/groove.
