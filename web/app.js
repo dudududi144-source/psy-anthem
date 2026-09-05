@@ -35,7 +35,7 @@ function setStatus(msg, mode) {
 // ---------- worker ----------
 function ensureWorker() {
   if (worker) return worker;
-  worker = new Worker('./render-worker.js?v=100', { type: 'module' });
+  worker = new Worker('./render-worker.js?v=200', { type: 'module' });
   worker.onmessage = (msg) => {
     const d = msg.data;
     if (!d || d.id !== renderId) return; // stale render

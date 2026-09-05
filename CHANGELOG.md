@@ -1,5 +1,15 @@
 # Changelog
 
+## 13.9.0 - Fix stale cache (improvements now actually audible)
+
+The cache-busting params were stuck at ?v=100/101 while render-core.js changed
+many times, so browsers served a CACHED old render-core.js and the sound
+improvements were inaudible. Bumped all cache-busting params to ?v=200
+(render-core, render-worker, app.js) to force browsers to load the current
+versions.
+
+
+
 ## 13.8.0 - Lusher lead + more reverb space
 
 - Lead unison 4 -> 5, wider detune (0.0085 -> 0.0090), wider filter envelope
