@@ -1,5 +1,14 @@
 # Changelog
 
+## 13.8.0 - Lusher lead + more reverb space
+
+- Lead unison 4 -> 5, wider detune (0.0085 -> 0.0090), wider filter envelope
+  (7200 -> 8000), more open filter sustain (0.45 -> 0.50), slightly lower amp.
+  Makes the lead richer and more professional.
+- Reverb wet 0.40 -> 0.45 for more space.
+
+
+
 ## 13.7.0 - Lusher lead (richer unison)
 
 Lead unison 3 -> 4, wider detune (0.0075 -> 0.0085), slightly lower amp to
