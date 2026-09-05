@@ -29,7 +29,7 @@ fiction with a working, tested wire.
 | 2 | Real foundation v1 `MusicalEvent` is a discriminated union (`BeatEvent…PatternEvent`), `NoteEvent = {type:'note', note, velocity, duration, channel: string, at}` — nothing like the shim | psy-foundation `packages/protocol/src/events.ts` | **FIXED** — real v1 events now vendored verbatim in `foundation-shim/protocol.ts`, marked superseded-by-v2 |
 | 3 | The old shim's `transport.ts` (`TimeSignature`, `TransportPosition`, `stepsPerBar`, `barBeatStepToAbsolute`) describes APIs that exist NOWHERE in psy-foundation's transport package | repo-wide grep of psy-foundation `packages/transport` | **REMOVED** — honest replacement `foundation-shim/transport-musical.ts` carries only real foundation types |
 | 4 | The engine's internal event format is composition-internal, not a wire format — but it lived in a file claiming to be the foundation protocol | `src/types.ts` imported the fiction | **RENAMED HONESTLY** — `src/internal-events.ts`, header states exactly what it is |
-| 5 | `web/` vendors a 4th private HOW-layer (25-sound wavetable renderer). Measured against the family sound contract it **fails**: I = −12.6 LUFS (gate [−11,−7]), **DC offset −0.07…−0.09 on BOTH channels** (9% of full scale — real DSP bug), loudness/DC gates FAIL on every render | `node scripts/acceptance-check.mjs` on render-core output (see §3) | **DOCUMENTED + BYPASSED** — the family wire renders through foundation instead; the DC bug is web/-internal and noted in MEMORY.md |
+| 5 | `web/` vendors a 4th private HOW-layer (25-sound wavetable renderer). Measured against the family sound contract it **fails** (re-measured on the agent's LATEST v13.9.1 renderer after rebase): I = −15.5 LUFS (gate [−11,−7]; was −12.6 on v12.3 — the "simplify the mix" iterations made it QUIETER), **DC offset −0.085/−0.087 on BOTH channels** (9% of full scale — real DSP bug, present in every version measured) | `node scripts/acceptance-check.mjs` on render-core output (see §3) | **DOCUMENTED + BYPASSED** — the family wire renders through foundation instead; the DC bug is web/-internal and noted in MEMORY.md |
 | 6 | No path existed for a family HOW-layer to render anthem's notes at all | psy-foundation docs/CONSUMER_SUPPORT.md ladder (pre-Task-17) | **FIXED** — psy-foundation added `POST /api/render-notes` (Task 17-a); this repo maps onto it |
 
 ## 2. The fix — the WHAT→HOW wire (one tested place)
@@ -67,7 +67,7 @@ Headlines (foundation `localhost:3123`, bpm 140, seed 42):
 | Foundation render (melody-only) | 8/32/88 bars: hard gates ALL PASS (format, TP, DC, alive, stereo); LUFS −12.5…−14.8 (sparse-melody finding, below) |
 | Foundation render (+host groove) | hard gates ALL PASS; LUFS −12.4…−13.9 |
 | Determinism across the HTTP boundary | two identical POSTs → identical WAV md5 |
-| Own renderer (comparison) | fails DC + LUFS gates (§1 finding 5) |
+| Own renderer (comparison, v13.9.1) | fails DC + LUFS gates (§1 finding 5) |
 
 ### Limits found (the point of the experiment)
 
