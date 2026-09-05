@@ -125,3 +125,11 @@ dies. **Never route playback through live WebAudio on this machine.**
    lead (lower level + more pump), bass owns the lows (lower filter). When
    adding voices/layers, always balance levels and carve frequency space so
    the voices blend instead of clashing.
+
+## Task 17 facts (2026-09-05 — the serving fix, measured)
+21. The old `foundation-shim/protocol.ts` was NEVER verbatim and the pin was `<TBD>` — the internal event format was being passed off as the foundation protocol. It now lives honestly in `src/internal-events.ts`; the shim carries verbatim psy-foundation v2 types + codec pinned at `0b1e77c`.
+22. THE WIRE: `anthemToWire()` (src/integration/wire.ts) is the only place composition becomes wire bytes. Voice map: lead→lead, harmony→pad, counter→counter, bass→bass. ts = beats × 60/bpm; vel = velocity/127. Every envelope must pass the vendored foundation validator or the mapper throws.
+23. psy-foundation's `POST /api/render-notes` renders the wire FAITHFULLY (no internal composition, no re-humanization) — the e2e proved determinism across the HTTP boundary (same POST → same WAV md5). Cap: 2000 notes/POST → think per-section (≤ ~44 dense bars per POST; halves with rebased ts work).
+24. Loudness is density-bound: melody+groove streams master ≈ −12.4 LUFS vs the [−11,−7] club gate. Iterative gain→limit cycles make it QUIETER (pumping) — never chase loudness with gain; add arrangement density (sub-bass 8ths, pads).
+25. The web/ render-core has a real DC-offset bug (−0.07…−0.09 both channels, all renders) and masters ~−12.6…−13.2 LUFS. It is the preview path, not the family sound. Do not confuse its output with foundation's mastered chain.
+

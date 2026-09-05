@@ -2,7 +2,7 @@
 
 > **Status: ARCHITECTURE PHASE — Phase 0 complete, Phase 1 (Motif Engine) building.**
 
-PSY ANTHEM is the melodic composition engine of the PSY family. A pure **WHAT-layer** generator that produces anthem-grade melodic content — motifs, harmonic journeys, tension arcs, and multi-voice counterpoint — delivered as canonical `MusicalEvent[]` for any HOW-layer device (`psysynth`, `PsySynthPro`, `psy-sampler`).
+PSY ANTHEM is the melodic composition engine of the PSY family. A pure **WHAT-layer** generator that produces anthem-grade melodic content — motifs, harmonic journeys, tension arcs, and multi-voice counterpoint — delivered over the **PSYBUS v2 wire** (`anthemToWire()`) for any HOW-layer device (`psysynth`, `PsySynthPro`, `psy-sampler`) and for psy-foundation's `POST /api/render-notes` (deterministic mastered WAV).
 
 ## The Problem
 Markov chains / random walks produce **sequences of notes**, not **stories**. An anthem requires:
@@ -37,7 +37,7 @@ Seed + Intent + Scale + EnergyCurve
 2. No randomness without seed (`mulberry32` only).
 3. No foundation import at runtime (pinned shim only).
 4. Every musical rule is a test.
-5. Output is canonical `MusicalEvent[]`.
+5. Output maps onto the family wire — PSYBUS v2 via `src/integration/wire.ts` (validated by the verbatim foundation shim codec).
 6. No side effects — pure functions.
 
 ## Getting Started
@@ -99,6 +99,8 @@ bun run examples/01-basic-generation.ts
 
 ## Documentation
 
+- docs/SERVING_AUDIT_2026-09-05.md — how psy-anthem serves the family: the audit, the wire, the end-to-end experiment (53 claims)
+- docs/E2E_PIPELINE_REPORT.md — the full experiment matrix (compose → wire → foundation HTTP → WAV → gates)
 - docs/HOWTO.md - practical recipes
 - docs/EXAMPLES.md - example-by-example guide
 - docs/MIDI-INTEGRATION.md - SMF details + DAW import

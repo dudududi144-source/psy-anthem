@@ -1,5 +1,5 @@
 // PSY ANTHEM - expression/articulation.ts
-import type { Articulation } from '../foundation-shim/protocol';
+import type { Articulation } from '../internal-events';
 import type { InternalNoteEvent } from '../types';
 
 // Derive articulation from section energy and note length.

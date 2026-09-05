@@ -1,5 +1,5 @@
 // PSY ANTHEM — types.ts
-import type { Articulation, MusicalEvent, NoteData, ControlData, ProgramData } from './foundation-shim/protocol';
+import type { Articulation, MusicalEvent, NoteData, ControlData, ProgramData } from './internal-events';
 
 // Re-export canonical protocol types so consumers import from one place.
 export type { Articulation, MusicalEvent, NoteData, ControlData, ProgramData };
