@@ -5,6 +5,7 @@
 //   (web/psysynth-worklet.js, one worklet node per voice) rendered offline.
 //   Fallback: render-core.js (pure-JS) if the worklet cannot run.
 import { createAnthemEngine, AnthemIntent, EnergyCurve } from './engine.mjs';
+import * as ProSynth from './pro-synth.js';
 
 const $ = (id) => document.getElementById(id);
 console.info('[PSY ANTHEM] v7.2 professional build loaded');
@@ -100,11 +101,41 @@ function requestRender() {
   renderViaWorklet(myId);
 }
 
+function peaksFromBuffer(buf, buckets) {
+  const n = buf.length;
+  const peaks = new Float32Array(buckets);
+  const per = n / buckets;
+  const chans = [];
+  for (let c = 0; c < buf.numberOfChannels; c++) chans.push(buf.getChannelData(c));
+  for (let b = 0; b < buckets; b++) {
+    const s = Math.floor(b * per), e = Math.min(n, Math.floor((b + 1) * per));
+    let m = 0;
+    for (let i = s; i < e; i += 8) {
+      for (let c = 0; c < chans.length; c++) {
+        const a = Math.abs(chans[c][i]);
+        if (a > m) m = a;
+      }
+    }
+    peaks[b] = m;
+  }
+  return peaks;
+}
+
 async function renderViaWorklet(myId) {
-  // Primary: render-core in the Web Worker. It is the reliable path on every
-  // machine (the OfflineAudioContext renderer can hang on slow machines).
-  // render-core shows progress and never hangs; if the worker itself is
-  // broken, fall back to main-thread rendering.
+  // Primary: pro-synth (PsySynthPro AudioWorklet) for professional sound.
+  // Falls back to render-core (reliable) if the pro synth fails.
+  try {
+    setStatus('Rendering audio (pro synth)…', 'busy');
+    const buf = await ProSynth.renderWithProSynth(anthem.events, anthemCfg.bpm, 'psysynth-worklet.js');
+    if (myId !== renderId) return;
+    const wav = ProSynth.audioBufferToWav(buf);
+    const pk = peaksFromBuffer(buf, 900);
+    finishRender({ buffer: wav.buffer, peaks: pk, seconds: buf.duration, names: null, groove: 'pro' });
+    return;
+  } catch (e) {
+    console.warn('[PSY ANTHEM] pro-synth failed, falling back to render-core:', e && e.message ? e.message : e);
+  }
+  // Fallback: render-core in the Web Worker (reliable path).
   if (!workerBroken) {
     setStatus('Rendering audio… 0%', 'busy');
     ensureWorker().postMessage({ type: 'render', id: myId, events: anthem.events, bpm: anthemCfg.bpm, opts: buildRenderOpts() });
