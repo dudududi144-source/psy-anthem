@@ -28,12 +28,40 @@ function makeTable(kind) {
 const SAW = makeTable('saw');
 const SQUARE = makeTable('square');
 const SINE = makeTable('sine');
+// Rich artistic wavetables ported from PsySynthPro (professional psy-trance).
+function makeRichTable(harmonics) {
+  const t = new Float32Array(TABLE_LEN + 1);
+  for (let i = 0; i <= TABLE_LEN; i++) {
+    const ph = (i / TABLE_LEN) * 2 * Math.PI;
+    let v = 0;
+    for (let h = 0; h < harmonics.length; h++) v += harmonics[h] * Math.sin((h + 1) * ph);
+    t[i] = v;
+  }
+  let mx = 0;
+  for (let i = 0; i <= TABLE_LEN; i++) mx = Math.max(mx, Math.abs(t[i]));
+  if (mx > 0) for (let i = 0; i <= TABLE_LEN; i++) t[i] = (t[i] / mx) * 0.9;
+  return t;
+}
+const WT_COSMIC = makeRichTable([1, 0.62, 0.44, 0.31, 0.23, 0.17, 0.12, 0.08, 0.05, 0.03, 0.018, 0.01]);
+const WT_NEURO = makeRichTable([1, 0.85, 0.35, 0.7, 0.2, 0.55, 0.12, 0.4, 0.06, 0.28, 0.03, 0.18]);
+const WT_GLASS = makeRichTable([1, 0.15, 0.6, 0.08, 0.42, 0.05, 0.28, 0.03, 0.16, 0.02, 0.09, 0.01]);
+const WT_VOID = makeRichTable([1, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.12, 0.07, 0.03]);
+const WT_VOCAL = makeRichTable([1, 0.5, 0.9, 0.3, 0.7, 0.2, 0.5, 0.15, 0.35, 0.1, 0.2, 0.05]);
 function tableAt(table, phase) {
   const i0 = phase | 0;
   const f = phase - i0;
   return table[i0] * (1 - f) + table[i0 + 1] * f;
 }
-function tableFor(name) { return name === 'square' ? SQUARE : (name === 'sine' ? SINE : SAW); }
+function tableFor(name) {
+  if (name === 'square') return SQUARE;
+  if (name === 'sine') return SINE;
+  if (name === 'cosmic') return WT_COSMIC;
+  if (name === 'neuro') return WT_NEURO;
+  if (name === 'glass') return WT_GLASS;
+  if (name === 'void') return WT_VOID;
+  if (name === 'vocal') return WT_VOCAL;
+  return SAW;
+}
 
 // ============================================================
 // SOUND LIBRARY — 25 sounds, 4 roles.
@@ -53,7 +81,7 @@ const LIB = {
     R({ unison: 3, detune: 0.0060, filtBase: 750, filtEnv: 5200, filtAtk: 0.004, filtDec: 0.20, filtSus: 0.25, Q: 4.6, atk: 0.003, dec: 0.08, sus: 0.55, rel: 0.16, amp: 0.23, spread: 0.80, drive: 0.35, pump: 0.30, vibRate: 5.5, vibDepth: 0.005 }), // 7 uplifting-gate
   ],
   pad: [
-    R({ unison: 2, detune: 0.0090, filtBase: 1250, filtEnv: 1900, filtAtk: 0.60, filtDec: 1.20, filtSus: 0.75, Q: 1.0, atk: 0.60, dec: 0.40, sus: 0.88, rel: 1.80, amp: 0.035, spread: 1.00, pump: 0.30 }), // 0 lush-wide (lusher)
+    R({ table: 'void', unison: 2, detune: 0.0090, filtBase: 1250, filtEnv: 1900, filtAtk: 0.60, filtDec: 1.20, filtSus: 0.75, Q: 1.0, atk: 0.60, dec: 0.40, sus: 0.88, rel: 1.80, amp: 0.05, spread: 1.00, pump: 0.30 }), // 0 lush-wide (lusher)
     R({ unison: 2, detune: 0.0050, filtBase: 520, filtEnv: 900, filtAtk: 0.70, filtDec: 1.40, filtSus: 0.65, Q: 1.4, atk: 0.65, dec: 0.50, sus: 0.85, rel: 1.80, amp: 0.14, spread: 0.90, drive: 0.15, pump: 0.18 }), // 1 dark-drift
     R({ unison: 2, detune: 0.0085, filtBase: 2200, filtEnv: 2400, filtAtk: 0.80, filtDec: 1.60, filtSus: 0.75, Q: 0.9, atk: 0.75, dec: 0.60, sus: 0.90, rel: 2.00, amp: 0.030, spread: 1.00, pump: 0.28 }), // 2 airy-heaven
     R({ unison: 2, detune: 0.0040, filtBase: 900, filtEnv: 1500, filtAtk: 0.30, filtDec: 0.90, filtSus: 0.60, Q: 1.8, atk: 0.30, dec: 0.30, sus: 0.80, rel: 1.00, amp: 0.13, spread: 0.85, pump: 0.42 }), // 3 gated-rhythm

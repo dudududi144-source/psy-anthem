@@ -1,5 +1,14 @@
 # Changelog
 
+## 13.9.1 - Rich wavetables for lead and pad
+
+Ported the PsySynthPro rich artistic wavetables (COSMIC, NEURO, GLASS, VOID,
+VOCAL) into render-core.js. The lead now uses the COSMIC wavetable and the pad
+uses the VOID wavetable for a richer, more professional psy-trance sound. Pad
+amp raised slightly so pads are audible but not muddy.
+
+
+
 ## 13.9.0 - Fix stale cache (improvements now actually audible)
 
 The cache-busting params were stuck at ?v=100/101 while render-core.js changed
