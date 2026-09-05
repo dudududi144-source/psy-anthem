@@ -156,6 +156,9 @@ function defaultSounds() {
   return { lead: LIB.lead[0], pad: LIB.pad[0], pluck: LIB.pluck[0], bass: LIB.bass[0] };
 }
 const ROLE = ['lead', 'pad', 'pluck', 'bass']; // engine channels 0..3
+// Pre-tanh peak target of the master saturator (1.0 = original headroom).
+// Tuned on the family acceptance gates — see the master stage below.
+const MASTER_DRIVE = 1.5;
 
 // ============================================================
 // DSP
@@ -319,6 +322,27 @@ function widenStereo(L, R, total, amount) {
     const side = (L[i] - R[i]) * 0.5 * amount;
     L[i] = mid + side;
     R[i] = mid - side;
+  }
+}
+
+// Two cascaded one-pole 10 Hz DC blockers (12 dB/oct below cutoff). The
+// per-voice Chamberlin SVF accumulates a small DC drift at high cutoff
+// settings (measured, see master stage) — AC-coupling each voice bus at
+// the source stops the drift from ever reaching the comb/chorus loops,
+// whose feedback DC-gain (~1/(1−g) ≈ 3.6–4.3) is what previously blew it
+// up to −0.13…−0.27 FS on full mixes. The second pole catches the
+// tracking error of the first on fast per-note DC steps (dense/draft
+// paths). Audible band untouched: 46 Hz kick fundamental loses 0.4 dB.
+function dcBlock(L, R, sr, total) {
+  const Rdc = 1 - (2 * Math.PI * 10) / sr;
+  let x1L = 0, y1L = 0, x2L = 0, z1L = 0;
+  let x1R = 0, y1R = 0, x2R = 0, z1R = 0;
+  for (let i = 0; i < total; i++) {
+    const xl = L[i], xr = R[i];
+    y1L = xl - x1L + Rdc * y1L; x1L = xl;
+    z1L = y1L - x2L + Rdc * z1L; x2L = y1L; L[i] = z1L;
+    y1R = xr - x1R + Rdc * y1R; x1R = xr;
+    z1R = y1R - x2R + Rdc * z1R; x2R = y1R; R[i] = z1R;
   }
 }
 
@@ -562,6 +586,12 @@ function render(events, bpm, onProgress, opts) {
     voiceChorus(vb[2].L, vb[2].R, sr, total, 0.10);
     voiceBassShape(vb[3].L, vb[3].R, sr, total, 0.4);
   }
+  // Family-gate fix v13.9.2: AC-couple every voice bus BEFORE the wet
+  // stages — pingpong (DC gain 1.6) and the Schroeder combs (DC gain ~4)
+  // otherwise amplify any voice drift, and the master tanh saturator
+  // rectifies the bias into yet more DC. Blocked at the source, the whole
+  // downstream stays DC-free by construction.
+  for (let c = 0; c < 4; c++) dcBlock(vb[c].L, vb[c].R, sr, total);
   const L = new Float32Array(total);
   const R = new Float32Array(total);
   mixVoices(vb, L, R, total);
@@ -592,16 +622,40 @@ function render(events, bpm, onProgress, opts) {
   widenStereo(L, R, total, 1.22);
   if (onProgress) onProgress(90);
 
+  // Master DC blocker (10 Hz one-pole highpass), family-gate fix v13.9.2.
+  // Second line of defense: voice buses are already DC-blocked at the
+  // source; this removes any residual (drift tracking error, future sound
+  // additions) so the family gate dcMax 0.001 holds deterministically.
+  // The audible band is untouched (kick fundamental 46 Hz, 2+ octaves up).
+  dcBlock(L, R, sr, total);
+
+  // Saturate-then-normalize (was: normalize to 0.9, tanh, leave ~2.4 dB
+  // headroom unused). MASTER_DRIVE sets the pre-tanh peak: values > 1
+  // actually engage the saturator (the same honest density lever as
+  // foundation's gain→limit stage), then the result is normalized to a
+  // true −0.7 dBFS sample peak so the family acceptance gates
+  // (samplePeakMax −0.5 dBFS, lufsMin −11 LUFS) are reachable at all.
   let peak = 0.0001;
   for (let i = 0; i < total; i++) {
     const al = Math.abs(L[i]), ar = Math.abs(R[i]);
     if (al > peak) peak = al;
     if (ar > peak) peak = ar;
   }
-  const g = 0.9 / peak;
+  const g = MASTER_DRIVE / peak;
   for (let i = 0; i < total; i++) {
-    L[i] = Math.tanh(L[i] * g * 1.1);
-    R[i] = Math.tanh(R[i] * g * 1.1);
+    L[i] = Math.tanh(L[i] * g);
+    R[i] = Math.tanh(R[i] * g);
+  }
+  let postPeak = 0.0001;
+  for (let i = 0; i < total; i++) {
+    const al = Math.abs(L[i]), ar = Math.abs(R[i]);
+    if (al > postPeak) postPeak = al;
+    if (ar > postPeak) postPeak = ar;
+  }
+  const g2 = Math.pow(10, -0.7 / 20) / postPeak;
+  for (let i = 0; i < total; i++) {
+    L[i] *= g2;
+    R[i] *= g2;
   }
 
   const BUCKETS = 900;

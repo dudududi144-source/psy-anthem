@@ -1,5 +1,21 @@
 # Changelog
 
+## 13.9.2 - Family-gate fix: DC blocker + honest mastering (Task 20)
+
+The render-core preview path FAILED the family acceptance gates on every
+version measured (DC offset −0.085/−0.087 both channels; masters as quiet
+as −15.5 LUFS). Root-caused by bisection: the per-voice Chamberlin SVF
+accumulates DC drift at high cutoffs, the pingpong/reverb loops amplify it
+(DC gain up to ~4.3), and the old master stage left ~2.4 dB headroom
+unused. Fix: two-pole 10 Hz DC blockers on every voice bus + master;
+saturate-then-normalize master (pre-tanh peak 1.5, true peak −0.7 dBFS).
+Measured on a real seed-42 composition: DC ≤ 0.0007, LUFS −10.4…−10.7,
+LRA 4.7–4.8, TP −0.7 dBTP — all 10 acceptance gates PASS (melody +
+groove); draft passes with 1 stereo WARN. Determinism preserved
+(byte-identical double render); 362/0 tests. Cache-busters bumped to
+?v=201 (the 13.9.0 lesson). Full evidence:
+docs/SERVING_AUDIT_2026-09-05.md §6.
+
 ## 13.9.1 - Rich wavetables for lead and pad
 
 Ported the PsySynthPro rich artistic wavetables (COSMIC, NEURO, GLASS, VOID,
